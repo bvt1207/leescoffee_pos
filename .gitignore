@@ -37,3 +37,6 @@ Thumbs.db
 sites/assets/
 sites/logs/
 *.pyc
+
+# Claude Code local settings / secrets
+.claude/settings.local.json
