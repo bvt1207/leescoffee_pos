@@ -203,6 +203,15 @@ app_license = "mit"
 
 # ignore_links_on_delete = ["Communication", "ToDo"]
 
+# Fixtures - DocTypes that should be exported
+# -----------------------------------------------------------
+# DocTypes created by this app that need to be included in fixtures
+# so they are installed with the app on a fresh site.
+
+fixtures = [
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee POS Settings"]]},
+]
+
 # Request Events
 # ----------------
 # before_request = ["leescoffee_pos.utils.before_request"]
