@@ -138,13 +138,16 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"POS Invoice": {
+		"on_submit": "leescoffee_pos.doctype.pos_invoice_hooks.on_submit",
+		"before_save": "leescoffee_pos.doctype.pos_invoice_hooks.before_save",
+		"on_update": "leescoffee_pos.doctype.pos_invoice_hooks.on_update",
+	},
+	"Leescoffee Buzzer": {
+		"validate": "leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer.LeescoffeeBuzzer.validate",
+	},
+}
 
 # Scheduled Tasks
 # ---------------
@@ -210,6 +213,24 @@ app_license = "mit"
 
 fixtures = [
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee POS Settings"]]},
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Buzzer"]]},
+]
+
+# Custom Field fixtures for POS Invoice (standard ERPNext DocType)
+# -----------------------------------------------------------
+# These custom fields are attached to POS Invoice and must be exported
+# via fixtures so they are available when the app is installed on a fresh site.
+
+fixtures = [
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee POS Settings"]]},
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Buzzer"]]},
+	{
+		"dt": "Custom Field",
+		"filters": [
+			["dt", "=", "POS Invoice"],
+			["fieldname", "in", ["order_type", "order_channel", "custom_kitchen_status", "buzzer"]],
+		],
+	},
 ]
 
 # Request Events
