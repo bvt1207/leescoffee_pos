@@ -1,5 +1,7 @@
 [
 	{
+		"doctype": "Custom Field",
+		"name": "POS Invoice-order_type",
 		"dt": "POS Invoice",
 		"fieldname": "order_type",
 		"label": "Loại đơn",
@@ -15,6 +17,8 @@
 		"default": ""
 	},
 	{
+		"doctype": "Custom Field",
+		"name": "POS Invoice-order_channel",
 		"dt": "POS Invoice",
 		"fieldname": "order_channel",
 		"label": "Kênh đặt",
@@ -30,6 +34,8 @@
 		"default": "POS"
 	},
 	{
+		"doctype": "Custom Field",
+		"name": "POS Invoice-custom_kitchen_status",
 		"dt": "POS Invoice",
 		"fieldname": "custom_kitchen_status",
 		"label": "Trạng thái pha chế",
@@ -45,6 +51,8 @@
 		"default": ""
 	},
 	{
+		"doctype": "Custom Field",
+		"name": "POS Invoice-buzzer",
 		"dt": "POS Invoice",
 		"fieldname": "buzzer",
 		"label": "Thẻ rung",
