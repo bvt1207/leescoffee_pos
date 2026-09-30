@@ -1,88 +1,73 @@
 """
 Hooks for POS Invoice DocType to handle Leescoffee POS custom business logic:
-- `custom_kitchen_status` chỉ được set khi `status` == "Paid" (không phải docstatus=1).
+- `custom_kitchen_status` chỉ được set khi `status` == "Paid".
 - Quản lý `buzzer` gắn với đơn (chỉ cho order_type = Dine In).
+- Buzzer reset chỉ khi: (a) huỷ đơn trước khi bắt đầu làm, hoặc (b) staff xác nhận khách lấy món.
 """
 
 import frappe
 from frappe import _
-from frappe.model.document import Document
 
 
-class PosInvoiceHooks:
-	"""Logic hooks được gọi bởi doc_events trong hooks.py cho POS Invoice."""
+@staticmethod
+def on_submit(doc, method):
+	"""Mỗi khi POS Invoice được submit (on_submit).
 
-	def on_submit(self, method):
-		"""Mỗi khi POS Invoice được tạo (submitted).
+	- Đảm bảo `custom_kitchen_status` được set khi status == "Paid".
+	- Không auto-gán buzzer; UI sẽ gán nếu order_type = Dine In.
+	"""
+	if doc.status == "Paid" and not doc.custom_kitchen_status:
+		doc.custom_kitchen_status = "Chưa làm"
+		frappe.msgprint(_("Đơn đã thanh toán — bắt đầu vòng đời pha chế (Chưa làm)."))
 
-		- Đảm bảo `custom_kitchen_status` được set khi status = Paid (không phải docstatus=1 đơn thuần).
-		- Gán `buzzer` cho đơn (nếu order_type = Dine In) — đặt trạng thái buzzer thành Đang dùng.
-		"""
-		# Chặn set custom_kitchen_status trừ khi status == "Paid"
-		if self.custom_kitchen_status and self.status != "Paid":
-			frappe.throw(
-				_("Chỉ có thể set trạng thái pha chế khi đơn được thanh toán (status = Paid).")
+
+@staticmethod
+def before_save(doc, method):
+	"""Trước khi lưu POS Invoice (before_save).
+
+	- Chặn set custom_kitchen_status nếu status != "Paid".
+	"""
+	if doc.custom_kitchen_status and doc.status != "Paid":
+		frappe.throw(
+			_("Chỉ có thể set trạng thái pha chế khi đơn được thanh toán (status = Paid).")
+		)
+
+
+@staticmethod
+def on_update_after_submit(doc, method):
+	"""Sau khi cập nhật POS Invoice đã submit.
+
+	- Không làm gì tự động. Buzzer reset không auto xảy ra ở đây.
+	  Reset buzzer chỉ qua: (a) on_cancel nếu chưa bắt đầu làm, (b) confirm_pickup.
+	"""
+	pass
+
+
+@staticmethod
+def confirm_pickup(doc, method):
+	"""Nhân viên xác nhận khách đã lấy món → reset buzzer về Sẵn sàng.
+
+	Gọi qua button trên UI Status board.
+	Chỉ reset nếu buzzer đang Đang dùng và đơn đã Đã hoàn thành.
+	"""
+	if doc.buzzer and doc.custom_kitchen_status == "Đã hoàn thành":
+		buzzer = frappe.get_doc("Leescoffee Buzzer", doc.buzzer)
+		if buzzer.status == "Đang dùng":
+			buzzer.status = "Sẵn sàng"
+			buzzer.save(ignore_permissions=True)
+			frappe.msgprint(
+				_("Buzzer {0} đã reset về Sẵn sàng (khách đã lấy món).").format(doc.buzzer)
 			)
 
-		# Nếu order_type = Dine In, gán 1 buzzer sẵn sàng (nếu có) và set busy
-		if self.order_type == "Dine In" and self.buzzer:
-			# field `buzzer` lưu tên phiếu Leescoffee Buzzer
-			pass  # đã được gán bởi UI qua các trường tùy chỉnh, validation có thể check ở đây
 
-	def before_save(self, method):
-		"""Trước khi lưu POS Invoice.
+@staticmethod
+def on_cancel(doc, method):
+	"""Huỷ đơn → reset buzzer ngay nếu đơn chưa bắt đầu làm (Chưa làm).
 
-		- Tự động set `custom_kitchen_status = Chưa làm` khi status = Paid và `custom_kitchen_status` chưa có.
-		- Reset `custom_kitchen_status` về trống khi status != Paid (ví dụ trả hàng, huỷ).
-		"""
-		if self.status == "Paid":
-			# Bắt đầu vòng đời pha chế
-			if not self.custom_kitchen_status:
-				self.custom_kitchen_status = "Chưa làm"
-				frappe.msgprint(_("Đơn đã thanh toán — đã bắt đầu vòng đời pha chế."))
-			# Reset buzzer về Sẵn sàng nếu đơn bị trả / huỷ
-			if hasattr(self, '_is_cancel'):
-				frappe.get_doc("Leescoffee Buzzer", self.buzzer).set_available(self.buzzer)
-		elif self.status in ("Consolidated", "Cancelled", "Return") and self.buzzer:
-				# Nếu đơn bị chuyển sang Sales Invoice hoặc bị hủy, trả buzzer về sẵn sàng
-				# (chỉ khi còn buzzer được gán)
-				pass
-
-	def on_update(self, method):
-		"""Sau khi POS Invoice được cập nhật (ví dụ trạng thái pha chế thay đổi).
-
-		- Khi `custom_kitchen_status` thay đổi thành "Đã hoàn thành", đảm bảo buzzer reset về Sẵn sàng
-		- Khi order_type chuyển từ "Dine In" sang "Take Away", reset buzzer nếu có
-		"""
-		# Kiểm tra thay đổi trạng thái pha chế
-		if hasattr(self, 'custom_kitchen_status'):
-			old_doc = frappe.get_last_doc("POS Invoice", filters={"name": self.name})
-			if hasattr(old_doc, 'custom_kitchen_status') and old_doc.custom_kitchen_status != self.custom_kitchen_status:
-				if self.custom_kitchen_status == "Đã hoàn thành":
-					# đơn xong -> reset buzzer nếu có
-					if self.buzzer:
-						PosInvoiceHooks._reset_buzzer(self.buzzer)
-						frappe.msgprint(_("Đơn đã hoàn thành — buzzer đã reset về Sẵn sàng."))
-				# khi order_type thay đổi từ Dine In sang Take Away, reset buzzer nếu có
-				if old_doc.order_type == "Dine In" and self.order_type == "Take Away":
-					if self.buzzer:
-						PosInvoiceHooks._reset_buzzer(self.buzzer)
-
-	def _reset_buzzer(self, buzzer_name):
-		"""Helper: Reset buzzer về Sẵn sàng."""
-		frappe.get_doc("Leescoffee Buzzer", buzzer_name).set_available(buzzer_name)
-
-
-def before_save(doc, method):
-	"""Phụ trợ – same như PosInvoiceHooks.before_save (dùng cho module imports)"""
-	PosInvoiceHooks.before_save(doc, method)
-
-
-def on_submit(doc, method):
-	"""Phụ trợ – same as PosInvoiceHooks.on_submit"""
-	PosInvoiceHooks.on_submit(doc, method)
-
-
-def on_update(doc, method):
-	"""Phụ trợ – same as PosInvoiceHooks.on_update"""
-	PosInvoiceHooks.on_update(doc, method)
+	Nếu đơn đã Đã làm, buzzer giữ Đang dùng cho đến khi staff xác nhận pickup.
+	"""
+	if doc.buzzer and doc.custom_kitchen_status in (None, "", "Chưa làm"):
+		buzzer = frappe.get_doc("Leescoffee Buzzer", doc.buzzer)
+		if buzzer.status == "Đang dùng":
+			buzzer.status = "Sẵn sàng"
+			buzzer.save(ignore_permissions=True)

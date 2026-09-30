@@ -140,9 +140,10 @@ app_license = "mit"
 
 doc_events = {
 	"POS Invoice": {
-		"on_submit": "leescoffee_pos.doctype.pos_invoice_hooks.on_submit",
-		"before_save": "leescoffee_pos.doctype.pos_invoice_hooks.before_save",
-		"on_update": "leescoffee_pos.doctype.pos_invoice_hooks.on_update",
+		"on_submit": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit",
+		"before_save": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.before_save",
+		"on_update_after_submit": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_update_after_submit",
+		"on_cancel": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_cancel",
 	},
 	"Leescoffee Buzzer": {
 		"validate": "leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer.LeescoffeeBuzzer.validate",
