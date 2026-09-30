@@ -214,11 +214,10 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 
 Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
-- [ ] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
-      mặc định, cấu hình SePay, thông tin thương hiệu dạng cấu hình. Đã code, chờ Van
-      xác nhận test trên bench và duyệt.
-- [ ] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
-      (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`) — đang làm
+- [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
+      mặc định, cấu hình SePay, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
+- [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
+      (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [ ] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
       (kèm field thương hiệu ưu tiên Branch, fallback về Settings)
 - [ ] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook
@@ -318,11 +317,15 @@ PROJECTPOS/
         ├── www/
         └── leescoffee_pos/        # module "Leescoffee Pos"
             └── doctype/
-                └── leescoffee_pos_settings/   # Single DocType — cấu hình gốc (mới, không cần fixtures)
+                ├── leescoffee_pos_settings/   # Single DocType — cấu hình gốc (Đã duyệt)
+                │   ├── __init__.py
+                │   ├── leescoffee_pos_settings.json
+                │   └── leescoffee_pos_settings.py
+                ├── leescoffee_buzzer/       # DocType mới: thẻ rung (Đã duyệt)
+                │   ├── __init__.py
+                │   ├── leescoffee_buzzer.json
+                │   └── leescoffee_buzzer.py
+                └── pos_invoice_hooks/       # Hooks cho POS Invoice (Đã duyệt)
                     ├── __init__.py
-                    ├── leescoffee_pos_settings.json
-                    └── leescoffee_pos_settings.py
+                    └── pos_invoice_hooks.py
 ```
-
-Đang làm, chưa duyệt nên chưa liệt kê vào cây: `Leescoffee Buzzer` (doctype mới) và
-Custom Field trên POS Invoice (fixtures trong `hooks.py`).
