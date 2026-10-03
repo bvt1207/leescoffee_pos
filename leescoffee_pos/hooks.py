@@ -140,14 +140,13 @@ app_license = "mit"
 
 doc_events = {
 	"POS Invoice": {
-		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit",
-		"before_save": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.before_save",
-		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_update_after_submit",
-		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_cancel",
+		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit",
+		"before_save": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",
+		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
+		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_cancel",
 	},
-	"Leescoffee Buzzer": {
-		"validate": "leescoffee_pos.leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer.LeescoffeeBuzzer.validate",
-	},
+	# Leescoffee Buzzer: validate là native lifecycle method của Document →
+	# Frappe tự gọi, không cần đăng ký lại trong doc_events.
 }
 
 # Scheduled Tasks
