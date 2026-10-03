@@ -201,6 +201,15 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   `leescoffee_pos.leescoffee_pos.<đường dẫn>`, không viết tắt 1 cấp `leescoffee_pos.<đường dẫn>`.
   (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
 
+- **Native lifecycle method vs doc_events** (checklist mới):
+  - Native Document lifecycle method (validate, before_save, on_update, on_submit...) 
+    viết trực tiếp trong class kế thừa Document → Frappe tự gọi. **KHÔNG đăng ký lại trong hooks.py -> doc_events**.
+  - Custom cross-cutting logic cần hook từ app (như POS Invoice) → dùng doc_events.
+  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method". 
+    Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
+    gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
+  - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
+
 ## 6. Triển khai & fixtures
 
 - Custom Field gắn lên DocType chuẩn của ERPNext phải khai báo trong `fixtures` của
