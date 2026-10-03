@@ -221,8 +221,8 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       mặc định, cấu hình SePay, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
-- [ ] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
-      (kèm field thương hiệu ưu tiên Branch, fallback về Settings)
+- [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
+      (kèm field thương hiệu ưu tiên Branch, fallback về Settings). **Đã test Pass**
 - [ ] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook
 - [ ] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
       hoặc thẻ rung khi xong
@@ -328,7 +328,10 @@ PROJECTPOS/
                 │   ├── __init__.py
                 │   ├── leescoffee_buzzer.json
                 │   └── leescoffee_buzzer.py
-                └── pos_invoice_hooks/       # Hooks cho POS Invoice (Đã duyệt)
+                ├── pos_invoice_hooks/       # Hooks cho POS Invoice (Đã duyệt)
+                │   ├── __init__.py
+                │   └── pos_invoice_hooks.py
+                └── branch_config/           # Mới: config Branch và helper
                     ├── __init__.py
-                    └── pos_invoice_hooks.py
+                    └── branch_config.py
 ```
