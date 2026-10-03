@@ -140,13 +140,13 @@ app_license = "mit"
 
 doc_events = {
 	"POS Invoice": {
-		"on_submit": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit",
-		"before_save": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.before_save",
-		"on_update_after_submit": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_update_after_submit",
-		"on_cancel": "leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_cancel",
+		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit",
+		"before_save": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.before_save",
+		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_update_after_submit",
+		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_cancel",
 	},
 	"Leescoffee Buzzer": {
-		"validate": "leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer.LeescoffeeBuzzer.validate",
+		"validate": "leescoffee_pos.leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer.LeescoffeeBuzzer.validate",
 	},
 }
 
@@ -219,6 +219,12 @@ fixtures = [
 		"dt": "Custom Field",
 		"filters": [
 			["dt", "=", "POS Invoice"],
+		],
+	},
+	{
+		"dt": "Custom Field",
+		"filters": [
+			["dt", "=", "Branch"],
 		],
 	},
 ]

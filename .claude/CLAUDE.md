@@ -197,6 +197,9 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   - Giá trị `fieldtype` phải đúng casing chuẩn Frappe (Title Case): `Section Break`,
     `Link`, `Data`, `Check`, `Select`, `Password`, `Attach Image`, `Small Text`...
   - Trước khi báo "xong", tự rà lại toàn bộ file JSON vừa tạo theo đúng 2 điểm trên.
+- **Đường dẫn import module**: mọi đường dẫn import trỏ vào code bên trong thư mục module (doctype/, hoặc các thư mục con khác cùng cấp) bắt buộc viết đủ
+  `leescoffee_pos.leescoffee_pos.<đường dẫn>`, không viết tắt 1 cấp `leescoffee_pos.<đường dẫn>`.
+  (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
 
 ## 6. Triển khai & fixtures
 
