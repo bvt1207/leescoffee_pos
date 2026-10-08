@@ -228,17 +228,6 @@ def sepay_webhook():
 
         # Idempotency check: if already processed
         if invoice.payment_status in ("Đã thanh toán", "Hủy"):
-            # Still log the event
-            log_entry = _json.dumps({
-                "payment_code": payment_code,
-                "transaction_id": transaction_id,
-                "amount": amount,
-                "status": sepay_status,
-                "received_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "already_processed": True,
-            })
-            update_sepay_payment_log(invoice.name, log_entry)
-
             return {
                 "success": True,
                 "message": "Đã xử lý trước đó",
