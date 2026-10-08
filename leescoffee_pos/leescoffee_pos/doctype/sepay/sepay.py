@@ -1,15 +1,15 @@
 import frappe
 from frappe import _
-from frappe.model.naming import generate_hash
+import secrets
 from datetime import datetime
 import json as _json
+from frappe.utils import flt
 
 # Import helper functions from branch_config module
-from .branch_config import (
+from ..branch_config.branch_config import (
     get_default_branch,
     get_va_bank_config,
     get_sepay_qr_url,
-    get_sepay_enabled,
 )
 
 @frappe.whitelist()
@@ -60,7 +60,7 @@ def generate_qr_for_invoice(invoice_name):
         # Generate unique payment code
         # Format: POS-{invoice_name}-{YYYYMMDD}-{hash}
         timestamp = datetime.now().strftime("%Y%m%d")
-        unique_hash = generate_hash(size=6)[:6].upper()
+        unique_hash = secrets.token_hex(3).upper()
         payment_code = f"POS-{invoice_name}-{timestamp}-{unique_hash}"
 
         # Build VietQR URL
@@ -75,11 +75,8 @@ def generate_qr_for_invoice(invoice_name):
         # Clear payment log for new payment
         invoice.sepay_payment_log = ""
 
-        # If invoice has items, ensure it's in proper state
-        if invoice.is_new() or not invoice.docstatus:
-            invoice.insert()
-        else:
-            invoice.save(ignore_permissions=True)
+        # Invoice đã tồn tại → chỉ save, không insert lại
+        invoice.save(ignore_permissions=True)
 
         return {
             "invoice_name": invoice_name,
@@ -166,8 +163,7 @@ def sepay_webhook():
         # Priority: payload api_key > header api_key > Branch config > Settings
         verified_api_key = None
 
-        #  armchair check. If api_key in payload, use it.
-        # 2. Check header api_key
+        # 1. If api_key in payload, use it
         if api_key_from_payload:
             verified_api_key = api_key_from_payload
         # 2. Check header api_key
@@ -216,19 +212,19 @@ def sepay_webhook():
             frappe.throw(_("API Key không hợp lệ. Vui lòng kiểm tra cấu hình Branch/Settings."))
 
         # Find POS Invoice by payment_code
-        invoice = frappe.db.get_value(
+        invoice_name = frappe.db.get_value(
             "POS Invoice",
             {"payment_code": payment_code},
-            ["name", "grand_total", "customer", "status", "payment_status"],
-            as_dict=True,
+            "name",
         )
-
-        if not invoice:
+        if not invoice_name:
             frappe.log_error(
                 title="SePay Webhook Invoice Not Found",
                 message=f"Payment code '{payment_code}' not found in any POS Invoice",
             )
             frappe.throw(_("Mã thanh toán không khớp với bất kỳ đơn nào. Vui lòng kiểm tra lại."))
+
+        invoice = frappe.get_doc("POS Invoice", invoice_name)
 
         # Idempotency check: if already processed
         if invoice.payment_status in ("Đã thanh toán", "Hủy"):
@@ -274,16 +270,36 @@ def sepay_webhook():
             "received_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "already_processed": False,
         }))
+        # Reload invoice to avoid optimistic locking conflict after update_sepay_payment_log saved it
+        invoice = frappe.get_doc("POS Invoice", invoice.name)
+
+        # Determine Mode of Payment from invoice.payments (payment method thực tế của đơn)
+        if not invoice.get("payments"):
+            frappe.throw(_("POS Invoice has no payment methods. Please set the payment method when creating the invoice."))
+
+        mode_of_payment = None
+        for payment in invoice.payments:
+            if flt(payment.amount) == flt(amount):
+                mode_of_payment = payment.mode_of_payment
+                break
+        if not mode_of_payment and invoice.payments:
+            mode_of_payment = invoice.payments[0].mode_of_payment
+
+        if not mode_of_payment:
+            frappe.throw(_("Cannot determine Mode of Payment from POS Invoice payments."))
+
+        # Append payment method + amount to invoice.payments
+        invoice.append("payments", {
+            "mode_of_payment": mode_of_payment,
+            "amount": flt(amount),
+        })
 
         # Update invoice payment status
-        invoice.payment_status = "Đang chờ"
+        invoice.payment_status = "Đã thanh toán"
         invoice.save(ignore_permissions=True)
 
-        # Create Payment Entry to mark invoice as paid
-        create_payment_entry(invoice, amount, transaction_id, payment_code)
-
-        # After Payment Entry submitted, ERPNext will auto-update invoice.status to "Paid"
-        # The on_submit hook will then set custom_kitchen_status
+        # Submit invoice → ERPNext auto-marks as Paid → on_submit hook sets custom_kitchen_status
+        invoice.submit()
 
         return {
             "success": True,
@@ -335,51 +351,3 @@ def update_sepay_payment_log(invoice_name, log_entry):
     invoice.save(ignore_permissions=True)
 
 
-def create_payment_entry(invoice, amount, transaction_id, payment_code):
-    """Create and submit a Payment Entry to mark the POS Invoice as paid.
-
-    This follows ERPNext standard Payment Entry pattern:
-    - payment_type: Receive
-    - paid_amount: invoice grand_total
-    - reference_type: POS Invoice
-    - reference_no: invoice name
-    - paid_via: SePay
-    - mode_of_payment: SePay (or configured bank code)
-
-    Args:
-        invoice (doc): POS Invoice document
-        amount (float): Payment amount (should match invoice.grand_total)
-        transaction_id (str): Transaction ID from SePay
-        payment_code (str): Payment reference code
-    """
-    # Determine mode of payment
-    mode_of_payment = "SePay"
-    if invoice.pos_profile:
-        pos_profile = frappe.get_doc("POS Profile", invoice.pos_profile)
-        if pos_profile.default_mode_of_payment:
-            mode_of_payment = pos_profile.default_mode_of_payment
-
-    # Create Payment Entry
-    pe = frappe.get_doc({
-        "doctype": "Payment Entry",
-        "payment_type": "Receive",
-        "paid_amount": float(amount) if isinstance(amount, (str, int)) else amount,
-        "posting_date": datetime.now().strftime("%Y-%m-%d"),
-        "party_type": "Customer",
-        "party": invoice.customer,
-        "company": invoice.company,
-        "reference_type": "POS Invoice",
-        "reference_no": invoice.name,
-        "paid_via": "SePay",
-        "mode_of_payment": mode_of_payment,
-        "remark": f"SePay payment_code={payment_code}, transaction_ref={transaction_id}",
-    })
-
-    # Insert and submit
-    pe.insert(ignore_permissions=True)
-    pe.submit()
-
-    # After submit, ERPNext will:
-    # - Reduce invoice.outstanding_amount to 0
-    # - Update invoice.status to "Paid" (via docstatus change)
-    # - Trigger on_submit hook which sets custom_kitchen_status = "Chưa làm"

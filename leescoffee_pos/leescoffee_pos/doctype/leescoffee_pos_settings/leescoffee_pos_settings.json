@@ -62,6 +62,18 @@
 			"reqd": 0
 		},
 		{
+			"fieldname": "sepay_va_account",
+			"label": "Tài khoản Virtual Account",
+			"fieldtype": "Data",
+			"reqd": 0
+		},
+		{
+			"fieldname": "sepay_bank_code",
+			"label": "Mã ngân hàng",
+			"fieldtype": "Data",
+			"reqd": 0
+		},
+		{
 			"fieldtype": "Section Break",
 			"label": "Thông tin thương hiệu"
 		},
