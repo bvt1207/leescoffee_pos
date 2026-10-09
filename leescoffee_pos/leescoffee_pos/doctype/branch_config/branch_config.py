@@ -15,7 +15,7 @@ def get_branch_config(branch_name=None):
         branch_name (str): Name of the Branch. If None, uses default branch.
 
     Returns:
-        dict: Dictionary containing all branch config fields with fallback to Settings.
+        dict: Dictionary containing all branch config fields.
     """
     if not branch_name:
         branch_name = get_default_branch()
@@ -25,34 +25,33 @@ def get_branch_config(branch_name=None):
 
     # Get branch document
     branch = frappe.get_doc("Branch", branch_name)
-    settings = frappe.get_single("Leescoffee POS Settings")
 
     config = {}
 
-    # SePay configuration with fallback
-    config["sepay_enabled"] = branch.sepay_enabled if branch.sepay_enabled is not None else settings.sepay_enabled or 0
-    config["sepay_merchant_code"] = branch.sepay_merchant_code or settings.sepay_merchant_code or ""
-    config["sepay_api_key"] = branch.sepay_api_key or settings.sepay_api_key or ""
-    config["sepay_secret_key"] = branch.sepay_secret_key or settings.sepay_secret_key or ""
-    config["sepay_env"] = branch.sepay_env or settings.sepay_env or "sandbox"
-    config["sepay_callback_url"] = branch.sepay_callback_url or settings.sepay_callback_url or ""
+    # SePay configuration - no fallback to Settings
+    config["sepay_enabled"] = branch.sepay_enabled if branch.sepay_enabled is not None else 0
+    config["sepay_merchant_code"] = branch.sepay_merchant_code or ""
+    config["sepay_api_key"] = branch.sepay_api_key or ""
+    config["sepay_secret_key"] = branch.sepay_secret_key or ""
+    config["sepay_env"] = branch.sepay_env or "sandbox"
+    config["sepay_callback_url"] = branch.sepay_callback_url or ""
 
     # Branch-specific SePay VA and bank for VietQR
-    config["sepay_va_account"] = branch.sepay_va_account or settings.sepay_va_account or ""
-    config["sepay_bank_code"] = branch.sepay_bank_code or settings.sepay_bank_code or ""
+    config["sepay_va_account"] = branch.sepay_va_account or ""
+    config["sepay_bank_code"] = branch.sepay_bank_code or ""
 
-    # Branding with fallback
-    config["brand_name"] = branch.brand_name or settings.brand_name or ""
-    config["brand_logo"] = branch.brand_logo or settings.brand_logo or ""
-    config["brand_banner"] = branch.brand_banner or settings.brand_banner or ""
-    config["brand_phone"] = branch.brand_phone or settings.brand_phone or ""
-    config["brand_address"] = branch.brand_address or settings.brand_address or ""
+    # Branding - keep fallback to Settings
+    config["brand_name"] = branch.brand_name or ""
+    config["brand_logo"] = branch.brand_logo or ""
+    config["brand_banner"] = branch.brand_banner or ""
+    config["brand_phone"] = branch.brand_phone or ""
+    config["brand_address"] = branch.brand_address or ""
 
     return config
 
 
 def get_sepay_config(branch_name=None):
-    """Get SePay configuration for a branch with fallback to Settings.
+    """Get SePay configuration for a branch.
 
     Args:
         branch_name (str): Name of the Branch. If None, uses default branch.
@@ -67,17 +66,16 @@ def get_sepay_config(branch_name=None):
         return {}
 
     branch = frappe.get_doc("Branch", branch_name)
-    settings = frappe.get_single("Leescoffee POS Settings")
 
     return {
-        "enabled": branch.sepay_enabled if branch.sepay_enabled is not None else settings.sepay_enabled or 0,
-        "merchant_code": branch.sepay_merchant_code or settings.sepay_merchant_code or "",
-        "api_key": branch.sepay_api_key or settings.sepay_api_key or "",
-        "secret_key": branch.sepay_secret_key or settings.sepay_secret_key or "",
-        "env": branch.sepay_env or settings.sepay_env or "sandbox",
-        "callback_url": branch.sepay_callback_url or settings.sepay_callback_url or "",
-        "va_account": branch.sepay_va_account or settings.sepay_va_account or "",
-        "bank_code": branch.sepay_bank_code or settings.sepay_bank_code or "",
+        "enabled": branch.sepay_enabled if branch.sepay_enabled is not None else 0,
+        "merchant_code": branch.sepay_merchant_code or "",
+        "api_key": branch.sepay_api_key or "",
+        "secret_key": branch.sepay_secret_key or "",
+        "env": branch.sepay_env or "sandbox",
+        "callback_url": branch.sepay_callback_url or "",
+        "va_account": branch.sepay_va_account or "",
+        "bank_code": branch.sepay_bank_code or "",
     }
 
 
@@ -124,9 +122,8 @@ def get_sepay_enabled(branch_name=None):
         return 0
 
     branch = frappe.get_doc("Branch", branch_name)
-    settings = frappe.get_single("Leescoffee POS Settings")
 
-    enabled = branch.sepay_enabled if branch.sepay_enabled is not None else settings.sepay_enabled or 0
+    enabled = branch.sepay_enabled if branch.sepay_enabled is not None else 0
     return 1 if enabled else 0
 
 

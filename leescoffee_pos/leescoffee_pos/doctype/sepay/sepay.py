@@ -160,7 +160,7 @@ def sepay_webhook():
             api_key_from_header = frappe.request.headers.get("X-Api-Key")
 
         # Determine which API key to use for verification
-        # Priority: payload api_key > header api_key > Branch config > Settings
+        # Priority: payload api_key > header api_key > Branch config
         verified_api_key = None
 
         # 1. If api_key in payload, use it
@@ -170,17 +170,12 @@ def sepay_webhook():
         elif api_key_from_header:
             verified_api_key = api_key_from_header
         else:
-            # 3. Check Branch config (default branch)
+            # 3. Check Branch config (default branch) only
             branch_name = get_default_branch()
             if branch_name:
                 branch = frappe.get_doc("Branch", branch_name)
                 if branch.sepay_api_key:
                     verified_api_key = branch.sepay_api_key
-            if not verified_api_key:
-                # 4. Fallback to Settings
-                settings = frappe.get_single("Leescoffee POS Settings")
-                if settings.sepay_api_key:
-                    verified_api_key = settings.sepay_api_key
 
         # Verify API Key
         if not verified_api_key:
@@ -201,8 +196,8 @@ def sepay_webhook():
             expected_api_key = None
 
         if not expected_api_key:
-            settings = frappe.get_single("Leescoffee POS Settings")
-            expected_api_key = settings.sepay_api_key or ""
+            # No Branch configured and no Settings fallback - require API key in payload/header
+            frappe.throw(_("API Key không hợp lệ. Vui lòng cấu hình Branch.sepay_api_key hoặc cung cấp api_key trong payload/header."))
 
         if verified_api_key != expected_api_key:
             frappe.log_error(

@@ -21,60 +21,6 @@
 		},
 		{
 			"fieldtype": "Section Break",
-			"label": "Cấu hình SePay"
-		},
-		{
-			"fieldname": "sepay_enabled",
-			"label": "Kích hoạt SePay",
-			"fieldtype": "Check",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_merchant_code",
-			"label": "Mã merchant",
-			"fieldtype": "Data",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_api_key",
-			"label": "API Key",
-			"fieldtype": "Password",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_secret_key",
-			"label": "Secret Key",
-			"fieldtype": "Password",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_env",
-			"label": "Môi trường",
-			"fieldtype": "Select",
-			"options": "sandbox\nproduction",
-			"reqd": 0,
-			"default": "sandbox"
-		},
-		{
-			"fieldname": "sepay_callback_url",
-			"label": "Callback URL",
-			"fieldtype": "Data",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_va_account",
-			"label": "Tài khoản Virtual Account",
-			"fieldtype": "Data",
-			"reqd": 0
-		},
-		{
-			"fieldname": "sepay_bank_code",
-			"label": "Mã ngân hàng",
-			"fieldtype": "Data",
-			"reqd": 0
-		},
-		{
-			"fieldtype": "Section Break",
 			"label": "Thông tin thương hiệu"
 		},
 		{
