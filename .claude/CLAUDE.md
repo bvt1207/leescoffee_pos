@@ -231,7 +231,7 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
-      (kèm field thương hiệu ưu tiên Branch, fallback về Settings). **Đã test Pass**
+      (không còn fallback Settings). **Đã test Pass**
 - [x] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook, dùng native ERPNext POS Invoice.payments flow (xóa create_payment_entry())
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
 - [ ] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
