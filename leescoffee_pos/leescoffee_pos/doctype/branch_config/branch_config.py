@@ -151,11 +151,10 @@ def get_va_bank_config(invoice_name):
         return {"va_account": "", "bank_code": ""}
 
     branch = frappe.get_doc("Branch", branch_name)
-    settings = frappe.get_single("Leescoffee POS Settings")
 
     return {
-        "va_account": branch.sepay_va_account or settings.sepay_va_account or "",
-        "bank_code": branch.sepay_bank_code or settings.sepay_bank_code or "",
+        "va_account": branch.sepay_va_account or "",
+        "bank_code": branch.sepay_bank_code or "",
         "branch": branch_name
     }
 
