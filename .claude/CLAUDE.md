@@ -227,7 +227,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
 - [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
-      mặc định, cấu hình SePay, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
+      mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
