@@ -345,3 +345,35 @@ PROJECTPOS/
                     ├── __init__.py
                     └── branch_config.py
 ```
+
+## 9. Ghi chú logic webhook SePay (dạng code snapshot)
+
+**Hàm:** `leescoffee_pos/leescoffee_pos/doctype/sepay/sepay.py::sepay_webhook()`
+
+**Luồng xử lý:**
+
+1. **Parse payload JSON** từ SePay (fields: `transferAmount`, `id`/`referenceCode`, `transferType`, `content`/`code`)
+2. **Normalize mã** (bỏ dấu `-`, khoảng trắng, chữ hoa) để so khớp `payment_code` với `content`
+3. **Tìm POS Invoice Draft** (docstatus=0) có `payment_code` khớp `content`
+4. **Idempotent:** Nếu `payment_status == "Đã thanh toán"` → trả về `{success: true, already_processed: true}`
+5. **Validate:** invoice ở Draft, số tiền khớp `rounded_total`/`grand_total` (±0.01 VND), tìm `mode_of_payment` từ `invoice.payments` (match amount hoặc dòng đầu tiên)
+6. **Cập nhật:** reset `invoice.payments` → append 1 dòng (mode_of_payment + amount); `payment_status="Đã thanh toán"`, `transaction_ref`, ghi log `sepay_payment_log` (50 entry); `save()` + `submit()` → ERPNext tự set `status="Paid"`, `docstatus=1`
+7. **Trả về:** `success`, `message`, `invoice_name`, `payment_code`, `transaction_id`, `amount`, `mode_of_payment`, `invoice_status`, `docstatus`, `payment_status`
+
+**Kết quả test (Postman + ngrok):**
+- Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
+- `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
+- Gọi lại webhook (same `payment_code`) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
+- Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
+
+**Lưu ý:** SePay config (`api_key`, `merchant_code`, `VA`, `bank_code`) nằm chỉ ở `Branch`, không fallback `Settings` 
+
+**Kết quả test (Postman + ngrok):**
+- Invoice chuyển sang , , 
+-  trả về giá trị thực tế từ POS Invoice (không hardcode)
+- Gọi lại webhook (same payment_code) →  (không lỗi 417, không submit lại)
+- Trừ tiền: invoice dùng  từ cột thanh toán có sẵn, không tạo Payment Entry mới
+
+**Lưu ý quan trọng:** SePay config (, , , ) nằm chỉ ở , không fallback sang  (theo quy tách mới).
+
+
