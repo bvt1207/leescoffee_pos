@@ -284,7 +284,7 @@
     "label": "Branch",
     "fieldtype": "Link",
     "options": "Branch",
-    "insert_after": "cost_center",
+    "insert_after": "company",
     "hidden": 0,
     "reqd": 0,
     "in_list_view": 0,

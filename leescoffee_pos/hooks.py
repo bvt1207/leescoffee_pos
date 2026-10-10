@@ -214,6 +214,8 @@ doc_events = {
 fixtures = [
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee POS Settings"]]},
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Buzzer"]]},
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Menu"]]},
+	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Menu Item"]]},
 	{
 		"dt": "Custom Field",
 		"filters": [
