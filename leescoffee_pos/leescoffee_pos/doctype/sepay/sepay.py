@@ -115,191 +115,231 @@ def _get_existing_qr_url(payment_code, invoice):
 
 @frappe.whitelist(allow_guest=True)
 def sepay_webhook():
-    """Receive SePay webhook callback for payment verification.
+    """Receive SePay webhook and update POS Invoice payment."""
 
-    This endpoint is called by SePay after a customer completes a bank transfer.
-    It verifies the API key, matches payment_code and amount, and creates a
-    Payment Entry in ERPNext to mark the POS Invoice as "Paid".
-
-    Expected POST JSON payload:
-    {
-        "payment_code": "POS-INV-00001-20241201-abc123",
-        "amount": 50000,
-        "status": "success",
-        "transaction_id": "SEPAY-TX-20241201-xyz789",
-        "api_key": "..."
-    }
-
-    Returns:
-        dict: Response with success status and message.
-    """
     try:
-        # Parse JSON payload from request
-        if not frappe.request.data:
-            frappe.throw(_("Không có dữ liệu POST"))
+        # 1. Đọc JSON theo format SePay
+        payload = frappe.request.get_json(silent=True) or {}
 
-        # Try to parse JSON - handle both bytes and string
-        try:
-            payload_str = frappe.request.data.decode('utf-8') if isinstance(frappe.request.data, bytes) else frappe.request.data
-            payload = _json.loads(payload_str)
-        except:
-            # If parsing fails, try frappe.request.get_json()
-            payload = frappe.request.get_json()
-            if not payload:
-                frappe.throw(_("Không thể parse JSON từ request"))
+        if not payload:
+            frappe.throw(_("Không có dữ liệu JSON từ SePay"))
 
-        payment_code = payload.get("payment_code", "")
-        amount = payload.get("amount", 0)
-        sepay_status = payload.get("status", "")
-        transaction_id = payload.get("transaction_id", "")
-        api_key_from_payload = payload.get("api_key", "")
+        content = str(
+            payload.get("content") or payload.get("code") or ""
+        ).strip()
 
-        # Also check header for API key
-        api_key_from_header = None
-        if frappe.request.headers.get("X-Api-Key"):
-            api_key_from_header = frappe.request.headers.get("X-Api-Key")
+        amount = flt(payload.get("transferAmount") or 0)
 
-        # Determine which API key to use for verification
-        # Priority: payload api_key > header api_key > Branch config
-        verified_api_key = None
+        transaction_id = str(
+            payload.get("id") or payload.get("referenceCode") or ""
+        ).strip()
 
-        # 1. If api_key in payload, use it
-        if api_key_from_payload:
-            verified_api_key = api_key_from_payload
-        # 2. Check header api_key
-        elif api_key_from_header:
-            verified_api_key = api_key_from_header
-        else:
-            # 3. Check Branch config (default branch) only
-            branch_name = get_default_branch()
-            if branch_name:
-                branch = frappe.get_doc("Branch", branch_name)
-                if branch.sepay_api_key:
-                    verified_api_key = branch.sepay_api_key
+        transfer_type = str(
+            payload.get("transferType") or ""
+        ).strip().lower()
 
-        # Verify API Key
-        if not verified_api_key:
-            frappe.log_error(
-                title="SePay Webhook Missing API Key",
-                message="No API key found in payload or headers",
+        if not content:
+            frappe.throw(_("SePay không gửi mã nội dung chuyển khoản"))
+
+        if amount <= 0:
+            frappe.throw(_("Số tiền chuyển khoản không hợp lệ"))
+
+        # Chỉ nhận giao dịch chuyển tiền vào
+        if transfer_type and transfer_type != "in":
+            return {
+                "success": False,
+                "message": "Không phải giao dịch chuyển tiền vào",
+            }
+
+        # 2. Chuẩn hóa mã để bỏ qua dấu gạch ngang, khoảng trắng
+        def normalize_code(value):
+            return "".join(
+                char
+                for char in str(value or "").upper()
+                if char.isalnum()
             )
-            frappe.throw(_("API Key không được cung cấp"))
 
-        # Check if API key matches Branch config (primary source)
-        branch_name = get_default_branch()
-        expected_api_key = None
+        normalized_content = normalize_code(content)
 
-        if branch_name:
-            branch = frappe.get_doc("Branch", branch_name)
-            expected_api_key = branch.sepay_api_key if branch.sepay_api_key else None
-        else:
-            expected_api_key = None
-
-        if not expected_api_key:
-            # No Branch configured and no Settings fallback - require API key in payload/header
-            frappe.throw(_("API Key không hợp lệ. Vui lòng cấu hình Branch.sepay_api_key hoặc cung cấp api_key trong payload/header."))
-
-        if verified_api_key != expected_api_key:
-            frappe.log_error(
-                title="SePay Webhook API Key Mismatch",
-                message=f"Expected: {expected_api_key}, Got: {verified_api_key}",
-            )
-            frappe.throw(_("API Key không hợp lệ. Vui lòng kiểm tra cấu hình Branch/Settings."))
-
-        # Find POS Invoice by payment_code
-        invoice_name = frappe.db.get_value(
+        # 3. Tìm POS Invoice Draft theo payment_code
+        invoices = frappe.get_all(
             "POS Invoice",
-            {"payment_code": payment_code},
-            "name",
+            filters={
+                "payment_code": ["is", "set"],
+                "docstatus": 0,
+            },
+            fields=[
+                "name",
+                "payment_code",
+                "grand_total",
+                "rounded_total",
+                "status",
+                "docstatus",
+                "payment_status",
+            ],
+            order_by="creation desc",
         )
-        if not invoice_name:
+
+        matched_invoice = None
+
+        for row in invoices:
+            if normalize_code(row.payment_code) == normalized_content:
+                matched_invoice = row
+                break
+
+        if not matched_invoice:
             frappe.log_error(
-                title="SePay Webhook Invoice Not Found",
-                message=f"Payment code '{payment_code}' not found in any POS Invoice",
+                title="SePay POS Invoice Not Found",
+                message=(
+                    f"content={content}\n"
+                    f"normalized_content={normalized_content}"
+                ),
             )
-            frappe.throw(_("Mã thanh toán không khớp với bất kỳ đơn nào. Vui lòng kiểm tra lại."))
+            frappe.throw(
+                _("Không tìm thấy POS Invoice có payment_code khớp với nội dung SePay")
+            )
 
-        invoice = frappe.get_doc("POS Invoice", invoice_name)
+        invoice = frappe.get_doc(
+            "POS Invoice", matched_invoice.name
+        )
 
-        # Idempotency check: if already processed
-        if invoice.payment_status in ("Đã thanh toán", "Hủy"):
+        # 4. Chống xử lý lại giao dịch
+        if invoice.payment_status == "Đã thanh toán":
             return {
                 "success": True,
-                "message": "Đã xử lý trước đó",
+                "message": "Giao dịch đã được xử lý trước đó",
                 "invoice_name": invoice.name,
                 "already_processed": True,
             }
 
-        # Amount verification
-        # Use tolerance for floating point comparison
-        amount_tolerance = 0.01
-        try:
-            amount_float = float(amount)
-            grand_total_float = float(invoice.grand_total)
-            if abs(amount_float - grand_total_float) > amount_tolerance:
-                frappe.log_error(
-                    title="SePay Webhook Amount Mismatch",
-                    message=f"Expected: {invoice.grand_total}, Got: {amount}",
+        if invoice.payment_status == "Hủy":
+            frappe.throw(_("Giao dịch thuộc POS Invoice đã bị hủy"))
+
+        if invoice.docstatus != 0:
+            frappe.throw(_("POS Invoice không còn ở trạng thái Draft"))
+
+        # 5. Kiểm tra số tiền
+        expected_amount = flt(
+            invoice.rounded_total or invoice.grand_total
+        )
+
+        if abs(amount - expected_amount) > 0.01:
+            frappe.log_error(
+                title="SePay POS Amount Mismatch",
+                message=(
+                    f"Invoice={invoice.name}\n"
+                    f"Expected={expected_amount}\n"
+                    f"Received={amount}"
+                ),
+            )
+            frappe.throw(
+                _("Số tiền không khớp. Cần {0}, nhận được {1}").format(
+                    expected_amount, amount
                 )
-                frappe.throw(_("Số tiền không khớp. Vui lòng kiểm tra lại amount thanh toán."))
-        except:
-            frappe.throw(_("Giá trị amount không hợp lệ."))
+            )
 
-        # Update invoice payment info
-        update_sepay_payment_log(invoice.name, _json.dumps({
-            "payment_code": payment_code,
-            "transaction_id": transaction_id,
-            "amount": amount,
-            "status": sepay_status,
-            "received_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "already_processed": False,
-        }))
-        # Reload invoice to avoid optimistic locking conflict after update_sepay_payment_log saved it
-        invoice = frappe.get_doc("POS Invoice", invoice.name)
+        # 6. Lấy Mode of Payment từ POS Invoice hiện tại
+        payments = invoice.get("payments") or []
 
-        # Determine Mode of Payment from invoice.payments (payment method thực tế của đơn)
-        if not invoice.get("payments"):
-            frappe.throw(_("POS Invoice has no payment methods. Please set the payment method when creating the invoice."))
+        if not payments:
+            frappe.throw(
+                _("POS Invoice chưa có phương thức thanh toán")
+            )
 
-        mode_of_payment = None
-        for payment in invoice.payments:
-            if flt(payment.amount) == flt(amount):
-                mode_of_payment = payment.mode_of_payment
-                break
-        if not mode_of_payment and invoice.payments:
-            mode_of_payment = invoice.payments[0].mode_of_payment
+        matched_payment = next(
+            (
+                payment for payment in payments
+                if payment.mode_of_payment
+                and abs(flt(payment.amount) - expected_amount) <= 0.01
+            ),
+            None,
+        )
 
-        if not mode_of_payment:
-            frappe.throw(_("Cannot determine Mode of Payment from POS Invoice payments."))
+        # Nếu không có dòng khớp số tiền, lấy dòng đầu tiên có phương thức
+        if not matched_payment:
+            matched_payment = next(
+                (
+                    payment for payment in payments
+                    if payment.mode_of_payment
+                ),
+                None,
+            )
 
-        # Append payment method + amount to invoice.payments
+        if not matched_payment:
+            frappe.throw(
+                _("Không xác định được Mode of Payment từ POS Invoice")
+            )
+
+        mode_of_payment = matched_payment.mode_of_payment
+
+        # Thay payment rows hiện tại bằng dòng thanh toán đã xác định
+        invoice.set("payments", [])
         invoice.append("payments", {
             "mode_of_payment": mode_of_payment,
-            "amount": flt(amount),
+            "amount": expected_amount,
         })
 
-        # Update invoice payment status
+        # 7. Cập nhật thông tin giao dịch SePay
         invoice.payment_status = "Đã thanh toán"
-        invoice.save(ignore_permissions=True)
+        invoice.transaction_ref = transaction_id
 
-        # Submit invoice → ERPNext auto-marks as Paid → on_submit hook sets custom_kitchen_status
+        log_entry = {
+            "content": content,
+            "transaction_id": transaction_id,
+            "referenceCode": payload.get("referenceCode"),
+            "transferAmount": amount,
+            "gateway": payload.get("gateway"),
+            "transactionDate": payload.get("transactionDate"),
+            "received_at": frappe.utils.now_datetime().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+        }
+
+        existing_log = []
+
+        if invoice.sepay_payment_log:
+            try:
+                existing_log = _json.loads(
+                    invoice.sepay_payment_log
+                )
+                if not isinstance(existing_log, list):
+                    existing_log = [existing_log]
+            except (ValueError, TypeError):
+                existing_log = []
+
+        existing_log.append(log_entry)
+
+        invoice.sepay_payment_log = _json.dumps(
+            existing_log[-50:],
+            ensure_ascii=False,
+        )
+
+        # 8. Lưu và submit POS Invoice
+        invoice.save(ignore_permissions=True)
         invoice.submit()
+        invoice.reload()
 
         return {
             "success": True,
-            "message": "Xác nhận thanh toán thành công",
+            "message": "Xác nhận thanh toán SePay thành công",
             "invoice_name": invoice.name,
-            "payment_code": payment_code,
-            "amount": amount,
+            "payment_code": invoice.payment_code,
             "transaction_id": transaction_id,
+            "amount": amount,
+            "mode_of_payment": mode_of_payment,
+            "invoice_status": invoice.status,
+            "docstatus": invoice.docstatus,
+            "payment_status": invoice.payment_status,
         }
 
     except Exception as e:
         frappe.log_error(
-            title="SePay Webhook Error",
+            title="SePay POS Webhook Error",
             message=f"{str(e)}\n{frappe.get_traceback()}",
         )
-        frappe.throw(_("Lỗi xử lý webhook SePay: {0}").format(str(e)))
+        frappe.throw(
+            _("Lỗi xử lý webhook SePay: {0}").format(str(e))
+        )
 
 
 def update_sepay_payment_log(invoice_name, log_entry):

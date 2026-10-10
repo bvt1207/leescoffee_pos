@@ -223,6 +223,12 @@ fixtures = [
 	{
 		"dt": "Custom Field",
 		"filters": [
+			["dt", "=", "POS Profile"],
+		],
+	},
+	{
+		"dt": "Custom Field",
+		"filters": [
 			["dt", "=", "Branch"],
 		],
 	},

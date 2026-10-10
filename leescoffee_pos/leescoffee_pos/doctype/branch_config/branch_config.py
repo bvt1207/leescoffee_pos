@@ -135,26 +135,39 @@ def get_va_bank_config(invoice_name):
 
     Returns:
         dict: VietQR config with va_account and bank_code.
+
+    Raises:
+        frappe.ValidationError: If POS Profile branch is not set or SePay is not configured.
     """
     invoice = frappe.get_doc("POS Invoice", invoice_name)
 
-    # Get branch from invoice (via POS Profile or default)
+    # Get branch from invoice (via POS Profile)
     branch_name = None
     if invoice.pos_profile:
         pos_profile = frappe.get_doc("POS Profile", invoice.pos_profile)
         branch_name = pos_profile.branch
 
+    # If POS Profile doesn't have branch set, throw clear error
     if not branch_name:
-        branch_name = get_default_branch()
+        frappe.throw(_("POS Profile {0} chưa được gán chi nhánh. Vui lòng cấu hình chi nhánh trong tab Accounting.").format(invoice.pos_profile))
 
-    if not branch_name:
-        return {"va_account": "", "bank_code": ""}
-
+    # Get branch document
     branch = frappe.get_doc("Branch", branch_name)
 
+    # Check if SePay is enabled for this branch
+    if not branch.sepay_enabled:
+        frappe.throw(_("SePay chưa được kích hoạt cho chi nhánh {0}. Vui lòng bật SePay trong cấu hình chi nhánh.").format(branch_name))
+
+    # Check if VA account and bank code are configured
+    if not branch.sepay_va_account:
+        frappe.throw(_("Tài khoản Virtual Account chưa được cấu hình cho chi nhánh {0}.").format(branch_name))
+
+    if not branch.sepay_bank_code:
+        frappe.throw(_("Mã ngân hàng chưa được cấu hình cho chi nhánh {0}.").format(branch_name))
+
     return {
-        "va_account": branch.sepay_va_account or "",
-        "bank_code": branch.sepay_bank_code or "",
+        "va_account": branch.sepay_va_account,
+        "bank_code": branch.sepay_bank_code,
         "branch": branch_name
     }
 
