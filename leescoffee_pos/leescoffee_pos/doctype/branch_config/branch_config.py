@@ -30,11 +30,7 @@ def get_branch_config(branch_name=None):
 
     # SePay configuration - no fallback to Settings
     config["sepay_enabled"] = branch.sepay_enabled if branch.sepay_enabled is not None else 0
-    config["sepay_merchant_code"] = branch.sepay_merchant_code or ""
     config["sepay_api_key"] = branch.sepay_api_key or ""
-    config["sepay_secret_key"] = branch.sepay_secret_key or ""
-    config["sepay_env"] = branch.sepay_env or "sandbox"
-    config["sepay_callback_url"] = branch.sepay_callback_url or ""
 
     # Branch-specific SePay VA and bank for VietQR
     config["sepay_va_account"] = branch.sepay_va_account or ""
@@ -69,11 +65,7 @@ def get_sepay_config(branch_name=None):
 
     return {
         "enabled": branch.sepay_enabled if branch.sepay_enabled is not None else 0,
-        "merchant_code": branch.sepay_merchant_code or "",
         "api_key": branch.sepay_api_key or "",
-        "secret_key": branch.sepay_secret_key or "",
-        "env": branch.sepay_env or "sandbox",
-        "callback_url": branch.sepay_callback_url or "",
         "va_account": branch.sepay_va_account or "",
         "bank_code": branch.sepay_bank_code or "",
     }
