@@ -72,7 +72,11 @@ class LeescoffeeMenu(Document):
 			frappe.throw(_("Item {0} không tồn tại.").format(item_code))
 
 		# Kiểm tra Item bị disabled
-		item_doc = frappe.get_doc("Item", item_code)
+		item_doc = frappe.db.get_value(
+			"Item", item_code,
+			["disabled", "has_variants", "variant_of"],
+			as_dict=1,
+		)
 		if item_doc.disabled:
 			frappe.throw(
 				_("Item {0} đã bị vô hiệu hóa. Vui lòng chọn Item khác.").format(
@@ -88,18 +92,24 @@ class LeescoffeeMenu(Document):
 			return None
 
 		# Lấy Item Price đang có hiệu lực (kiểm tra valid_from/valid_upto)
+		# Chấp nhận valid_from hoặc valid_upto bị trống (None)
 		today = nowdate()
-		item_price = frappe.db.get_value(
+		item_prices = frappe.db.get_list(
 			"Item Price",
 			filters={
 				"item_code": item_code,
 				"price_list": price_list,
 				"selling": 1,
 				"currency": "VND",
-				"valid_from": ["<=", today],
-				"valid_upto": [">=", today],
 			},
-			fieldname="price_list_rate",
+			fields=["price_list_rate", "valid_from", "valid_upto"],
+			order_by="valid_from desc",
 		)
 
-		return float(item_price) if item_price else 0.0
+		for ip in item_prices:
+			valid_from_ok = ip.valid_from is None or ip.valid_from <= today
+			valid_upto_ok = ip.valid_upto is None or ip.valid_upto >= today
+			if valid_from_ok and valid_upto_ok:
+				return float(ip.price_list_rate) if ip.price_list_rate else 0.0
+
+		return 0.0

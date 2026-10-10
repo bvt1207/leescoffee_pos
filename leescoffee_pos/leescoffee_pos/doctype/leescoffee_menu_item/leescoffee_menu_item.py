@@ -63,12 +63,12 @@ class LeescoffeeMenuItem(Document):
 		- Variant (variant_of!=""): lấy giá của chính item_code Variant, không lấy giá Template.
 		- Enabled: lấy Item Price theo chính item_code này.
 		- Chỉ lấy price_list có selling = 1.
-		- Chỉ lấy Item Price đang có hiệu lực (valid_from/valid_upto).
+		- Chỉ lấy Item Price đang có hiệu lực (valid_from/valid_upto). Chấp nhận valid_from hoặc valid_upto bị trống (None).
 		"""
 		# Lấy thông tin Item để xác định Template/Variant
 		item_doc = frappe.db.get_value(
 			"Item", self.item_code,
-			["has_variants", "variant_of"],
+			["has_variants", "variant_of", "disabled"],
 			as_dict=1,
 		)
 
@@ -96,13 +96,16 @@ class LeescoffeeMenuItem(Document):
 				"price_list": price_list,
 				"selling": 1,
 				"currency": "VND",
-				"valid_from": ["<=", today],
-				"valid_upto": [">=", today],
 			},
-			fields=["price_list_rate"],
+			fields=["price_list_rate", "valid_from", "valid_upto"],
+			order_by="valid_from desc",
 		)
 
-		if item_prices:
-			self.price = item_prices[0].price_list_rate or 0.0
-		else:
-			self.price = None
+		for ip in item_prices:
+			valid_from_ok = ip.valid_from is None or ip.valid_from <= today
+			valid_upto_ok = ip.valid_upto is None or ip.valid_upto >= today
+			if valid_from_ok and valid_upto_ok:
+				self.price = ip.price_list_rate or 0.0
+				return
+
+		self.price = None
