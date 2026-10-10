@@ -38,15 +38,6 @@
 			"description": "Lấy từ Item: Stock (hàng hóa) hoặc Service (dịch vụ)"
 		},
 		{
-			"fieldname": "item_status",
-			"label": "Trạng thái Item",
-			"fieldtype": "Select",
-			"options": "Enabled\nDisabled\nTemplate\nVariant",
-			"read_only": 1,
-			"in_list_view": 1,
-			"description": "Trạng thái của Item trong ERPNext (Enabled/Disabled/Template/Variant)"
-		},
-		{
 			"fieldname": "price",
 			"label": "Giá bán",
 			"fieldtype": "Currency",

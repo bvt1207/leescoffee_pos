@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import nowdate
 from frappe.model.document import Document
 
 
@@ -38,7 +39,7 @@ class LeescoffeeMenuItem(Document):
 			return None
 
 	def load_item_info(self):
-		"""Lấy Item Name, item_type (Stock/Service), item_status từ Item."""
+		"""Lấy Item Name, item_type (Stock/Service) từ Item."""
 		if not frappe.db.exists("Item", self.item_code):
 			frappe.throw(
 				_("Item {0} không tồn tại. Vui lòng chọn Item có sẵn.").format(
@@ -55,32 +56,53 @@ class LeescoffeeMenuItem(Document):
 		# Stock = có tồn kho (has_stock_field = 1), Service = dịch vụ
 		self.item_type = "Stock" if item.has_stock_field else "Service"
 
-		# Trạng thái Item
-		self.item_status = item.status
-
 	def load_item_price(self, price_list):
 		"""Lấy giá từ Item Price theo item_code, price_list, selling = 1, VND.
 
-		- Template: không lấy giá (không hiển thị).
-		- Variant: lấy giá của chính item_code Variant, không lấy giá Template.
+		- Template (has_variants=1, variant_of=""): không lấy giá (không hiển thị).
+		- Variant (variant_of!=""): lấy giá của chính item_code Variant, không lấy giá Template.
+		- Enabled: lấy Item Price theo chính item_code này.
 		- Chỉ lấy price_list có selling = 1.
-		- Giá đã hiệu lực theo valid_from / valid_till.
+		- Chỉ lấy Item Price đang có hiệu lực (valid_from/valid_upto).
 		"""
-		if self.item_status == "Template":
+		# Lấy thông tin Item để xác định Template/Variant
+		item_doc = frappe.db.get_value(
+			"Item", self.item_code,
+			["has_variants", "variant_of"],
+			as_dict=1,
+		)
+
+		# Item bị disable không được thêm vào menu
+		if item_doc.disabled:
+			frappe.throw(
+				_("Item {0} đã bị vô hiệu hóa. Vui lòng chọn Item khác.").format(
+					self.item_code
+				)
+			)
+
+		# Template: có biến thể nhưng không phải là variant của item nào
+		is_template = item_doc.has_variants and not item_doc.variant_of
+		if is_template:
 			# Template không có giá
 			self.price = None
 			return
 
-		# Variant / Enabled: lấy Item Price theo chính item_code này
-		item_price = frappe.db.get_value(
+		# Variant hoặc Enabled: lấy Item Price theo chính item_code này
+		today = nowdate()
+		item_prices = frappe.db.get_list(
 			"Item Price",
 			filters={
 				"item_code": self.item_code,
 				"price_list": price_list,
 				"selling": 1,
 				"currency": "VND",
+				"valid_from": ["<=", today],
+				"valid_upto": [">=", today],
 			},
-			fieldname=["price_list_rate"],
+			fields=["price_list_rate"],
 		)
 
-		self.price = item_price or 0.0
+		if item_prices:
+			self.price = item_prices[0].price_list_rate or 0.0
+		else:
+			self.price = None

@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import nowdate
 from frappe.model.document import Document
 
 
@@ -42,7 +43,7 @@ class LeescoffeeMenu(Document):
 					"item_code",
 					"item_name",
 					"item_type",
-					"item_status",
+					
 					"price",
 				],
 			)
@@ -62,19 +63,32 @@ class LeescoffeeMenu(Document):
 	def get_price_for_item(item_code, price_list):
 		"""Lấy giá bán của 1 item theo 1 price_list (dùng cho frontend hoặc báo cáo).
 
+		- Nếu item bị Disable → báo lỗi.
 		- Nếu item là Template → trả None.
-		- Nếu tìm thấy Item Price → trả giá.
-		- Ngược lại → trả 0.0.
+		- Nếu tìm thấy Item Price đang có hiệu lực → trả giá.
+		- Ngược lại (hết hạn hoặc không có) → trả 0.0.
 		"""
 		if not frappe.db.exists("Item", item_code):
 			frappe.throw(_("Item {0} không tồn tại.").format(item_code))
 
-		item_status = frappe.db.get_value(
-			"Item", item_code, "status"
-		)
-		if item_status and item_status == "Template":
+		# Kiểm tra Item bị disabled
+		item_doc = frappe.get_doc("Item", item_code)
+		if item_doc.disabled:
+			frappe.throw(
+				_("Item {0} đã bị vô hiệu hóa. Vui lòng chọn Item khác.").format(
+					item_code
+				)
+			)
+
+		# Lấy thông tin Template/Variant
+		is_template = item_doc.has_variants and not item_doc.variant_of
+
+		# Template: không có giá
+		if is_template:
 			return None
 
+		# Lấy Item Price đang có hiệu lực (kiểm tra valid_from/valid_upto)
+		today = nowdate()
 		item_price = frappe.db.get_value(
 			"Item Price",
 			filters={
@@ -82,6 +96,8 @@ class LeescoffeeMenu(Document):
 				"price_list": price_list,
 				"selling": 1,
 				"currency": "VND",
+				"valid_from": ["<=", today],
+				"valid_upto": [">=", today],
 			},
 			fieldname="price_list_rate",
 		)
