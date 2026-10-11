@@ -251,6 +251,23 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       bàn thay vì khách tự lấy
 - [ ] Định danh khách qua SĐT (tìm-hoặc-tạo Customer) cho các kênh QR
 
+## 7c. Ghi chú logic giá Menu (Leescoffee Menu / Menu Item)
+
+- Hai method `get_price_for_item()` và `load_item_price()` dùng chung logic: lấy Item Price theo
+  `item_code` + `price_list` + `selling=1` + `currency=VND`, sau đó lọc theo hiệu lực.
+- **Loại Item**: `is_stock_item=1` → Stock, còn lại → Service. Không dùng `has_stock_field`.
+- **Template vs Variant**: Template là `has_variants=1` và `variant_of=""` → không có giá, trả `None`.
+  Variant (`variant_of!="")` lấy giá theo chính `item_code` Variant.
+- **Item bị disable**: throw error, không thêm vào menu.
+- **Hiệu lực giá**: `valid_from`/`valid_upto` trống (None) được coi là luôn hiệu lực. Chỉ loại bỏ nếu
+  `valid_from > ngày hiện tại` hoặc `valid_upto < ngày hiện tại`. Dùng `getdate(nowdate())` để chuẩn
+  hóa cả 2 về `datetime.date` — tránh `TypeError` khi so sánh date với str.
+- **Không tìm thấy giá**: để `None` (không gán 0.0).
+- **`validate()` của Menu**: tự động gọi `row.load_item_details(parent_doc=self)` để đồng bộ
+  `item_name`, `item_type`, `price` cho từng dòng trước khi lưu — không cần gọi thủ công.
+- **`get_parent_doc()`**: xử lý cả trường hợp `parent_doc` là weakref (callable) trước khi fallback
+  `frappe.get_doc("Leescoffee Menu", self.parent)`.
+
 ## 8. Việc KHÔNG làm ở bản đầu (out of scope)
 
 - Không xây dựng lại POS Invoice/Sales Invoice/kế toán từ đầu.
