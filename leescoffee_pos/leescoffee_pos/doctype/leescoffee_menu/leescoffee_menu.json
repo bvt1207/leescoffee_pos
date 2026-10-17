@@ -1,76 +1,78 @@
+
 {
-	"doctype": "DocType",
-	"name": "Leescoffee Menu",
-	"module": "Leescoffee Pos",
-	"istable": 0,
-	"issingle": 0,
-	"fields": [
-		{
-			"fieldname": "menu_name",
-			"label": "Tên menu",
-			"fieldtype": "Data",
-			"reqd": 1,
-			"in_list_view": 1
-		},
-		{
-			"fieldname": "price_list",
-			"label": "Price List",
-			"fieldtype": "Link",
-			"options": "Price List",
-			"reqd": 1,
-			"in_list_view": 1,
-			"description": "Chọn Price List có sẵn của ERPNext để lấy giá bán"
-		},
-		{
-			"fieldname": "currency",
-			"label": "Đơn vị tiền tệ",
-			"fieldtype": "Data",
-			"default": "VND",
-			"read_only": 1,
-			"hidden": 1
-		},
-		{
-			"fieldtype": "Section Break",
-			"label": "Danh sách món"
-		},
-		{
-			"fieldname": "items",
-			"label": "Món",
-			"fieldtype": "Table",
-			"options": "Leescoffee Menu Item",
-			"reqd": 0
-		}
-	],
-	"permissions": [
-		{
-			"role": "System Manager",
-			"read": 1,
-			"write": 1,
-			"create": 1,
-			"delete": 1,
-			"submit": 0,
-			"cancel": 0,
-			"amend": 0
-		},
-		{
-			"role": "Manager",
-			"read": 1,
-			"write": 1,
-			"create": 1,
-			"delete": 1,
-			"submit": 0,
-			"cancel": 0,
-			"amend": 0
-		},
-		{
-			"role": "Sales User",
-			"read": 1,
-			"write": 1,
-			"create": 1,
-			"delete": 1,
-			"submit": 0,
-			"cancel": 0,
-			"amend": 0
-		}
-	]
+  "doctype": "DocType",
+  "name": "Leescoffee Menu",
+  "autoname": "field:menu_name",
+  "module": "Leescoffee Pos",
+  "istable": 0,
+  "issingle": 0,
+  "fields": [
+    {
+      "fieldname": "menu_name",
+      "label": "Tên menu",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "price_list",
+      "label": "Price List",
+      "fieldtype": "Link",
+      "options": "Price List",
+      "reqd": 1,
+      "in_list_view": 1,
+      "description": "Chọn Price List có sẵn của ERPNext để lấy giá bán"
+    },
+    {
+      "fieldname": "currency",
+      "label": "Đơn vị tiền tệ",
+      "fieldtype": "Data",
+      "default": "VND",
+      "read_only": 1,
+      "hidden": 1
+    },
+    {
+      "fieldtype": "Section Break",
+      "label": "Danh sách món"
+    },
+    {
+      "fieldname": "items",
+      "label": "Món",
+      "fieldtype": "Table",
+      "options": "Leescoffee Menu Item",
+      "reqd": 0
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    },
+    {
+      "role": "Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    },
+    {
+      "role": "Sales User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    }
+  ]
 }

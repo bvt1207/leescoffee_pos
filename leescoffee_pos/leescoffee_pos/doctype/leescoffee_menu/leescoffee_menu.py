@@ -44,7 +44,6 @@ class LeescoffeeMenu(Document):
                 },
                 fields=[
                     "idx",
-                    "stt",
                     "item_code",
                     "item_name",
                     "item_type",
