@@ -10,6 +10,7 @@ Hooks for POS Invoice DocType to handle Leescoffee POS custom business logic:
 
 import frappe
 from frappe import _
+from frappe.utils import now
 
 
 class PosInvoiceHooks:
@@ -121,3 +122,64 @@ def on_update_after_submit(doc, method):
 
 def on_cancel(doc, method):
 	return PosInvoiceHooks.on_cancel(doc, method)
+
+
+@frappe.whitelist()
+def get_status_board_orders():
+	"""
+	Lấy danh sách đơn hàng đang pha chế cho Status Board.
+
+	Trả về các đơn đã thanh toán (status = "Paid") có custom_kitchen_status
+	đã được thiết lập (chưa trống), sắp xếp theo thời gian tạo.
+
+	Dữ liệu trả về:
+	- invoice_name: tên POS Invoice
+	- customer_name: tên khách hàng (rỗng nếu là đơn Take Away)
+	- order_type: Take Away / Dine In
+	- kitchen_status: trạng thái bếp (Chưa làm / Đã làm / Đã hoàn thành)
+	- buzzer_number: số thẻ rung (nếu là đơn Dine In và có buzzer)
+	- last_updated: thời gian cập nhật cuối cùng
+	"""
+	# Lấy các POS Invoice đã submit, đã thanh toán và có kitchen_status thiết lập
+	invoices = frappe.get_all(
+		"POS Invoice",
+		filters={
+			"docstatus": 1,
+			"status": "Paid",
+			"custom_kitchen_status": ["!=", ""],
+		},
+		fields=[
+			"name",
+			"customer",
+			"order_type",
+			"custom_kitchen_status",
+			"buzzer",
+			"creation",
+		],
+		order_by="creation asc",
+	)
+
+	result = []
+	for inv in invoices:
+		# Lấy tên khách hàng
+		customer_name = ""
+		if inv.customer:
+			customer_doc = frappe.get_doc("Customer", inv.customer)
+			customer_name = customer_doc.customer_name or inv.customer
+
+		# Lấy số buzzer nếu là đơn Dine In
+		buzzer_number = None
+		if inv.buzzer:
+			buzzer_doc = frappe.get_doc("Leescoffee Buzzer", inv.buzzer)
+			buzzer_number = buzzer_doc.buzzer_number
+
+		result.append({
+			"invoice_name": inv.name,
+			"customer_name": customer_name,
+			"order_type": inv.order_type,
+			"kitchen_status": inv.custom_kitchen_status,
+			"buzzer_number": buzzer_number,
+			"last_updated": inv.creation,
+		})
+
+	return result
