@@ -17,6 +17,7 @@
 ├── rules/                     # Code standards + module-specific rules
 │   ├── code-standards.md
 │   ├── project-structure.md   # File này
+│   └── session-management.md  # Ngữ cảnh phiên làm việc
 │   └── leescoffee_pos/        # Logic per module
 │       ├── sepay.md
 │       ├── menu.md

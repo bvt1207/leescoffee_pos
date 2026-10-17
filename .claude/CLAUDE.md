@@ -260,7 +260,7 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
       load Item/Item Price tự động, phân biệt Template/Variant, loại Stock/Service theo
       `is_stock_item`. **Đã test Pass**. (Chi tiết logic: `.claude/rules/leescoffee_pos/menu.md`)
-- [ ] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
+- [x] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
       hoặc thẻ rung khi xong
 - [ ] Màn hình pha chế (barista screen)
 - [ ] Frontend React/TSX cho POS: chọn món, chọn loại đơn, thanh toán — giao diện
@@ -403,3 +403,10 @@ PROJECTPOS/
 - Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
 
 
+
+
+## 10. Quản lý ngữ cảnh phiên (xem .claude/rules/session-management.md)
+- Mỗi task là 1 phiên; mỗi phiên cách nhau bởi quá trình review/push của Van.
+- Sau `bench migrate` + test pass, Van nói "duyệt" -> cập nhật CLAUDE.md (tick checklist), commit "docs:"
+- Từ ~60% token, nhắc Van mở phiên mới để tránh tự nén.
+- Nếu cắt giữa task: ghi `.claude/docs/handoff.md` (tối đa 15 dòng)
