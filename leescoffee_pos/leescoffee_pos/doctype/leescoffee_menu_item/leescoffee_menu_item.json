@@ -6,13 +6,6 @@
 	"issingle": 0,
 	"fields": [
 		{
-			"fieldname": "stt",
-			"label": "STT",
-			"fieldtype": "Int",
-			"in_list_view": 1,
-			"read_only": 1
-		},
-		{
 			"fieldname": "item_code",
 			"label": "Mã hàng",
 			"fieldtype": "Link",
