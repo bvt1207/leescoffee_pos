@@ -234,6 +234,9 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       (không còn fallback Settings). **Đã test Pass**
 - [x] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook, dùng native ERPNext POS Invoice.payments flow (xóa create_payment_entry())
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
+- [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
+      load Item/Item Price tự động, phân biệt Template/Variant, loại Stock/Service theo
+      `is_stock_item`. **Đã test Pass**.
 - [ ] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
       hoặc thẻ rung khi xong
 - [ ] Màn hình pha chế (barista screen)
