@@ -179,7 +179,30 @@ Vì là copy tay, Claude Code cần: (a) sau mỗi task, liệt kê rõ **danh s
 tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) không tự xóa/đổi tên file
 đã có nếu không cần thiết, vì Van không đồng bộ bằng git nên khó phát hiện.
 
-## 5. Quy ước code
+## 5. Quy ước code & quy tắc tổng quát
+
+- Quy ước chi tiết được lưu trong `.claude/rules/` (xem file cụ thể).
+- Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`, `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
+- Mọi DocType mới của app phải chọn đúng `Module = Leescoffee Pos`.
+- Business logic đặt trong `leescoffee_pos/leescoffee_pos/doctype/<doctype>/...py` theo đúng convention chuẩn của Frappe.
+- Document Events (before_insert, validate, on_submit...) khai báo tập trung trong `hooks.py`, trỏ tới file logic riêng.
+- **Không hardcode** tên quán, logo path, banner, hay bất kỳ chuỗi/asset đặc thù nào của Lee's Coffee trong component React hay Python — luôn đọc từ DocType Settings/Branch (mục 1b).
+- **Checklist bắt buộc cho mọi file DocType JSON** (lỗi thực tế đã gặp, dễ tái diễn):
+  - Phải có `"doctype": "DocType"` ở gốc file — thiếu dòng này gây lỗi `KeyError: 'doctype'` khi chạy `bench migrate`.
+  - Giá trị `fieldtype` phải đúng casing chuẩn Frappe (Title Case): `Section Break`, `Link`, `Data`, `Check`, `Select`, `Password`, `Attach Image`, `Small Text`...
+  - Trước khi báo "xong", tự rà lại toàn bộ file JSON vừa tạo theo đúng 2 điểm trên.
+- **Đường dẫn import module**: mọi đường dẫn import trỏ vào code bên trong thư mục module (doctype/, hoặc các thư mục con khác cùng cấp) bắt buộc viết đủ `leescoffee_pos.leescoffee_pos.<đường dẫn>`, không viết tắt 1 cấp `leescoffee_pos.<đường dẫn>`.
+  (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
+
+- **Native lifecycle method vs doc_events** (checklist mới):
+  - Native Document lifecycle method (validate, before_save, on_update, on_submit...) 
+    viết trực tiếp trong class kế thừa Document → Frappe tự gọi. **KHÔNG đăng ký lại trong hooks.py -> doc_events**.
+  - Custom cross-cutting logic cần hook từ app (như POS Invoice) → dùng doc_events.
+  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method". 
+    Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
+    gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
+  - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
+
 
 - Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`,
   `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
@@ -224,7 +247,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 
 ## 7. Lộ trình — Giai đoạn hiện tại (Take Away quầy + Dine In quầy/thẻ rung)
 
-Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
+Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
 - [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
       mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
@@ -236,7 +259,7 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
 - [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
       load Item/Item Price tự động, phân biệt Template/Variant, loại Stock/Service theo
-      `is_stock_item`. **Đã test Pass**.
+      `is_stock_item`. **Đã test Pass**. (Chi tiết logic: `.claude/rules/leescoffee_pos/menu.md`)
 - [ ] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
       hoặc thẻ rung khi xong
 - [ ] Màn hình pha chế (barista screen)
@@ -246,6 +269,8 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
 
+Chi tiết thiết kế: `.claude/docs/qr-channel-design.md` (chưa implement)
+
 - [ ] App Frappe riêng cho kênh QR, kết nối với app lõi qua API/DocType dùng chung
 - [ ] Takeaway QR: đặt món mang đi qua QR → thanh toán → thông báo → khách tự xuống
       quầy lấy
@@ -253,23 +278,6 @@ Quy ước: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [ ] Cơ chế khách VIP cho Dine In QR: đánh dấu VIP → nhân viên chủ động giao tận
       bàn thay vì khách tự lấy
 - [ ] Định danh khách qua SĐT (tìm-hoặc-tạo Customer) cho các kênh QR
-
-## 7c. Ghi chú logic giá Menu (Leescoffee Menu / Menu Item)
-
-- Hai method `get_price_for_item()` và `load_item_price()` dùng chung logic: lấy Item Price theo
-  `item_code` + `price_list` + `selling=1` + `currency=VND`, sau đó lọc theo hiệu lực.
-- **Loại Item**: `is_stock_item=1` → Stock, còn lại → Service. Không dùng `has_stock_field`.
-- **Template vs Variant**: Template là `has_variants=1` và `variant_of=""` → không có giá, trả `None`.
-  Variant (`variant_of!="")` lấy giá theo chính `item_code` Variant.
-- **Item bị disable**: throw error, không thêm vào menu.
-- **Hiệu lực giá**: `valid_from`/`valid_upto` trống (None) được coi là luôn hiệu lực. Chỉ loại bỏ nếu
-  `valid_from > ngày hiện tại` hoặc `valid_upto < ngày hiện tại`. Dùng `getdate(nowdate())` để chuẩn
-  hóa cả 2 về `datetime.date` — tránh `TypeError` khi so sánh date với str.
-- **Không tìm thấy giá**: để `None` (không gán 0.0).
-- **`validate()` của Menu**: tự động gọi `row.load_item_details(parent_doc=self)` để đồng bộ
-  `item_name`, `item_type`, `price` cho từng dòng trước khi lưu — không cần gọi thủ công.
-- **`get_parent_doc()`**: xử lý cả trường hợp `parent_doc` là weakref (callable) trước khi fallback
-  `frappe.get_doc("Leescoffee Menu", self.parent)`.
 
 ## 8. Việc KHÔNG làm ở bản đầu (out of scope)
 
@@ -386,14 +394,12 @@ PROJECTPOS/
 - Gọi lại webhook (same `payment_code`) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
 - Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
 
-**Lưu ý:** SePay config (`api_key`, `merchant_code`, `VA`, `bank_code`) nằm chỉ ở `Branch`, không fallback `Settings` 
+**Lưu ý:** SePay config (`api_key`, `VA`, `bank_code`) nằm chỉ ở `Branch`, không fallback `Settings`. Chỉ field `sepay_enabled` là check (0/1). Lưu ý: SePay không dùng `merchant_code`/`secret_key`/`env`/`callback_url` trong config mới.
 
 **Kết quả test (Postman + ngrok):**
-- Invoice chuyển sang , , 
--  trả về giá trị thực tế từ POS Invoice (không hardcode)
-- Gọi lại webhook (same payment_code) →  (không lỗi 417, không submit lại)
-- Trừ tiền: invoice dùng  từ cột thanh toán có sẵn, không tạo Payment Entry mới
-
-**Lưu ý quan trọng:** SePay config (, , , ) nằm chỉ ở , không fallback sang  (theo quy tách mới).
+- Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
+- `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
+- Gọi lại webhook (same payment_code) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
+- Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
 
 
