@@ -195,14 +195,13 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
 
 - **Native lifecycle method vs doc_events** (checklist mới):
-  - Native Document lifecycle method (validate, before_save, on_update, on_submit...) 
+  - Native Document lifecycle method (validate, before_save, on_update, on_submit...)
     viết trực tiếp trong class kế thừa Document → Frappe tự gọi. **KHÔNG đăng ký lại trong hooks.py -> doc_events**.
   - Custom cross-cutting logic cần hook từ app (như POS Invoice) → dùng doc_events.
-  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method". 
+  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method".
     Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
     gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
   - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
-
 
 - Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`,
   `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
@@ -225,10 +224,10 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
 
 - **Native lifecycle method vs doc_events** (checklist mới):
-  - Native Document lifecycle method (validate, before_save, on_update, on_submit...) 
+  - Native Document lifecycle method (validate, before_save, on_update, on_submit...)
     viết trực tiếp trong class kế thừa Document → Frappe tự gọi. **KHÔNG đăng ký lại trong hooks.py -> doc_events**.
   - Custom cross-cutting logic cần hook từ app (như POS Invoice) → dùng doc_events.
-  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method". 
+  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method".
     Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
     gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
   - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
@@ -262,9 +261,9 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       `is_stock_item`. **Đã test Pass**. (Chi tiết logic: `.claude/rules/leescoffee_pos/menu.md`)
 - [x] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
       hoặc thẻ rung khi xong
-- [ ] Màn hình pha chế (barista screen)
 - [ ] Frontend React/TSX cho POS: chọn món, chọn loại đơn, thanh toán — giao diện
       phong cách quán cà phê tổng quát, không hardcode branding Lee's Coffee
+- [ ] Màn hình pha chế (barista screen)
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
@@ -389,6 +388,7 @@ PROJECTPOS/
 7. **Trả về:** `success`, `message`, `invoice_name`, `payment_code`, `transaction_id`, `amount`, `mode_of_payment`, `invoice_status`, `docstatus`, `payment_status`
 
 **Kết quả test (Postman + ngrok):**
+
 - Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
 - `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
 - Gọi lại webhook (same `payment_code`) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
@@ -397,15 +397,14 @@ PROJECTPOS/
 **Lưu ý:** SePay config (`api_key`, `VA`, `bank_code`) nằm chỉ ở `Branch`, không fallback `Settings`. Chỉ field `sepay_enabled` là check (0/1). Lưu ý: SePay không dùng `merchant_code`/`secret_key`/`env`/`callback_url` trong config mới.
 
 **Kết quả test (Postman + ngrok):**
+
 - Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
 - `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
 - Gọi lại webhook (same payment_code) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
 - Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
 
-
-
-
 ## 10. Quản lý ngữ cảnh phiên (xem .claude/rules/session-management.md)
+
 - Mỗi task là 1 phiên; mỗi phiên cách nhau bởi quá trình review/push của Van.
 - Sau `bench migrate` + test pass, Van nói "duyệt" -> cập nhật CLAUDE.md (tick checklist), commit "docs:"
 - Từ ~60% token, nhắc Van mở phiên mới để tránh tự nén.
