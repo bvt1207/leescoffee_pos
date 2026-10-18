@@ -234,6 +234,12 @@ fixtures = [
 			["dt", "=", "Branch"],
 		],
 	},
+	{
+		"dt": "Workspace",
+		"filters": [
+			["name", "=", "leescoffee_pos"],
+		],
+	},
 ]
 
 # Request Events
