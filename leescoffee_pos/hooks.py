@@ -149,6 +149,15 @@ doc_events = {
 	# Frappe tự gọi, không cần đăng ký lại trong doc_events.
 }
 
+# Website Route Rules
+# -------------------
+# Các sub-route của POS (ví dụ /pos/orders) được render bằng cùng một file
+# www/pos.html — phần định tuyến còn lại do React Router xử lý ở client.
+# "/pos" (không có hậu tố) đã được Frappe resolve mặc định tới www/pos.html.
+website_route_rules = [
+	{"from_route": "/pos/<path:app_path>", "to_route": "pos"},
+]
+
 # Scheduled Tasks
 # ---------------
 
