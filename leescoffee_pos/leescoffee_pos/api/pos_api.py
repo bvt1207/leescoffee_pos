@@ -15,9 +15,9 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, now_datetime, nowdate
 
-from ..branch_config.branch_config import (
-	get_brand_info,
-	get_default_branch,
+from ..doctype.branch_config.branch_config import (
+    get_brand_info,
+    get_default_branch,
 )
 
 ORDER_TYPES = ("Take Away", "Dine In")
@@ -176,34 +176,32 @@ def _resolve_customer(customer_name=None):
 
 
 def _ensure_opening_entry(profile):
-	"""Đảm bảo có POS Opening Entry 'Open' cho hôm nay.
+	"""Đảm bảo có POS Opening Entry 'Open' để tạo được POS Invoice.
 
 	ERPNext bắt buộc điều này khi tạo POS Invoice
 	(validate_pos_opening_entry trong erpnext/accounts/doctype/sales_invoice).
+
+	Ưu tiên dùng lại phiên POS đang mở của user hiện tại (docstatus=1,
+	status=Open); không lọc theo ngày — cho phép tái dùng phiên mở của
+	người dùng (VD: mở app trên một máy tính ngày trước) mà không bị
+	ERPNext phát hiện là "phiên đã cũ" (Outdated). Nếu chưa có phiên mở
+	của user, tạo phiên mới.
 	"""
 	existing = frappe.get_all(
 		"POS Opening Entry",
-		filters={"pos_profile": profile.name, "status": "Open"},
+		filters={
+			"pos_profile": profile.name,
+			"user": frappe.session.user,
+			"status": "Open",
+			"docstatus": 1,
+		},
 		fields=["name", "period_start_date"],
 		order_by="period_start_date desc",
 		limit=1,
 	)
 
 	if existing:
-		if getdate(existing[0].period_start_date) == getdate(nowdate()):
-			return existing[0].name
-
-		# Phiên POS cũ đã quá hạn — thử hủy để mở phiên mới.
-		try:
-			old_entry = frappe.get_doc("POS Opening Entry", existing[0].name)
-			old_entry.flags.ignore_permissions = True
-			old_entry.cancel()
-		except Exception:
-			frappe.throw(
-				_(
-					"POS Opening Entry {0} đã cũ. Vui lòng đóng phiên POS cũ trong Desk rồi thử lại."
-				).format(existing[0].name)
-			)
+		return existing[0].name
 
 	try:
 		opening = frappe.get_doc(
@@ -231,7 +229,7 @@ def _ensure_opening_entry(profile):
 
 def _assign_buzzer(profile):
 	"""Gán 1 thẻ rung còn trống cho đơn Dine In."""
-	from ..leescoffee_buzzer.leescoffee_buzzer import LeescoffeeBuzzer
+	from ..doctype.leescoffee_buzzer.leescoffee_buzzer import LeescoffeeBuzzer
 
 	branch = getattr(profile, "branch", None)
 	if not branch:
@@ -305,7 +303,7 @@ def get_pos_config(branch_name=None):
 @frappe.whitelist()
 def get_menu_items(price_list=None):
 	"""Danh sách menu (nhóm món) để hiển thị trên màn hình chọn món."""
-	from ..leescoffee_menu.leescoffee_menu import LeescoffeeMenu
+	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
 
 	return LeescoffeeMenu.get_menu_with_items(price_list=price_list)
 
@@ -387,6 +385,32 @@ def create_draft_order(
 	)
 
 	for row in rows:
+		row = dict(row)
+		code = (
+			row.get("item_code")
+			or row.get("item")
+			or row.get("name")
+			or row.get("item_name")
+			or row.get("id")
+		)
+		if not code or not frappe.db.exists("Item", code):
+			frappe.throw(
+				_("Không xác định được mã món từ dòng giỏ hàng: {0}").format(
+					frappe.as_json(row)
+				)
+			)
+
+		item = frappe.db.get_value(
+			"Item", code, ["stock_uom", "item_name"], as_dict=True
+		)
+		if not item.stock_uom:
+			frappe.throw(_("Món {0} chưa có đơn vị tính (Stock UOM).").format(code))
+
+		row["item_code"] = code
+		row["item_name"] = row.get("item_name") or item.item_name
+		row["uom"] = item.stock_uom
+		row["stock_uom"] = item.stock_uom
+		row["conversion_factor"] = 1
 		invoice.append("items", row)
 
 	if order_type == "Dine In":
@@ -395,9 +419,7 @@ def create_draft_order(
 	try:
 		invoice.insert(ignore_permissions=True)
 	except Exception as exc:
-		frappe.throw(
-			_("Không tạo được đơn: {0}").format(frappe.get_message(exc) or str(exc))
-		)
+		frappe.throw(_("Không tạo được đơn: {0}").format(str(exc)))
 
 	invoice.reload()
 
@@ -410,7 +432,6 @@ def create_draft_order(
 		"qty_sum": sum(flt(row.qty) for row in invoice.items),
 		"buzzer_number": _buzzer_number(invoice.buzzer),
 	}
-
 
 @frappe.whitelist()
 def get_orders(status="all", limit=50):
@@ -534,7 +555,7 @@ def pay_cash(invoice_name):
 @frappe.whitelist()
 def generate_qr(invoice_name):
 	"""Sinh mã VietQR cho đơn (idempotent — gọi lại trả về mã cũ)."""
-	from ..sepay.sepay import generate_qr_for_invoice
+	from ..doctype.sepay.sepay import generate_qr_for_invoice
 
 	return generate_qr_for_invoice(invoice_name)
 
@@ -542,7 +563,7 @@ def generate_qr(invoice_name):
 @frappe.whitelist()
 def confirm_pickup(invoice_name):
 	"""Nhân viên xác nhận khách đã lấy món → trả thẻ rung về kho."""
-	from ..pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
+	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
 
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 
@@ -558,6 +579,6 @@ def confirm_pickup(invoice_name):
 @frappe.whitelist()
 def get_status_board():
 	"""Bảng trạng thái bếp (đơn đã thanh toán, đang làm / hoàn thành)."""
-	from ..pos_invoice_hooks.pos_invoice_hooks import get_status_board_orders
+	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import get_status_board_orders
 
 	return get_status_board_orders()
