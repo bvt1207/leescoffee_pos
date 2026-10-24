@@ -1,65 +1,131 @@
+import { useMemo, useState } from "react";
 import { usePos } from "../lib/pos-context";
 import { useCart } from "../store/cart";
-import { formatMoney } from "../store/cart";
-import type { MenuItem } from "../types";
+import type { MenuItem, MenuSize } from "../types";
+import SizeModal from "./SizeModal";
 
-function MenuCard({ item, currency }: { item: MenuItem; currency: string }) {
-	const add = useCart((state) => state.add);
+function MenuCard({ item }: { item: MenuItem }) {
+	const sizes = item.sizes || [];
+	// Món 1 size: label rỗng -> thêm thẳng giỏ, không mở modal.
+	const isSingle = sizes.length === 1 && !sizes[0].label;
+	const add = useCart((state) => state.addVariant);
+	const [open, setOpen] = useState(false);
+
+	const codes = useMemo(() => sizes.map((s) => s.item_code), [sizes]);
 	const qty = useCart((state) =>
-		state.lines.find((line) => line.item_code === item.item_code)?.qty || 0
+		state.lines
+			.filter((line) => codes.includes(line.item_code))
+			.reduce((sum, line) => sum + line.qty, 0)
 	);
 
+	const addSize = (size: MenuSize) => {
+		if (size.rate == null) return; // chưa có giá: không chọn được
+		add({
+			item_code: size.item_code,
+			item_name: item.name,
+			item_type: "",
+			price: size.rate,
+			size: size.label || null,
+		});
+	};
+
+	const handleClick = () => {
+		if (isSingle) addSize(sizes[0]);
+		else setOpen(true);
+	};
+
+	// Món 1 size chưa có giá: làm mờ, không bấm được.
+	const unavailable = isSingle && sizes[0].rate == null;
+
 	return (
-		<div className="pos-menu-card">
-			<div className="pos-menu-card__top">
-				<div className="pos-menu-card__name">{item.item_name}</div>
-				{qty > 0 ? <span className="pos-badge">x{qty}</span> : null}
-			</div>
-			<div className="pos-menu-card__price">
-				{item.price ? formatMoney(item.price, currency) : "Chưa có giá"}
-			</div>
-			<div className="pos-menu-card__actions">
-				<button
-					type="button"
-					className="pos-btn pos-btn--ghost"
-					disabled={!item.price}
-					onClick={() =>
-						add({
-							item_code: item.item_code,
-							item_name: item.item_name,
-							item_type: item.item_type,
-							price: item.price,
-							qty: 1,
-						})
-					}
-				>
-					+ Thêm
-				</button>
-			</div>
-		</div>
+		<>
+			<button
+				type="button"
+				className="pos-menu-card"
+				onClick={handleClick}
+				disabled={unavailable}
+			>
+				<div className="pos-menu-card__media">
+					{item.image ? (
+						<img src={item.image} alt="" loading="lazy" />
+					) : (
+						<span className="pos-menu-card__placeholder" aria-hidden>
+							{item.name.slice(0, 1).toUpperCase()}
+						</span>
+					)}
+					{!isSingle ? (
+						<span className="pos-menu-card__chip">{sizes.length} size</span>
+					) : null}
+					{qty > 0 ? <span className="pos-menu-card__qty">x{qty}</span> : null}
+				</div>
+				<span className="pos-menu-card__name">{item.name}</span>
+			</button>
+
+			{!isSingle ? (
+				<SizeModal
+					item={item}
+					sizes={sizes}
+					open={open}
+					onClose={() => setOpen(false)}
+					onPick={(size) => {
+						setOpen(false);
+						addSize(size);
+					}}
+				/>
+			) : null}
+		</>
 	);
 }
 
-export default function MenuGrid() {
-	const { menus, config } = usePos();
-	const currency = config?.profile?.currency || "VND";
+export default function MenuGrid({ search = "" }: { search?: string }) {
+	const { menus } = usePos();
+	const [group, setGroup] = useState<string>("all");
+
+	const items = useMemo(() => {
+		const q = search.trim().toLowerCase();
+		return menus
+			.filter((g) => group === "all" || g.name === group)
+			.flatMap((g) => (g.items || []).map((it) => ({ gid: g.name, it })))
+			.filter(({ it }) => !q || it.name.toLowerCase().includes(q));
+	}, [menus, group, search]);
 
 	if (!menus.length) {
 		return <div className="pos-empty">Chưa có menu nào được cấu hình.</div>;
 	}
 
 	return (
-		<div className="pos-menu-groups">
-			{menus.map((group) => (
-				<section key={group.name} className="pos-menu-group">
-					<h2 className="pos-menu-group__title">{group.menu_name || group.name}</h2>
-					<div className="pos-menu-grid">
-						{(group.items || []).map((item) => (
-							<MenuCard key={`${group.name}-${item.idx}-${item.item_code}`} item={item} currency={currency} />
-						))}
-					</div>
-				</section>
-			))}
+		<div className="pos-menu">
+			{menus.length > 1 ? (
+				<div className="pos-chips" role="tablist">
+					<button
+						type="button"
+						className={`pos-chip ${group === "all" ? "is-active" : ""}`}
+						onClick={() => setGroup("all")}
+					>
+						Tất cả
+					</button>
+					{menus.map((g) => (
+						<button
+							key={g.name}
+							type="button"
+							className={`pos-chip ${group === g.name ? "is-active" : ""}`}
+							onClick={() => setGroup(g.name)}
+						>
+							{g.menu_name || g.name}
+						</button>
+					))}
+				</div>
+			) : null}
+
+			{items.length ? (
+				<div className="pos-menu-grid">
+					{items.map(({ gid, it }) => (
+						<MenuCard key={`${gid}-${it.name}`} item={it} />
+					))}
+				</div>
+			) : (
+				<div className="pos-empty">Không tìm thấy món phù hợp.</div>
+			)}
 		</div>
 	);
 }

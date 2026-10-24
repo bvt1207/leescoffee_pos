@@ -10,14 +10,13 @@ class LeescoffeePOSSettings(Document):
 	def get_brand_info():
 		"""
 		Lấy thông tin thương hiệu từ cài đặt chung.
-		Trả về dict chứa: brand_name, brand_logo, brand_banner, brand_phone, brand_address.
+		Trả về dict chứa: brand_name, brand_logo, brand_phone, brand_address.
 		Dùng bởi frontend POS và hóa đơn để hiển thị branding tĩnh.
 		"""
 		settings = frappe.get_single("Leescoffee POS Settings")
 		return {
 			"brand_name": settings.brand_name or "",
 			"brand_logo": settings.brand_logo or "",
-			"brand_banner": settings.brand_banner or "",
 			"brand_phone": settings.brand_phone or "",
 			"brand_address": settings.brand_address or "",
 		}

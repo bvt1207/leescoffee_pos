@@ -1,0 +1,30 @@
+{
+ "app": "leescoffee_pos",
+ "creation": "2026-10-19 00:35:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "milestone",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "leescoffee_pos",
+   "link_type": "Workspace",
+   "open_in_new_tab": 0,
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-19 00:35:00.000000",
+ "modified_by": "Administrator",
+ "module": "Leescoffee POS",
+ "name": "leescoffee_pos",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "leescoffee_pos"
+}

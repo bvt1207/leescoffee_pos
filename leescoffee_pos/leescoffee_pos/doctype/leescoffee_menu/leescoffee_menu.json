@@ -40,7 +40,8 @@
       "label": "Món",
       "fieldtype": "Table",
       "options": "Leescoffee Menu Item",
-      "reqd": 0
+      "reqd": 0,
+      "allow_bulk_edit": 1
     }
   ],
   "permissions": [

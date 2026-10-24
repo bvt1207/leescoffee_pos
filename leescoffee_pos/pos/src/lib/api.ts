@@ -1,5 +1,6 @@
 import type {
 	CreatedOrder,
+	CustomerOption,
 	OrderDetail,
 	OrderSummary,
 	PosConfig,
@@ -29,7 +30,7 @@ function extractError(data: unknown, status: number): string {
 			if (Array.isArray(parsed) && parsed.length) {
 				return parsed
 					.map((m) => m?.message)
-					.filter((m): m is string => typeof m === "string" && m)
+					.filter((m): m is string => typeof m === "string")
 					.join(" | ");
 			}
 		} catch {
@@ -38,7 +39,7 @@ function extractError(data: unknown, status: number): string {
 	} else if (Array.isArray(raw)) {
 		return raw
 			.map((m) => m?.message)
-			.filter((m): m is string => typeof m === "string" && m)
+			.filter((m): m is string => typeof m === "string" && !!m)
 			.join(" | ");
 	}
 
@@ -105,16 +106,27 @@ export const api = {
 	getMenuItems: () => call<unknown[]>("get_menu_items"),
 	getBuzzers: (branch_name?: string) => call<unknown[]>("get_buzzers", { branch_name }),
 	createDraftOrder: (p: {
-		items: Array<{ item_code: string; qty: number; uom?: string; warehouse?: string }>;
+		items: Array<{ item_code: string; qty: number; uom?: string; warehouse?: string; sugar?: number; ice?: number }>;
 		order_type: string;
 		customer_name?: string;
 		mode_of_payment?: string;
 		branch_name?: string;
+		price_list?: string;
+		order_note?: string;
 	}) => call<CreatedOrder>("create_draft_order", p),
 	getOrders: (status: "all" | "draft" | "paid") => call<OrderSummary[]>("get_orders", { status }),
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
 	payCash: (invoice_name: string) => call<{ invoice_name: string; status: string; payment_status: string; amount: number; currency: string }>("pay_cash", { invoice_name }),
 	generateQr: (invoice_name: string) => call<QrInfo>("generate_qr", { invoice_name }),
 	confirmPickup: (invoice_name: string) => call<{ invoice_name: string; buzzer_number: string | null; message: string }>("confirm_pickup", { invoice_name }),
+	searchCustomers: (query: string) =>
+		call<CustomerOption[]>("search_customers", { query }),
+	createCustomer: (customer_name: string, mobile_no?: string) =>
+		call<CustomerOption>("create_customer", { customer_name, mobile_no }),
 	getStatusBoard: () => call<StatusBoardRow[]>("get_status_board"),
+	cancelDraftOrder: (invoice_name: string, force = 0) =>
+	call<{ invoice_name: string; buzzer_number: string | null; message: string }>(
+		"cancel_draft_order",
+		{ invoice_name, force }
+	),
 };

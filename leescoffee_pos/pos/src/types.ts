@@ -32,12 +32,24 @@ export interface PosConfig {
 	payment_modes: PaymentMode[];
 }
 
+export interface MenuSize {
+	label: string;
+	item_code: string;
+	rate: number | null;
+}
+
 export interface MenuItem {
 	idx: number;
 	item_code: string;
 	item_name: string;
 	item_type: string;
-	price: number;
+	// Legacy: giá ở cấp item (không dùng cho UI mới — giữ tương thích).
+	price?: number | null;
+	// Món mới: template + sizes. sizes[0].label rỗng = 1 size (thêm thẳng giỏ).
+	template?: boolean;
+	name?: string;
+	image?: string | null;
+	sizes?: MenuSize[];
 }
 
 export interface MenuGroup {
@@ -100,6 +112,7 @@ export interface OrderDetail {
 	items: OrderItem[];
 	payments: OrderPayment[];
 	creation: string;
+	order_note?: string;
 }
 
 export interface CreatedOrder {
@@ -136,4 +149,29 @@ export interface CartLine {
 	item_type: string;
 	price: number;
 	qty: number;
+	// Đường / Đá: 50 | 70 | 100 (%), default 100.
+	ice?: number;
+	sugar?: number;
+	// Size đã chọn (label + item_code variant).
+	size?: string | null;
+	// Price List của menu đang dùng (khi tạo đơn).
+	price_list?: string;
+	// TODO: backend custom field — ice/sugar/note chưa gửi server, chỉ giữ state.
+	note?: string;
+}
+
+export interface CustomerOption {
+	name: string;
+	customer_name: string;
+	mobile_no?: string | null;
+}
+
+export interface OrderItem {
+	item_code: string;
+	item_name: string;
+	qty: number;
+	rate: number;
+	amount: number;
+	sugar_level?: string;
+	ice_level?: string;
 }

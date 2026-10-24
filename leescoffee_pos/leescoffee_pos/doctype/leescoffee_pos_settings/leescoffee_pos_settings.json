@@ -36,12 +36,6 @@
 			"reqd": 0
 		},
 		{
-			"fieldname": "brand_banner",
-			"label": "Banner",
-			"fieldtype": "Attach Image",
-			"reqd": 0
-		},
-		{
 			"fieldname": "brand_phone",
 			"label": "Số điện thoại",
 			"fieldtype": "Data",

@@ -221,6 +221,7 @@ website_route_rules = [
 # so they are installed with the app on a fresh site.
 
 fixtures = [
+    
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee POS Settings"]]},
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Buzzer"]]},
 	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Menu"]]},
@@ -243,12 +244,14 @@ fixtures = [
 			["dt", "=", "Branch"],
 		],
 	},
-	{
-		"dt": "Workspace",
+    	{
+		"dt": "Custom Field",
 		"filters": [
-			["name", "=", "leescoffee_pos"],
+			["dt", "=", "Customer"],
+			["fieldname", "=", "mobile_number"],
 		],
 	},
+    {"dt": "Custom Field", "filters": [["dt", "=", "POS Invoice Item"]]},
 ]
 
 # Request Events

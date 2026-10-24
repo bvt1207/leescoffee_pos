@@ -22,7 +22,8 @@ from ..doctype.branch_config.branch_config import (
 
 ORDER_TYPES = ("Take Away", "Dine In")
 ORDER_CHANNEL = "POS"
-
+WALK_IN = "Walk-in Customer"
+LEVELS = (50, 70, 100)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -116,6 +117,13 @@ def _resolve_mode_of_payment(company, mode_of_payment=None):
 
 	return usable[0]
 
+def _level(value):
+	"""Đường/đá chỉ nhận 50/70/100, mặc định 100. Trả chuỗi cho field Select."""
+	try:
+		v = int(flt(value))
+	except Exception:
+		v = 100
+	return str(v if v in LEVELS else 100)
 
 def _normalize_items(items):
 	"""Chuẩn hóa danh sách món gửi từ giao diện."""
@@ -138,6 +146,8 @@ def _normalize_items(items):
 			"qty": qty,
 			"uom": item.get("uom") or "",
 		}
+		row["sugar_level"] = _level(item.get("sugar"))
+		row["ice_level"] = _level(item.get("ice"))
 
 		if item.get("warehouse"):
 			row["warehouse"] = item.get("warehouse")
@@ -147,32 +157,16 @@ def _normalize_items(items):
 	return normalized
 
 
-def _resolve_customer(customer_name=None):
-	"""Tìm Customer theo tên nhập từ giao diện.
-
-	- Rỗng -> None (dùng khách mặc định của POS Profile).
-	- Khớp theo `name` hoặc `customer_name` -> trả về tên Customer.
-	- Không khớp -> None (để fallback về khách mặc định, tránh lỗi Link field).
-	"""
-	if not customer_name:
-		return None
-
-	customer_name = str(customer_name).strip()
-	if not customer_name:
-		return None
-
-	matched = frappe.db.get_value(
-		"Customer",
-		{"customer_name": customer_name},
-		"name",
-	)
-	if matched:
-		return matched
-
-	if frappe.db.exists("Customer", customer_name):
-		return customer_name
-
-	return None
+def _resolve_customer(customer=None):
+	"""Nhận MÃ Customer đã tồn tại; trống thì dùng khách vãng lai."""
+	customer = str(customer or "").strip()
+	if not customer:
+		customer = WALK_IN
+	if not frappe.db.exists("Customer", customer):
+		frappe.throw(
+			_("Khách hàng {0} không tồn tại. Hãy chọn khách có sẵn hoặc tạo mới.").format(customer)
+		)
+	return customer
 
 
 def _ensure_opening_entry(profile):
@@ -322,6 +316,65 @@ def get_buzzers(branch_name=None):
 
 	return buzzers
 
+@frappe.whitelist()
+def search_customers(query=None, limit=8):
+	query = str(query or "").strip()
+	if not query:
+		return []
+
+	digits = "".join(ch for ch in query if ch.isdigit())
+	is_phone = len(digits) >= 3 and len(digits) >= len(query.replace(" ", "")) - 1
+
+	if is_phone:
+		or_filters = [["mobile_number", "like", f"%{digits}%"]]
+	else:
+		or_filters = [
+			["customer_name", "like", f"%{query}%"],
+			["mobile_number", "like", f"%{query}%"],
+		]
+
+	rows = frappe.get_all(
+		"Customer",
+		filters={"disabled": 0},
+		or_filters=or_filters,
+		fields=["name", "customer_name", "mobile_number"],
+		order_by="modified desc",
+		limit=min(int(limit), 20),
+	)
+	return [
+		{"name": r.name, "customer_name": r.customer_name, "mobile_no": r.mobile_number}
+		for r in rows
+	]
+
+
+@frappe.whitelist()
+def create_customer(customer_name, mobile_no=None):
+	customer_name = str(customer_name or "").strip()
+	mobile_no = "".join(ch for ch in str(mobile_no or "") if ch.isdigit() or ch == "+")
+
+	if not customer_name:
+		frappe.throw(_("Vui lòng nhập tên khách hàng."))
+	if not mobile_no:
+		frappe.throw(_("Vui lòng nhập số điện thoại để tránh nhầm khách trùng tên."))
+	if frappe.db.exists("Customer", {"mobile_number": mobile_no}):
+		frappe.throw(_("Số điện thoại {0} đã có khách hàng.").format(mobile_no))
+
+	doc = frappe.new_doc("Customer")
+	doc.customer_name = customer_name
+	doc.customer_type = "Individual"
+	doc.customer_group = (
+		frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+	)
+	doc.territory = (
+		frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+	)
+	doc.mobile_number = mobile_no
+	doc.insert(ignore_permissions=True)
+	return {
+		"name": doc.name,
+		"customer_name": doc.customer_name,
+		"mobile_no": doc.mobile_number,
+	}
 
 @frappe.whitelist()
 def create_draft_order(
@@ -330,12 +383,16 @@ def create_draft_order(
 	customer_name=None,
 	mode_of_payment=None,
 	branch_name=None,
+	price_list=None,
+	order_note=None,
 ):
 	"""Tạo POS Invoice ở trạng thái Draft từ giỏ hàng.
 
 	- Thanh toán tại quầy: đơn được tạo Draft, nhân viên thu tiền ở màn Orders.
 	- Thanh toán QR: đơn được tạo Draft, sinh mã VietQR, webhook SePay sẽ submit.
 	"""
+	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
+
 	rows = _normalize_items(items)
 	if not rows:
 		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
@@ -346,14 +403,13 @@ def create_draft_order(
 	profile = _get_pos_profile(branch_name)
 	mode = _resolve_mode_of_payment(profile.company, mode_of_payment)
 
-	customer = _resolve_customer(customer_name) or profile.customer
-	if not customer:
-		frappe.throw(
-			_(
-				"Chưa có khách hàng cho đơn. Vui lòng nhập tên khách hàng "
-				"hoặc cấu hình khách hàng mặc định trong POS Profile."
-			)
-		)
+	# Price List bắt buộc — lấy từ menu đang chọn (cùng nguồn với get_menu_items).
+	# Không fallback sang profile.selling_price_list.
+	if not price_list:
+		frappe.throw(_("Thiếu Price List của menu."))
+	effective_price_list = price_list.strip()
+
+	customer = _resolve_customer(customer_name)
 
 	_ensure_opening_entry(profile)
 
@@ -370,6 +426,8 @@ def create_draft_order(
 	invoice.set_warehouse = profile.warehouse or ""
 	invoice.order_type = order_type
 	invoice.order_channel = ORDER_CHANNEL
+
+	invoice.order_note = str(order_note or "").strip()[:500]
 
 	# Phương thức thanh toán do nhân viên chọn — set sẵn để ERPNext không
 	# ghi đè bằng danh sách MoP của POS Profile.
@@ -401,20 +459,47 @@ def create_draft_order(
 			)
 
 		item = frappe.db.get_value(
-			"Item", code, ["stock_uom", "item_name"], as_dict=True
+			"Item",
+			code,
+			["stock_uom", "item_name", "has_variants", "variant_of"],
+			as_dict=True,
 		)
 		if not item.stock_uom:
 			frappe.throw(_("Món {0} chưa có đơn vị tính (Stock UOM).").format(code))
+
+		# Template không được tạo đơn trực tiếp — bắt chọn size trước.
+		if item.has_variants and not item.variant_of:
+			frappe.throw(
+				_("Món {0} cần chọn size.").format(item.item_name or code)
+			)
+
+		# Lấy rate từ Item Price theo ĐÚNG Price List của menu đang dùng.
+		# Không fallback sang giá khác; không có thì throw nêu tên món và size.
+		rate = LeescoffeeMenu.get_price_for_item(code, effective_price_list)
+		if rate is None:
+			frappe.throw(
+				_(
+					"Món {0} ({1}) chưa có giá trong Price List của menu. "
+					"Vui lòng chọn size đã có giá hoặc nhập giá trong Desk."
+				).format(item.item_name or code, code)
+			)
 
 		row["item_code"] = code
 		row["item_name"] = row.get("item_name") or item.item_name
 		row["uom"] = item.stock_uom
 		row["stock_uom"] = item.stock_uom
 		row["conversion_factor"] = 1
+		row["rate"] = rate
+		row["price_list_rate"] = rate
 		invoice.append("items", row)
 
 	if order_type == "Dine In":
 		invoice.buzzer = _assign_buzzer(profile)
+
+	# Đính giá theo đúng Price List của menu (POS Profile), không để ERPNext
+	# tự điền giá từ Price List khác.
+	invoice.selling_price_list = effective_price_list
+	invoice.ignore_pricing_rule = 1
 
 	try:
 		invoice.insert(ignore_permissions=True)
@@ -432,7 +517,6 @@ def create_draft_order(
 		"qty_sum": sum(flt(row.qty) for row in invoice.items),
 		"buzzer_number": _buzzer_number(invoice.buzzer),
 	}
-
 @frappe.whitelist()
 def get_orders(status="all", limit=50):
 	"""Danh sách đơn cho màn hình Orders.
@@ -487,6 +571,8 @@ def get_order_detail(invoice_name):
 			"qty": flt(row.qty),
 			"rate": flt(row.rate),
 			"amount": flt(row.amount),
+			"sugar_level": row.get("sugar_level") or "",
+			"ice_level": row.get("ice_level") or "",
 		}
 		for row in invoice.items
 	]
@@ -520,6 +606,7 @@ def get_order_detail(invoice_name):
 		"items": items,
 		"payments": payments,
 		"creation": invoice.creation,
+		"order_note": invoice.get("order_note") or "",
 	}
 
 
@@ -551,6 +638,36 @@ def pay_cash(invoice_name):
 		"currency": invoice.currency,
 	}
 
+@frappe.whitelist()
+def cancel_draft_order(invoice_name, force=0):
+	"""Hủy (xóa hẳn) đơn Draft chưa thanh toán.
+
+	- Chỉ cho docstatus = 0. Đơn đã thanh toán không hủy được tại POS.
+	- Đơn đã sinh QR (đang chờ chuyển khoản) cần force=1 để tránh xóa nhầm
+	  đơn khách đã chuyển tiền.
+	- Thẻ rung tự được nhả vì _assign_buzzer chỉ xét các POS Invoice còn tồn tại.
+	"""
+	invoice = frappe.get_doc("POS Invoice", invoice_name)
+
+	if invoice.docstatus != 0:
+		frappe.throw(_("Đơn {0} đã thanh toán, không thể hủy tại POS.").format(invoice_name))
+
+	if (invoice.get("payment_status") or "") == "Đang chờ" and not int(force or 0):
+		frappe.throw(
+			_(
+				"Đơn {0} đã sinh mã QR và đang chờ thanh toán. "
+				"Hãy chắc chắn khách chưa chuyển tiền trước khi hủy."
+			).format(invoice_name)
+		)
+
+	buzzer_number = _buzzer_number(invoice.buzzer)
+	frappe.delete_doc("POS Invoice", invoice_name, ignore_permissions=True)
+
+	return {
+		"invoice_name": invoice_name,
+		"buzzer_number": buzzer_number,
+		"message": _("Đã hủy đơn {0}.").format(invoice_name),
+	}
 
 @frappe.whitelist()
 def generate_qr(invoice_name):

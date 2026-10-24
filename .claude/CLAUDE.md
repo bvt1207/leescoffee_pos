@@ -28,6 +28,7 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
 - Mọi thông tin thương hiệu (tên quán, logo, banner, màu chủ đạo...) phải là **dữ
   liệu cấu hình** đọc từ DocType (Settings/Branch), không phải giá trị viết chết
   trong code.
+  - *Lưu ý: Banner field đã xóa khỏi Leescoffee POS Settings (không dùng), giữ lại logo/phone/address cho cấu hình chi nhánh.*
 - Giao diện thiết kế theo phong cách quán cà phê nói chung (đẹp, chuyên nghiệp, đủ
   tốt để demo) — không thiết kế riêng theo bộ nhận diện của Lee's Coffee.
 - Dữ liệu mẫu để test/demo (tên món, giá, logo Lee's Coffee...) nhập qua Desk UI
@@ -35,6 +36,7 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
 - Tên app kỹ thuật hiện tại (`leescoffee_pos`) và App title ("Leescoffee POS") chỉ
   là tên đặt lúc khởi tạo, không bắt buộc đổi ngay — nhưng nếu về sau cần dùng lại
   cho khách hàng khác, nên cân nhắc đổi sang tên trung tính hơn.
+- *Lưu ý: `allow_bulk_edit: 1` đã thêm vào field `items` của Leescoffee Menu (tương tác Download/Upload Frappe).*
 
 ## 2. Nền tảng, công nghệ & nguyên tắc kiến trúc
 
