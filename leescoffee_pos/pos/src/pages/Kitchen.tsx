@@ -29,6 +29,7 @@ export default function Kitchen() {
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [now, setNow] = useState(Date.now());
+	const [toast, setToast] = useState<string | null>(null);
 
 	const load = useCallback(async () => {
 		try {
@@ -51,7 +52,13 @@ export default function Kitchen() {
 		};
 	}, [load]);
 
-	const today = new Date().toISOString().slice(0, 10);
+	// Toast tự tắt sau 5 giây
+	useEffect(() => {
+		if (!toast) return;
+		const t = window.setTimeout(() => setToast(null), 5000);
+		return () => window.clearTimeout(t);
+	}, [toast]);
+
 	const localToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
 		.toISOString()
 		.slice(0, 10);
@@ -81,6 +88,13 @@ export default function Kitchen() {
 		setBusy(o.name);
 		try {
 			await api.setKitchenStatus(o.name, step.to);
+			// Thông báo khi chuyển Chưa làm -> Đã làm
+			if (step.to === "Đã làm") {
+				setToast(
+					`Mời khách ${o.customer_name} đến quầy nhận món` +
+						(o.buzzer_number ? ` (thẻ #${o.buzzer_number})` : "")
+				);
+			}
 			await load();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -89,7 +103,12 @@ export default function Kitchen() {
 		}
 	};
 
-	void today;
+	// Toast tự tắt sau 5 giây
+	useEffect(() => {
+		if (!toast) return;
+		const t = window.setTimeout(() => setToast(null), 5000);
+		return () => window.clearTimeout(t);
+	}, [toast]);
 
 	return (
 		<div className="pos-kitchen">
@@ -170,6 +189,12 @@ export default function Kitchen() {
 					})}
 				</div>
 			)}
+
+			{toast ? (
+				<div className="pos-toast" role="status" onClick={() => setToast(null)}>
+					{toast}
+				</div>
+			) : null}
 		</div>
 	);
 }

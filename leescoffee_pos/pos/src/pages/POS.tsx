@@ -3,25 +3,28 @@ import { useNavigate } from "react-router-dom";
 import MenuGrid from "../components/MenuGrid";
 import CartPanel from "../components/CartPanel";
 import CustomerPicker from "../components/CustomerPicker";
+import BuzzerPicker from "../components/BuzzerPicker";
 import { api } from "../lib/api";
 import { usePos } from "../lib/pos-context";
 import { useCart, cartCount } from "../store/cart";
 import { useSearch } from "../store/search";
-import type { CustomerOption, OrderType } from "../types";
+import type { BuzzerOption, CustomerOption, OrderType } from "../types";
 
 export default function POS() {
 	const navigate = useNavigate();
 	const { config, loading, error, menus } = usePos();
 	const lines = useCart((state) => state.lines);
 	const clear = useCart((state) => state.clear);
+	const orderNote = useCart((state) => state.orderNote);
 	const search = useSearch((state) => state.search);
 
 	const [orderType, setOrderType] = useState<OrderType>("Take Away");
 	const [customer, setCustomer] = useState<CustomerOption | null>(null);
-	const [modeOfPayment, setModeOfPayment] = useState("");
+	const [buzzer, setBuzzer] = useState<BuzzerOption | null>(null);
+	const [pickerOpen, setPickerOpen] = useState(false);
+	const [modeOfPayment] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [formError, setFormError] = useState("");
-	const orderNote = useCart((state) => state.orderNote);
 
 	// Price List lấy từ menu đầu tiên có price_list.
 	const priceList = useMemo(
@@ -35,7 +38,19 @@ export default function POS() {
 	);
 
 	const selectedMode = modeOfPayment || usableModes[0]?.name || "";
-	const canSubmit = !submitting && !loading && lines.length > 0 && !!priceList;
+	const needBuzzer = orderType === "Dine In" && !buzzer;
+	const canSubmit =
+		!submitting && !loading && lines.length > 0 && !!priceList && !needBuzzer;
+
+	const chooseDineIn = () => {
+		setOrderType("Dine In");
+		setPickerOpen(true);
+	};
+
+	const chooseTakeAway = () => {
+		setOrderType("Take Away");
+		setBuzzer(null);
+	};
 
 	const createOrder = async () => {
 		if (!lines.length) {
@@ -46,26 +61,32 @@ export default function POS() {
 			setFormError("Thiếu Price List của menu.");
 			return;
 		}
+		if (needBuzzer) {
+			setFormError("Chọn thẻ rung cho đơn tại quán.");
+			return;
+		}
 
 		setSubmitting(true);
 		setFormError("");
 		try {
 			const result = await api.createDraftOrder({
 				items: lines.map((line) => ({
-				item_code: line.item_code,
-				qty: line.qty,
-				sugar: line.sugar ?? 100,
-				ice: line.ice ?? 100,
+					item_code: line.item_code,
+					qty: line.qty,
+					sugar: line.sugar ?? 100,
+					ice: line.ice ?? 100,
 				})),
 				order_type: orderType,
 				customer_name: customer?.name,
 				mode_of_payment: selectedMode || undefined,
 				price_list: priceList,
 				order_note: orderNote.trim() || undefined,
+				buzzer: orderType === "Dine In" ? buzzer?.name : undefined,
 			});
 
 			clear();
 			setCustomer(null);
+			setBuzzer(null);
 			navigate(`/orders?draft=${encodeURIComponent(result.invoice_name)}`);
 		} catch (err) {
 			setFormError(err instanceof Error ? err.message : String(err));
@@ -91,42 +112,38 @@ export default function POS() {
 						<button
 							type="button"
 							className={orderType === "Dine In" ? "is-active" : ""}
-							onClick={() => setOrderType("Dine In")}
+							onClick={chooseDineIn}
 						>
 							Tại quán
 						</button>
 						<button
 							type="button"
 							className={orderType === "Take Away" ? "is-active" : ""}
-							onClick={() => setOrderType("Take Away")}
+							onClick={chooseTakeAway}
 						>
 							Mang đi
 						</button>
 					</div>
 
-					<CustomerPicker value={customer} onChange={setCustomer} />
+					{orderType === "Dine In" ? (
+						<button
+							type="button"
+							className="pos-buzzer-chosen"
+							onClick={() => setPickerOpen(true)}
+						>
+							{buzzer ? `Thẻ rung #${buzzer.buzzer_number} · Đổi thẻ` : "Chọn thẻ rung"}
+						</button>
+					) : null}
 
-					{/* <select
-						id="pos-mop"
-						className="pos-input"
-						aria-label="Phương thức thanh toán"
-						value={selectedMode}
-						onChange={(event) => setModeOfPayment(event.target.value)}
-					>
-						{!usableModes.length ? (
-							<option value="">Chưa có phương thức thanh toán</option>
-						) : null}
-						{usableModes.map((mode) => (
-							<option key={mode.name} value={mode.name}>
-								{mode.label || mode.name}
-							</option>
-						))}
-					</select> */}
+					<CustomerPicker value={customer} onChange={setCustomer} />
 				</section>
 
 				<CartPanel />
 
 				{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
+				{needBuzzer && lines.length > 0 ? (
+					<div className="pos-alert pos-alert--error">Chọn thẻ rung cho đơn tại quán.</div>
+				) : null}
 				{!loading && !priceList ? (
 					<div className="pos-alert pos-alert--error">
 						Thiếu Price List của menu — không thể tạo đơn.
@@ -145,6 +162,16 @@ export default function POS() {
 					</button>
 				</div>
 			</aside>
+
+			<BuzzerPicker
+				open={pickerOpen}
+				selected={buzzer?.name || null}
+				onClose={() => setPickerOpen(false)}
+				onPick={(b) => {
+					setBuzzer(b);
+					setPickerOpen(false);
+				}}
+			/>
 		</div>
 	);
 }
