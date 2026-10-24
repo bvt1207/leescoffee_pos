@@ -217,7 +217,7 @@ Routes:
 | MenuGrid.tsx | `getMenuItems()` (qua PosContext) | `[{ name, price_list, items: [{ name, sizes: [{ label, item_code, rate }] }] }]` |
 | POS.tsx | `createDraftOrder()` | `{ invoice_name, grand_total, qty_sum, buzzer_number }` |
 | Orders.tsx | `getOrders("draft"|"paid")` | `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` |
-| Orders.tsx | `getOrders("paid")` + `getStatusBoard()` | tương tự + `[{ invoice_name, customer_name, kitchen_status, buzzer_number }]` |
+| Orders.tsx (Kitchen tab rút) | `getOrders("paid")` | chỉ trả `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` — Pha chế bây giờ ở Kitchen.tsx riêng |
 | Orders.tsx | `getOrderDetails(name)` | `{ name, customer_name, order_type, items:[{item_code,item_name,qty,amount,sugar_level,ice_level}], payments, order_note, custom_kitchen_status, buzzer_number }` |
 | Orders.tsx | `payCash(name)` | `{ invoice_name, status, payment_status, amount, currency }` |
 | Orders.tsx | `generateQr(name)` | `{ invoice_name, payment_code, qr_url, amount, payment_status, idempotent }` |
