@@ -175,3 +175,30 @@ export interface OrderItem {
 	sugar_level?: string;
 	ice_level?: string;
 }
+
+export interface KitchenItem {
+	item_code: string;
+	item_name: string;
+	qty: number;
+	sugar_level: string;
+	ice_level: string;
+}
+
+export interface KitchenOrder {
+	name: string;
+	customer_name: string;
+	order_type: OrderType;
+	kitchen_status: "Chưa làm" | "Đã làm" | "Đã hoàn thành";
+	buzzer_number: string | null;
+	order_note: string | null;
+	creation: string;
+	items: KitchenItem[];
+}
+export interface BuzzerOption {
+	name: string;
+	buzzer_number: string;
+	status: string;
+	branch: string;
+	available: boolean;
+	used_by: string | null;
+}

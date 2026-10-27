@@ -140,7 +140,7 @@ export default function Orders() {
 	const isDraft = detail?.docstatus === 0;
 	const waitingQr = detail?.payment_status === "Đang chờ";
 
-	return (
+		return (
 		<div className="pos-orders-page">
 			{error ? <div className="pos-alert pos-alert--error">{error}</div> : null}
 
@@ -151,34 +151,11 @@ export default function Orders() {
 				<button type="button" className={`pos-tab ${tab === "paid" ? "is-active" : ""}`} onClick={() => setTab("paid")}>
 					Đã thanh toán <span className="pos-tab__count">{paid.length}</span>
 				</button>
-				<button type="button" className={`pos-tab ${tab === "kitchen" ? "is-active" : ""}`} onClick={() => setTab("kitchen")}>
-					Pha chế <span className="pos-tab__count">{board.length}</span>
-				</button>
 			</div>
 
 			<div className="pos-orders-layout">
 				<section className="pos-orders-list">
-					{tab === "kitchen" ? (
-						board.length ? (
-							<div className="pos-order-grid">
-								{board.map((row) => (
-									<div key={row.invoice_name} className="pos-order-card pos-order-card--static">
-										<div className="pos-order-card__top">
-											<strong>{row.customer_name}</strong>
-											<span className="pos-status__badge">{row.kitchen_status}</span>
-										</div>
-										<div className="pos-order-card__meta">
-											<span>{row.invoice_name}</span>
-											<span>{typeLabel(row.order_type)}</span>
-											{row.buzzer_number ? <span>Thẻ #{row.buzzer_number}</span> : null}
-										</div>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className="pos-empty">Chưa có đơn đang pha chế.</div>
-						)
-					) : loading && !list.length ? (
+					{loading && !list.length ? (
 						<div className="pos-empty">Đang tải đơn hàng…</div>
 					) : list.length ? (
 						<div className="pos-order-grid">
@@ -229,30 +206,32 @@ export default function Orders() {
 
 							<div className="pos-order-detail__items">
 								{detail.items.map((it, i) => (
-	                                <div key={`${it.item_code}-${i}`} className="pos-detail__row pos-detail__row--item">
-		                              <div className="pos-detail__item-main">
-			                              <span>{it.item_name}</span>
-			                              {it.sugar_level || it.ice_level ? (
-				                            <small className="pos-detail__opts">
-					                             Đường {it.sugar_level || 100}% · Đá {it.ice_level || 100}%
-				                            </small>
-			                        ) : null}
-		                     </div>
-		                     <span>x{it.qty}</span>
-		                     <strong>{formatMoney(it.amount, detail.currency)}</strong>
-	                        </div>
-   ))}
+									<div key={`${it.item_code}-${i}`} className="pos-detail__row pos-detail__row--item">
+										<div className="pos-detail__item-main">
+											<span>{it.item_name}</span>
+											{it.sugar_level || it.ice_level ? (
+												<small className="pos-detail__opts">
+													Đường {it.sugar_level || 100}% · Đá {it.ice_level || 100}%
+												</small>
+											) : null}
+										</div>
+										<span>x{it.qty}</span>
+										<strong>{formatMoney(it.amount, detail.currency)}</strong>
+									</div>
+								))}
 							</div>
 
 							<div className="pos-order-detail__total">
 								<span>Tổng cộng</span>
 								<strong>{formatMoney(detail.grand_total, detail.currency)}</strong>
 							</div>
-                            {detail.order_note ? (
-	<div className="pos-order-detail__note">
-		<strong>Ghi chú:</strong> {detail.order_note}
-	</div>
-) : null}
+
+							{detail.order_note ? (
+								<div className="pos-order-detail__note">
+									<strong>Ghi chú:</strong> {detail.order_note}
+								</div>
+							) : null}
+
 							{detail.custom_kitchen_status ? (
 								<div className="pos-order-detail__kitchen">Bếp: {detail.custom_kitchen_status}</div>
 							) : null}

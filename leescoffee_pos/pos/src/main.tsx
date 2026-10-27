@@ -5,6 +5,7 @@ import App from "./App";
 import { PosProvider } from "./lib/pos-context";
 import POS from "./pages/POS";
 import Orders from "./pages/Orders";
+import Kitchen from "./pages/Kitchen";
 import Table from "./pages/Table";
 import "./styles/global.css";
 
@@ -19,6 +20,7 @@ if (container) {
 						<Route path="/" element={<App />}>
 							<Route index element={<POS />} />
 							<Route path="orders" element={<Orders />} />
+							<Route path="kitchen" element={<Kitchen />} />
 							<Route path="table" element={<Table />} />
 							<Route path="*" element={<Navigate to="/" replace />} />
 						</Route>

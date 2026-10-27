@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { usePos } from "../lib/pos-context";
 import { useSearch } from "../store/search";
 
@@ -7,10 +7,14 @@ export default function AppHeader() {
 	const search = useSearch((s) => s.search);
 	const onSearch = useSearch((s) => s.setSearch);
 	const { config } = usePos();
+	const { pathname } = useLocation();
 	const brand = config?.brand;
 	const user = (config as { user?: { full_name?: string; name?: string } } | null)?.user;
 	const displayName = user?.full_name || user?.name || "";
 	const initial = (displayName || "?").trim().slice(0, 1).toUpperCase();
+
+	const isKitchen = pathname.startsWith("/kitchen");
+	const placeholder = pathname.startsWith("/orders") ? "Tìm đơn…" : "Tìm món…";
 
 	const [menuOpen, setMenuOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -64,22 +68,27 @@ export default function AppHeader() {
 			</div>
 
 			<div className="pos-header__search">
-				<input
-					ref={searchRef}
-					type="search"
-					className="pos-header__search-input"
-					placeholder="Tìm món…"
-					value={search}
-					onChange={(e) => onSearch?.(e.target.value)}
-					aria-label="Tìm món"
-				/>
-				<kbd className="pos-header__kbd">Ctrl K</kbd>
+				{isKitchen ? null : (
+					<>
+						<input
+							ref={searchRef}
+							type="search"
+							className="pos-header__search-input"
+							placeholder={placeholder}
+							value={search}
+							onChange={(e) => onSearch(e.target.value)}
+							aria-label={placeholder}
+						/>
+						<kbd className="pos-header__kbd">Ctrl K</kbd>
+					</>
+				)}
 			</div>
 
 			<div className="pos-header__right">
 				<nav className="pos-header__nav">
 					<NavLink to="/" end className="pos-navlink">Bán món</NavLink>
 					<NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink>
+					<NavLink to="/kitchen" className="pos-navlink">Pha chế</NavLink>
 				</nav>
 
 				{displayName ? (

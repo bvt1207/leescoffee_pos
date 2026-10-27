@@ -1061,3 +1061,77 @@ body {
 	padding: 10px 12px; border-radius: 10px; font-size: 13px;
 	background: var(--pos-surface); border: 1px dashed var(--pos-border);
 }
+
+.pos-kitchen { display: flex; flex-direction: column; gap: 14px; max-width: 1500px; margin: 0 auto; padding: 18px 20px; }
+.pos-kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+
+.pos-kcard {
+	display: flex; flex-direction: column; gap: 12px; padding: 16px;
+	background: var(--pos-bg); border: 1px solid var(--pos-border);
+	border-top: 5px solid var(--pos-success); border-radius: var(--pos-radius); box-shadow: var(--pos-shadow);
+}
+.pos-kcard--warn { border-top-color: var(--pos-warning); }
+.pos-kcard--late { border-top-color: var(--pos-error); }
+
+.pos-kcard__head { display: flex; align-items: center; gap: 10px; }
+.pos-kcard__seq {
+	display: grid; place-items: center; width: 36px; height: 36px; flex: none;
+	border-radius: 50%; background: var(--pos-surface-alt); font-weight: 800;
+}
+.pos-kcard__id { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 12px; color: var(--pos-text-muted); }
+.pos-kcard__id strong { font-size: 14px; color: var(--pos-text); }
+.pos-kcard__tags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+.pos-kcard__items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.pos-kcard__line { display: flex; gap: 8px; align-items: baseline; }
+.pos-kcard__qty { font-size: 22px; font-weight: 800; color: var(--pos-primary); }
+.pos-kcard__name { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.pos-kcard__opts { display: flex; gap: 6px; margin-top: 6px; }
+.pos-chip-opt {
+	padding: 4px 12px; border-radius: 999px; font-size: 15px; font-weight: 700;
+	background: var(--pos-surface-alt); color: var(--pos-text);
+}
+
+.pos-kcard__note {
+	padding: 10px 12px; border-radius: 10px; font-size: 15px; font-weight: 600;
+	background: #fff4d6; border: 1px dashed var(--pos-warning); color: var(--pos-text);
+}
+
+.pos-kcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pos-kcard__wait { font-size: 13px; font-weight: 700; color: var(--pos-text-muted); }
+.pos-kcard__wait--warn { color: var(--pos-warning); }
+.pos-kcard__wait--late { color: var(--pos-error); }
+.pos-kcard__btn { min-height: 56px; min-width: 150px; font-size: 18px; }
+
+.pos-buzzer-chosen {
+	min-height: 44px; padding: 0 14px; border: 1px dashed var(--pos-primary); border-radius: 10px;
+	background: var(--pos-primary-disabled); color: var(--pos-primary); font: inherit; font-weight: 700; cursor: pointer;
+}
+.pos-modal--buzzer { width: min(520px, 100%); background: var(--pos-bg); }
+.pos-buzzer-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pos-buzzer-legend { display: flex; gap: 16px; font-size: 13px; color: var(--pos-text-muted); }
+.pos-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.pos-dot--ok { background: var(--pos-success); }
+.pos-dot--busy { background: var(--pos-border); }
+.pos-buzzer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.pos-buzzer {
+	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+	min-height: 84px; font: inherit; border-radius: var(--pos-radius); cursor: pointer;
+	border: 2px solid var(--pos-success); background: #e8f4ec; color: var(--pos-text);
+}
+.pos-buzzer strong { font-size: 26px; }
+.pos-buzzer small { font-size: 12px; font-weight: 600; }
+.pos-buzzer.is-busy { border-color: var(--pos-border); background: var(--pos-surface-alt); color: var(--pos-text-muted); cursor: not-allowed; }
+.pos-buzzer.is-selected { background: var(--pos-success); color: #fff; }
+
+.pos-toast {
+	position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 100;
+	max-width: min(560px, 92vw); padding: 14px 22px; border-radius: 12px;
+	background: var(--pos-text); color: #fff; font-size: 18px; font-weight: 700;
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25); cursor: pointer;
+	animation: pos-toast-in 0.2s ease-out;
+}
+@keyframes pos-toast-in {
+	from { opacity: 0; transform: translate(-50%, -8px); }
+	to { opacity: 1; transform: translate(-50%, 0); }
+}

@@ -6,6 +6,8 @@ import type {
 	PosConfig,
 	QrInfo,
 	StatusBoardRow,
+	KitchenOrder,
+	BuzzerOption,
 } from "../types";
 
 const API_BASE =
@@ -104,7 +106,7 @@ export async function call<T>(method: string, args: Record<string, unknown> = {}
 export const api = {
 	getPosConfig: () => call<PosConfig>("get_pos_config"),
 	getMenuItems: () => call<unknown[]>("get_menu_items"),
-	getBuzzers: (branch_name?: string) => call<unknown[]>("get_buzzers", { branch_name }),
+	getBuzzers: (branch_name?: string) => call<BuzzerOption[]>("get_buzzers", { branch_name }),
 	createDraftOrder: (p: {
 		items: Array<{ item_code: string; qty: number; uom?: string; warehouse?: string; sugar?: number; ice?: number }>;
 		order_type: string;
@@ -113,6 +115,7 @@ export const api = {
 		branch_name?: string;
 		price_list?: string;
 		order_note?: string;
+		buzzer?: string;
 	}) => call<CreatedOrder>("create_draft_order", p),
 	getOrders: (status: "all" | "draft" | "paid") => call<OrderSummary[]>("get_orders", { status }),
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
@@ -129,4 +132,7 @@ export const api = {
 		"cancel_draft_order",
 		{ invoice_name, force }
 	),
+	getKitchenOrders: () => call<KitchenOrder[]>("get_kitchen_orders"),
+	setKitchenStatus: (invoice_name: string, status: string) =>
+		call<{ invoice_name: string; kitchen_status: string }>("set_kitchen_status", { invoice_name, status }),
 };
