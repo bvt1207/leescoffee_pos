@@ -24,6 +24,7 @@ ORDER_TYPES = ("Take Away", "Dine In")
 ORDER_CHANNEL = "POS"
 WALK_IN = "Walk-in Customer"
 LEVELS = (50, 70, 100)
+KITCHEN_FLOW = ["Chưa làm", "Đã làm", "Đã hoàn thành"]
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -221,44 +222,28 @@ def _ensure_opening_entry(profile):
 	return opening.name
 
 
-def _assign_buzzer(profile):
-	"""Gán 1 thẻ rung còn trống cho đơn Dine In."""
-	from ..doctype.leescoffee_buzzer.leescoffee_buzzer import LeescoffeeBuzzer
-
+def _assign_buzzer(profile, buzzer=None):
+	"""Gán thẻ rung cho đơn Dine In. Thẻ do cashier chọn, được kiểm tra lại."""
 	branch = getattr(profile, "branch", None)
 	if not branch:
-		frappe.throw(
-			_(
-				"POS Profile {0} chưa được gán chi nhánh nên chưa thể gán thẻ rung "
-				"cho đơn Dine In."
-			).format(profile.name)
-		)
+		frappe.throw(_("POS Profile {0} chưa được gán chi nhánh nên chưa thể gán thẻ rung.").format(profile.name))
+	if not buzzer:
+		frappe.throw(_("Đơn tại quán cần chọn thẻ rung."))
 
-	buzzer_name = LeescoffeeBuzzer.get_available_buzzer(branch)
-	if not buzzer_name:
-		frappe.throw(_("Chưa có thẻ rung sẵn sàng trong chi nhánh {0}.").format(branch))
+	data = frappe.db.get_value("Leescoffee Buzzer", buzzer, ["branch", "status", "buzzer_number"], as_dict=True)
+	if not data or data.branch != branch:
+		frappe.throw(_("Thẻ rung {0} không thuộc chi nhánh {1}.").format(buzzer, branch))
+	if data.status != "Sẵn sàng":
+		frappe.throw(_("Thẻ rung số {0} đang được sử dụng.").format(data.buzzer_number))
 
-	# Thẻ đang "Sẵn sàng" nhưng đã bị gán cho đơn khác (đơn Draft chưa thanh toán)
-	# → không gán lại, tránh 2 đơn dùng chung 1 thẻ.
-	others = frappe.get_all(
+	for other in frappe.get_all(
 		"POS Invoice",
-		filters={
-			"buzzer": buzzer_name,
-			"order_type": "Dine In",
-			"docstatus": ["in", [0, 1]],
-		},
+		filters={"buzzer": buzzer, "order_type": "Dine In", "docstatus": ["in", [0, 1]]},
 		fields=["name", "custom_kitchen_status"],
-	)
-
-	for other in others:
-		if (other.get("custom_kitchen_status") or "") != "Đã hoàn thành":
-			frappe.throw(
-				_("Thẻ rung {0} đang được dùng cho đơn {1}.").format(
-					buzzer_name, other.get("name")
-				)
-			)
-
-	return buzzer_name
+	):
+		if (other.custom_kitchen_status or "") != "Đã hoàn thành":
+			frappe.throw(_("Thẻ rung số {0} đang giữ cho đơn {1}.").format(data.buzzer_number, other.name))
+	return buzzer
 
 
 def _buzzer_number(buzzer_name):
@@ -304,16 +289,31 @@ def get_menu_items(price_list=None):
 
 @frappe.whitelist()
 def get_buzzers(branch_name=None):
-	"""Danh sách thẻ rung của chi nhánh."""
-	branch_name = branch_name or get_default_branch()
+	"""Danh sách thẻ rung kèm trạng thái thực tế cho popup chọn thẻ."""
+	profile = _get_pos_profile(branch_name)
+	branch = getattr(profile, "branch", None) or branch_name or get_default_branch()
 
 	buzzers = frappe.get_all(
 		"Leescoffee Buzzer",
-		filters={"branch": branch_name} if branch_name else {},
+		filters={"branch": branch} if branch else {},
 		fields=["name", "buzzer_number", "status", "branch"],
 		order_by="buzzer_number asc",
 	)
 
+	# Thẻ đang bị đơn chưa hoàn thành giữ (Draft hoặc đã thanh toán, bếp chưa xong).
+	held = {}
+	rows = frappe.get_all(
+		"POS Invoice",
+		filters={"order_type": "Dine In", "docstatus": ["in", [0, 1]], "buzzer": ["is", "set"]},
+		fields=["name", "buzzer", "custom_kitchen_status"],
+	)
+	for r in rows:
+		if (r.custom_kitchen_status or "") != "Đã hoàn thành":
+			held[r.buzzer] = r.name
+
+	for b in buzzers:
+		b["used_by"] = held.get(b.name)
+		b["available"] = b.status == "Sẵn sàng" and b.name not in held
 	return buzzers
 
 @frappe.whitelist()
@@ -385,6 +385,7 @@ def create_draft_order(
 	branch_name=None,
 	price_list=None,
 	order_note=None,
+	buzzer=None
 ):
 	"""Tạo POS Invoice ở trạng thái Draft từ giỏ hàng.
 
@@ -494,7 +495,7 @@ def create_draft_order(
 		invoice.append("items", row)
 
 	if order_type == "Dine In":
-		invoice.buzzer = _assign_buzzer(profile)
+		invoice.buzzer = _assign_buzzer(profile, buzzer)
 
 	# Đính giá theo đúng Price List của menu (POS Profile), không để ERPNext
 	# tự điền giá từ Price List khác.
@@ -699,3 +700,71 @@ def get_status_board():
 	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import get_status_board_orders
 
 	return get_status_board_orders()
+
+@frappe.whitelist()
+def get_kitchen_orders(status=None, limit=100):
+	"""Đơn đã thanh toán cho màn pha chế, đơn cũ nhất lên đầu."""
+	filters = {"docstatus": 1, "status": "Paid"}
+	if status:
+		if status not in KITCHEN_FLOW:
+			frappe.throw(_("Trạng thái không hợp lệ."))
+		filters["custom_kitchen_status"] = status
+	else:
+		filters["custom_kitchen_status"] = ["in", KITCHEN_FLOW]
+
+	orders = frappe.get_all(
+		"POS Invoice",
+		filters=filters,
+		fields=["name", "customer", "customer_name", "order_type",
+			"custom_kitchen_status", "buzzer", "order_note", "creation", "modified"],
+		order_by="creation asc",
+		limit=min(int(limit), 200),
+	)
+	if not orders:
+		return []
+
+	names = [o.name for o in orders]
+	rows = frappe.get_all(
+		"POS Invoice Item",
+		filters={"parent": ["in", names], "parenttype": "POS Invoice"},
+		fields=["parent", "idx", "item_code", "item_name", "qty",
+			"sugar_level", "ice_level"],
+		order_by="parent asc, idx asc",
+	)
+	by_parent = {}
+	for r in rows:
+		by_parent.setdefault(r.parent, []).append({
+			"item_code": r.item_code,
+			"item_name": r.item_name,
+			"qty": flt(r.qty),
+			"sugar_level": r.sugar_level or "",
+			"ice_level": r.ice_level or "",
+		})
+
+	for o in orders:
+		o["kitchen_status"] = o.pop("custom_kitchen_status")
+		o["items"] = by_parent.get(o.name, [])
+		o["buzzer_number"] = _buzzer_number(o.get("buzzer"))
+		o["customer_name"] = o.get("customer_name") or o.get("customer")
+	return orders
+
+
+@frappe.whitelist()
+def set_kitchen_status(invoice_name, status):
+	"""Đổi trạng thái pha chế, chỉ cho đi tiến từng bước."""
+	if status not in KITCHEN_FLOW:
+		frappe.throw(_("Trạng thái không hợp lệ."))
+
+	invoice = frappe.get_doc("POS Invoice", invoice_name)
+	if invoice.docstatus != 1 or invoice.status != "Paid":
+		frappe.throw(_("Đơn {0} chưa thanh toán.").format(invoice_name))
+
+	current = invoice.custom_kitchen_status or "Chưa làm"
+	if KITCHEN_FLOW.index(status) != KITCHEN_FLOW.index(current) + 1:
+		frappe.throw(
+			_("Không thể chuyển {0} từ '{1}' sang '{2}'.").format(invoice_name, current, status)
+		)
+
+	invoice.custom_kitchen_status = status
+	invoice.save(ignore_permissions=True)  # hook on_update_after_submit tự nhả thẻ rung
+	return {"invoice_name": invoice.name, "kitchen_status": status}
