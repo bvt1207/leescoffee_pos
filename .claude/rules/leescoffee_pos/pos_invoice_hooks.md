@@ -29,10 +29,16 @@
 
 - **Take Away không tác động đến Buzzer** — mọi logic buzzer chỉ chạy khi `order_type == "Dine In"`.
 - **Buzzer pool**: `Sẵn sàng` ⇄ `Đang dùng`, không có trạng thái Occupied cố định.
-- **Khi Paid + submit**:
-  - Nếu buzzer có trạng thái `Sẵn sàng` → chuyển sang `Đang dùng` và gán cho đơn.
-  - Nếu buzzer đã ở trạng thái `Đang dùng` → **giữ nguyên** (cho phép chung buzzer giữa các đơn nếu cần).
-  - Nếu buzzer ở trạng thái khác → **ném lỗi** (trạng thái không mong đợi).
+- **Không dùng chung thẻ**: mỗi thẻ chỉ giữ cho **1 đơn Dine In chưa hoàn thành** tại một thời điểm.
+  "Đang giữ" = có POS Invoice `order_type = Dine In`, `buzzer` = thẻ đó, `docstatus in (0, 1)`,
+  `custom_kitchen_status != "Đã hoàn thành"` (tính cả đơn Draft chưa thanh toán).
+- **Khi tạo đơn** (`api/pos_api.py::create_draft_order` → `_assign_buzzer(profile, buzzer)`):
+  - Cashier chọn thẻ qua `BuzzerPicker` (API `get_buzzers` trả `available`, `used_by`). Dine In bắt buộc có `buzzer`.
+  - Thẻ phải thuộc đúng chi nhánh của POS Profile, `status == "Sẵn sàng"`, và không bị đơn nào khác đang giữ → nếu không thì **ném lỗi**.
+- **Khi Paid + submit** (`on_submit`):
+  - Buzzer `Sẵn sàng` → chuyển sang `Đang dùng`.
+  - Buzzer đã `Đang dùng` → giữ nguyên, không đổi trạng thái (chỉ là chốt an toàn; việc chặn dùng chung nằm ở `_assign_buzzer`).
+  - Trạng thái khác → **ném lỗi**.
 - **Khi `custom_kitchen_status = "Đã hoàn thành"`**: 
   - Kiểm tra xem còn đơn Dine In nào khác:
     - Cùng buzzer
@@ -44,9 +50,10 @@
   - `confirm_pickup`: khi nhân viên xác nhận khách lấy món (kitchen status = `Đã hoàn thành`).
   - `on_cancel`: khi đơn bị hủy **và chưa bắt đầu làm** (`custom_kitchen_status` là None, "", hoặc `Chưa làm`).
 
-### 2.3 Shared Buzzer Validation Logic
+### 2.3 Kiểm tra đơn khác trước khi reset buzzer (phòng thủ)
 
-Trước khi thay đổi trạng thái buzzer (từ `Sẵn sàng` sang `Đang dùng` hoặc từ `Đang dùng` sang `Sẵn sàng`), hệ thống **luôn kiểm tra**:
+Vì thẻ không dùng chung, bình thường sẽ không có đơn khác giữ cùng thẻ. Kiểm tra dưới đây
+được giữ làm chốt an toàn (dữ liệu cũ, sửa tay trên Desk). Trước khi reset buzzer về `Sẵn sàng`, hệ thống kiểm tra:
 
 ```sql
 SELECT 1 FROM `tabPOS Invoice` 
