@@ -22,19 +22,89 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
-## 3. Việc còn lại (theo thứ tự đề xuất)
-1. Test `pay_cash` (thu tiền mặt tại quầy) trên bench.
-2. Test QR SePay qua `/pos` (`generate_qr` → webhook submit đơn). Lưu ý: `generate_qr_for_invoice`
-   ghi `payment_status = "Chưa thanh toán"`, còn Orders/`cancel_draft_order` kiểm tra `"Đang chờ"` (xem `rules/leescoffee_pos/sepay.md` §5).
-3. Nút "Khách đã lấy" cho Take Away (hiện `confirm_pickup` chỉ xử lý buzzer Dine In).
-4. Toast realtime (hiện Kitchen poll 5 giây; cân nhắc `frappe.publish_realtime`/socket.io).
-5. Dọn kiểu `MenuItem`: `api.getMenuItems` đang trả `unknown[]`, nên dùng type `MenuItem` trong `types.ts`.
-6. Dọn đơn Draft cũ còn tồn (đang giữ thẻ rung theo quy tắc "đang giữ").
+## 3. Việc cần xem và chỉnh sửa (theo ưu tiên — CHỈ LÀ KẾ HOẠCH, chờ Van duyệt rồi mới sửa code)
+
+### A. (CAO, bảo mật) `sepay_webhook` chưa xác thực `sepay_api_key`
+- **File/hàm:** `leescoffee_pos/leescoffee_pos/doctype/sepay/sepay.py::sepay_webhook()` (`allow_guest=True`);
+  helper mới `_verify_sepay_key(invoice)` (đặt trong `sepay.py`); có thể dùng lại logic lấy branch
+  trong `branch_config.py::get_va_bank_config()`.
+- **Rủi ro hiện tại:** ai biết `payment_code` (in trên QR/nội dung chuyển khoản) và số tiền là có thể
+  POST webhook giả → đơn bị submit thành Paid, đi vào pha chế mà không có tiền thật.
+- **Kế hoạch:**
+  1. `_verify_sepay_key(invoice)`: `invoice.pos_profile` → `POS Profile.branch` → đọc key bằng
+     `get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)`.
+  2. Đọc header `frappe.request.headers.get("Authorization")`, yêu cầu dạng `Apikey <key>`;
+     so bằng `hmac.compare_digest(received, expected)`. Thiếu header / sai / Branch chưa có key
+     → `raise frappe.PermissionError`.
+  3. Gọi **ngay sau khi tìm được invoice** (sau bước khớp `payment_code`, trước idempotent/số tiền).
+  4. Thêm `except frappe.PermissionError: raise` **trước** `except Exception` để lỗi đi thẳng
+     (HTTP 403), không bị nuốt thành `frappe.throw("Lỗi xử lý webhook SePay...")`.
+  5. Chống xử lý lặp theo `transaction_ref`: nếu đã có POS Invoice khác mang cùng
+     `transaction_ref = transaction_id` → trả `already_processed`, không submit lại.
+- **Cần xác minh:** định dạng header chính xác theo tài liệu/cấu hình SePay. Frappe có tự xử lý
+  header `Authorization` với scheme lạ trước khi vào hàm không (chưa kiểm chứng; test ở TC2–TC4).
+- **Test (Postman + bench console):**
+  - TC1: không gửi header `Authorization` → 403, invoice vẫn Draft.
+  - TC2: `Authorization: Apikey sai` → 403, invoice vẫn Draft, có Error Log.
+  - TC3: key đúng → Paid, `docstatus=1`, `payment_status="Đã thanh toán"`.
+  - TC4: gửi lại TC3 → `already_processed: true`, không submit lại.
+  - Console: `frappe.utils.password.get_decrypted_password("Branch", "<branch>", "sepay_api_key")` khớp key bên SePay.
+- **Sau khi sửa:** đổi API key (cả Branch lẫn SePay) nếu key từng lộ (commit, ảnh chụp, log).
+
+### B. (TRUNG BÌNH) `payment_status` không nhất quán
+- **Chuẩn đề xuất:** `Chưa thanh toán` (mặc định khi tạo) → `Đang chờ` (đã sinh QR) →
+  `Đã thanh toán` (webhook hoặc tiền mặt) / `Hủy`.
+- **Mọi nơi ĐẶT giá trị:**
+  - Fixture Custom Field `POS Invoice.payment_status`: Select, default `Chưa thanh toán`.
+  - `sepay.py::generate_qr_for_invoice` dòng 71 đặt `"Chưa thanh toán"` (→ nên là `"Đang chờ"`);
+    dòng 51 và 86 trả về giá trị này.
+  - `sepay.py::sepay_webhook` dòng 283 đặt `"Đã thanh toán"`.
+  - `api/pos_api.py::pay_cash` **không đặt** → đơn tiền mặt Paid nhưng `payment_status` vẫn
+    `Chưa thanh toán` (cần quyết: đặt `Đã thanh toán` trong `pay_cash`).
+  - `"Hủy"`: không chỗ nào đặt (`cancel_draft_order` xóa hẳn đơn).
+- **Mọi nơi ĐỌC giá trị:**
+  - `sepay.py` dòng 207 (`Đã thanh toán` → idempotent), dòng 215 (`Hủy` → lỗi).
+  - `api/pos_api.py::cancel_draft_order` dòng 656 (`Đang chờ` → cần `force`).
+  - `api/pos_api.py` dòng 546 (`get_orders`), 599 (`get_order_detail`), 637 (`pay_cash`) trả về frontend.
+  - `pos/src/pages/Orders.tsx` dòng 132, 141 (chặn hủy/hiện cảnh báo QR), 177 (tag "Chờ QR").
+  - `pos/src/types.ts` dòng 73, 104, 133 (`payment_status: string`).
+- **Rủi ro hiện tại:** tag "Chờ QR" không bao giờ hiện; hủy được đơn đã sinh QR mà không cần
+  `force` → có thể xóa đơn khách đã chuyển tiền (webhook đến sau sẽ không tìm thấy đơn).
+- **Test:** TC1 sinh QR → `payment_status="Đang chờ"`, Orders hiện "Chờ QR"; TC2 hủy đơn đó
+  không `force` → bị chặn; TC3 `pay_cash` → `Đã thanh toán`; TC4 reload Orders → giữ nguyên.
+
+### C. (TRUNG BÌNH) Webhook quét toàn bộ Draft để khớp mã
+- **File/hàm:** `sepay.py::sepay_webhook()` bước 3 (`frappe.get_all` mọi POS Invoice Draft có
+  `payment_code`, rồi `normalize_code` từng dòng trong Python).
+- **Rủi ro:** chậm dần khi Draft cũ tích lũy (liên quan mục E "dọn Draft cũ"); không lỗi đúng/sai.
+- **Đề xuất:** tra trực tiếp trong DB theo mã chuẩn hóa, vd. điều kiện
+  `UPPER(REPLACE(REPLACE(payment_code,'-',''),' ','')) = %(normalized)s` với `docstatus = 0`,
+  `limit 1`. Không thêm Custom Field mới (tránh migrate). Giữ hàm `normalize_code` cho `content`.
+  Lưu ý: `normalize_code` bỏ mọi ký tự không phải chữ/số; SQL chỉ bỏ `-` và khoảng trắng — đủ với
+  định dạng `POS-{invoice_name}-{YYYYMMDD}-{hex}` nếu naming series chỉ chứa `-`. Cần xác minh naming series.
+- **Test:** TC1 webhook mã gốc có `-` → khớp; TC2 nội dung không có `-`/viết thường → vẫn khớp;
+  TC3 mã không tồn tại → lỗi "Không tìm thấy POS Invoice", Error Log.
+
+### D. (THẤP) `brand_banner` trong `get_brand_info`
+- **File/hàm:** `branch_config.py::get_brand_info()` dòng 95 đọc `settings.brand_banner`;
+  `get_branch_config()` dòng 42 đọc `branch.brand_banner`. JSON Settings trong repo **không có**
+  field `brand_banner`; Branch vẫn có Custom Field `brand_banner`. Frontend: `types.ts` `banner: string`.
+- **Rủi ro (chưa xác minh):** nếu Branch không có banner, biểu thức đọc tới `settings.brand_banner`;
+  field không còn trên Settings có thể gây lỗi khi gọi `get_pos_config` → màn POS không load.
+- **Test (bench console):** `frappe.get_single("Leescoffee POS Settings").get("brand_banner")`;
+  gọi `get_brand_info("<branch không có banner>")` xem có lỗi không. Hướng sửa nếu lỗi: dùng
+  `settings.get("brand_banner")` hoặc bỏ hẳn banner.
+
+### E. Đã biết (chưa xếp ưu tiên chi tiết)
+- Test thật `pay_cash` và QR SePay qua `/pos`.
+- Nút "Khách đã lấy" cho Take Away (`confirm_pickup` hiện chỉ xử lý buzzer Dine In).
+- Toast realtime giữa các máy (Kitchen đang poll 5 giây).
+- Dọn kiểu `MenuItem` trong `types.ts` (`api.getMenuItems` đang trả `unknown[]`).
+- Dọn đơn Draft cũ (đang giữ thẻ rung + làm chậm webhook, mục C).
 
 ## 4. Quyết định đang chờ Van
+- Duyệt kế hoạch A–D trước khi sửa code.
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
-- CLAUDE.md §3 ghi reset thẻ khi khách nhận món, code reset khi bếp `Đã hoàn thành` — sửa §3 theo quy tắc mới?
-- Webhook SePay chưa xác thực API key.
 
 ## 5. Quy ước bắt buộc
 - Giữ tên `leescoffee_pos` cho app/package/assets (`/assets/leescoffee_pos/...`).

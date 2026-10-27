@@ -28,7 +28,10 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
 - Mọi thông tin thương hiệu (tên quán, logo, banner, màu chủ đạo...) phải là **dữ
   liệu cấu hình** đọc từ DocType (Settings/Branch), không phải giá trị viết chết
   trong code.
-  - *Lưu ý: Banner field đã xóa khỏi Leescoffee POS Settings (không dùng), giữ lại logo/phone/address cho cấu hình chi nhánh.*
+  - *Lưu ý: `brand_banner` cần xác minh trên bench. File JSON của Leescoffee POS
+    Settings trong repo không còn field này (chỉ có `brand_name`, `brand_logo`,
+    `brand_phone`, `brand_address`). Branch vẫn có Custom Field `brand_banner`, và
+    `branch_config.get_brand_info()` vẫn đọc `settings.brand_banner`.*
 - Giao diện thiết kế theo phong cách quán cà phê nói chung (đẹp, chuyên nghiệp, đủ
   tốt để demo) — không thiết kế riêng theo bộ nhận diện của Lee's Coffee.
 - Dữ liệu mẫu để test/demo (tên món, giá, logo Lee's Coffee...) nhập qua Desk UI
@@ -122,11 +125,12 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - Trang "Table" cũ được thay bằng **Status board** dùng chung cho cả Take Away và
   Dine In: hiển thị Đang làm / Hoàn thành, kèm gọi tên/số (Take Away) hoặc thẻ rung
   (Dine In) khi xong.
-- Reset buzzer về `Sẵn sàng` xảy ra khi nhân viên xác nhận khách đã nhận món tại
-  quầy (hành động riêng, sau khi `custom_kitchen_status` đã là `Đã hoàn thành`) —
-  không tự động reset ngay khi barista đánh dấu xong, vì khách có thể chưa tới lấy.
-- Hủy đơn hoặc hủy gán thẻ trước khi xong: buzzer đang `Đang dùng` reset về
-  `Sẵn sàng` ngay nếu đơn chưa `Đã làm`.
+- **Mỗi thẻ rung chỉ giữ cho một đơn chưa hoàn thành, không dùng chung.** Thẻ được
+  gán khi tạo đơn Draft (cashier chọn thẻ), chuyển `Đang dùng` khi đơn Paid + submit.
+- Thẻ được nhả về `Sẵn sàng` **ngay** khi `custom_kitchen_status = "Đã hoàn thành"`
+  (hook `on_update_after_submit`), hoặc khi hủy đơn Draft (đơn bị xóa nên thẻ hết bị giữ).
+  Đơn đã submit bị cancel khi chưa `Đã làm` cũng nhả thẻ (hook `on_cancel`).
+  Chi tiết: `.claude/rules/leescoffee_pos/pos_invoice_hooks.md` §2.2.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

@@ -54,10 +54,8 @@ Chi tiết từng bước:
   - `confirm_pickup`: nhân viên xác nhận khách lấy món (kitchen status = `Đã hoàn thành`).
   - `on_cancel`: đơn **đã submit** bị cancel **và chưa bắt đầu làm** (`custom_kitchen_status` là None, "", hoặc `Chưa làm`).
 
-> Lưu ý lệch với CLAUDE.md §3: CLAUDE.md ghi reset buzzer khi nhân viên xác nhận khách
-> đã nhận món, "không tự động reset ngay khi barista đánh dấu xong". Code hiện tại
-> reset ngay ở bước 3a, theo quy tắc mới ở trên. `confirm_pickup` thường không còn gì
-> để reset. Chưa sửa CLAUDE.md §3; chờ Van quyết.
+> Khớp CLAUDE.md §3 (cập nhật 2026-10-27): thẻ nhả ngay ở bước 3a/3b; `confirm_pickup`
+> chỉ còn là đường reset dự phòng.
 
 ### 2.3 Kiểm tra đơn khác trước khi reset buzzer (phòng thủ)
 

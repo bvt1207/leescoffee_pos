@@ -6,7 +6,19 @@
 
 ## 1. Quản lý cấu hình SePay
 
-- **Chỉ ở `Branch`**: `sepay_enabled`, `sepay_api_key`, `sepay_va_account`, `sepay_bank_code`.
+- **Chỉ ở `Branch`** (Custom Field, fixtures): `sepay_enabled` (Check), `sepay_api_key` (Password),
+  `sepay_va_account` (Data), `sepay_bank_code` (Data).
+- **Mỗi chi nhánh/doanh nghiệp một bộ riêng**: một API key, một VA, một mã ngân hàng.
+  Chi nhánh lấy từ `POS Invoice.pos_profile` → `POS Profile.branch`.
+
+### Mục đích `sepay_api_key`
+
+- `sepay_webhook` là `allow_guest=True` (SePay gọi vào không có phiên đăng nhập ERPNext), nên
+  ERPNext cần API key để **xác thực webhook thật sự đến từ SePay**.
+- SePay gửi header `Authorization: Apikey <key>`; ERPNext so với `sepay_api_key` của Branch
+  của invoice (đọc bằng `get_decrypted_password` vì field kiểu Password).
+- Key ở Branch **phải trùng** key cấu hình webhook bên SePay.
+- **Hiện trạng: code CHƯA kiểm tra key** — xem §5 và `.claude/docs/task_handoff.md` mục A.
 - **Không fallback Settings** cho SePay config (branding thì vẫn fallback — xem `memory/memory_note_branding_fallback.md`).
 - **Không dùng** `merchant_code`, `secret_key`, `env`, `callback_url` (đã loại bỏ).
 
@@ -51,7 +63,8 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
 10. Trả `{success, message, invoice_name, payment_code, transaction_id, amount,
     mode_of_payment, invoice_status, docstatus, payment_status}`.
 
-**Không tạo Payment Entry** — dùng luồng `POS Invoice.payments` gốc của ERPNext.
+**Webhook KHÔNG tạo Payment Entry**: đặt lại `payments` của invoice (1 dòng, đúng số tiền)
+rồi `save()` và `submit()` — dùng luồng `POS Invoice.payments` gốc của ERPNext.
 Lỗi bất kỳ được bọc lại thành `"Lỗi xử lý webhook SePay: ..."` + `log_error`.
 
 ## 4. Kết quả test (Postman + ngrok, đã Pass)
@@ -63,8 +76,8 @@ Lỗi bất kỳ được bọc lại thành `"Lỗi xử lý webhook SePay: ...
 
 ## 5. Điểm code chưa khớp tài liệu / chờ quyết định (chưa sửa code)
 
-- **Webhook chưa xác thực API key**: `sepay_api_key` có trong Branch config nhưng
-  `sepay_webhook()` không kiểm tra header/khóa nào. Endpoint là `allow_guest`.
+- **Webhook chưa xác thực API key** (mức CAO): `sepay_webhook()` không đọc header
+  `Authorization`, không so `sepay_api_key`. Kế hoạch sửa: `task_handoff.md` mục A.
 - **`payment_status` lệch giá trị**: `generate_qr_for_invoice` ghi `"Chưa thanh toán"`,
   trong khi `pos_api.cancel_draft_order` và `Orders.tsx` (tag "Chờ QR", chặn hủy khi
   chưa `force`) kiểm tra `"Đang chờ"`. Options của Custom Field có cả hai giá trị.
