@@ -206,6 +206,21 @@ Routes:
 
 **Ẩn ô tìm header ở /kitchen (AppHeader thay đổi theo trang):** placeholder "Tìm món…" / "Tìm đơn…". Số lượng đơn hiển thị tổng `counts[tab]`.
 
+### BuzzerPicker.tsx (Chọn thẻ rung — đã triển khai, mẫu cho skill)
+
+**State:** `list[]` (BuzzerOption[]), `error`, tự refresh 5 giây khi mở, Esc đóng.
+
+**Luồng xử lý:**
+1. Khi mở popup → `api.getBuzzers()` → lưới thẻ, legend "Sẵn sàng" (xanh) / "Đang dùng" (xám)
+2. Thẻ `available=true` → bấm được, `available=false` → disabled, title "Đang giữ cho đơn {used_by}"
+3. Bấm thẻ → `onPick(b)` → đóng popup; chọn lại được (nút "Chọn thẻ rung" ở POS)
+4. Khi chọn "Tại quán" → tự mở popup; chọn "Mang đi" → xóa thẻ đã chọn
+
+**Mẫu thẻ:**
+- Kích thước tối thiểu 84×84px (ô chọn bao gồm thumbnail + label)
+- `.pos-buzzer` + `.pos-buzzer--ok` (xanh) / `.pos-buzzer--busy` (xám); `.pos-buzzer--selected` (xanh đặc)
+- `.pos-dot` (10×10px) + `.pos-dot--ok` / `.pos-dot--busy`
+
 ### Table.tsx (Stub)
 - Chỉ là placeholder — không triển khai (theo ràng buộc dự án).
 
@@ -218,13 +233,16 @@ Routes:
 | POS.tsx | `createDraftOrder()` | `{ invoice_name, grand_total, qty_sum, buzzer_number }` |
 | Orders.tsx | `getOrders("draft"|"paid")` | `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` |
 | Orders.tsx (Kitchen tab rút) | `getOrders("paid")` | chỉ trả `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` — Pha chế bây giờ ở Kitchen.tsx riêng |
+| POS.tsx | `createDraftOrder()` + `buzzer` | Dine In bắt buộc chọn thẻ (via `BuzzerPicker`) trước khi Tạo đơn; gửi `buzzer` vào create order; Take Away bỏ qua |
 | Orders.tsx | `getOrderDetails(name)` | `{ name, customer_name, order_type, items:[{item_code,item_name,qty,amount,sugar_level,ice_level}], payments, order_note, custom_kitchen_status, buzzer_number }` |
 | Orders.tsx | `payCash(name)` | `{ invoice_name, status, payment_status, amount, currency }` |
 | Orders.tsx | `generateQr(name)` | `{ invoice_name, payment_code, qr_url, amount, payment_status, idempotent }` |
 | Orders.tsx | `confirmPickup(name)` | `{ invoice_name, buzzer_number }` |
 | Orders.tsx | `cancelDraftOrder(name, force=0)` | `{ invoice_name, buzzer_number, message }` |
-| Kitchen.tsx | `getKitchenOrders()` | `[{ name, customer_name, order_type, items:[{item_code,item_name,qty,sugar_level,ice_level}], order_note, buzzer_number, kitchen_status, creation }]` |
+| Kitchen.tsx | `getKitchenOrders()` | `[{ name, customer_name, order_type, items:[{item_code,item_name,qty,sugar_level,ice_level}], order_note, buzzer_number, kitchen_status, creation }]` — lọc theo tab (Chưa làm / Đã làm / Đã hoàn thành) |
 | Kitchen.tsx | `setKitchenStatus(invoice_name, status)` | `{ invoice_name, kitchen_status }` |
+| Kitchen.tsx | Toast: tự hiện khi chuyển Chưa làm → Đã làm trong vòng 5 giây, bấm vào toast để đóng sớm |
+| BuzzerPicker.tsx | `getBuzzers()` | `[{ name, buzzer_number, status, branch, available, used_by }]` |
 
 **Lưu ý API `MenuItem`:** dùng `item.name` (không phải `item.item_name`), `item.sizes[]` (không phải `item.item_code` ở cấp trên). `rate` nằm trong mỗi `sizes[]` item.
 
@@ -243,9 +261,10 @@ Tất cả style trong `global.css`:
 - **Nút hành động trên máy POS:** tối thiểu 44×44px (Stepper vùng nhấn lớn hơn; ÷/− là 44px)
 - **Dropdown/mục chạm:** tối thiểu 44px cao
 - **Destructive actions (hủy đơn):** nằm dưới hộp xác nhận 52px — không tự bay, không ấn gấp. Không dùng nút mặc định đơn giản.
-- **Kitchen card:** nút "Đã làm" / "Đã hoàn thành": 56×56px; màu theo mức khẩn cấp (`late` #d9703f, `warn` #d8a421, `ok` #3a9); chữ đọc từ xa ≥16px; chỉ 1 nút hành động mỗi thẻ
+- **Kitchen card:** nút "Đã làm" / "Đã hoàn thành": 56×56px; màu theo mức khẩn cấp (`late` >10 phút đỏ, `warn` ≥5-10 phút vàng, `ok` <5 phút bình thường); chỉ 1 nút hành động mỗi thẻ; chữ đọc từ xa
 - Khoảng cách giữa các mục chạm: 8px tối thiểu
 - Size of critical actions được khai triển: `.pos-order-detail__actions .pos-btn { min-height: 52px; font-size: 16px }`
+- **BuzzerPicker:** modal lưới thẻ tối thiểu 84×84px; `.pos-dot` (10×10px) “Sẵn sàng” (xanh), “Đang dùng” (xám); `.pos-buzzer-chosen` có viền nổi bật; nút “Chọn thẻ rung” 44px; tự refresh 5s, Esc đóng
 
 ```css
 /* >= 640px (tablet) */

@@ -121,7 +121,7 @@ Các quy tắc dưới đây là **luật nghiệp vụ**, phải được tuân
 4. **Màn hình cảm ứng:** vùng chạm tối thiểu 44px (áp dụng toàn bộ nút, input, stepper, dropdown).
 5. **Destructive actions (hủy đơn) luôn kèm hộp xác nhận** — không tự bay, không ấn gấp. Không để chỉ nút Hủy đơn luôn trạng thái click.
 6. **Không để nút Hủy đơn VẪN hiện khi đơn `payment_status="Đang chờ"`** — hay làm trigger xóa xong mà khách đã chuyển tiền: nút chảy red → thấy "Đang chờ QR" → nhấn đồng nghĩa transfer occurred → chọn `force=1` + cảnh báo.
-7. **Màn pha chế:** đơn `custom_kitchen_status` rỗng không hiện trên Kitchen (backend `get_kitchen_orders` chỉ trả kèm status đã có); chữ lớn đọc từ xa; 1 nút hành động 56px mỗi thẻ; màu theo mức khẩn cấp (`late` ≥10 phút, `warn` ≥5 phút) — không dùng thêm màu thừa.
+7. **Màn pha chế:** đơn `custom_kitchen_status` rỗng không hiện trên Kitchen (backend `get_kitchen_orders` chỉ trả kèm status đã có); chữ lớn đọc từ xa; 1 nút hành động 56px mỗi thẻ; màu theo mức khẩn cấp (`late` ≥10 phút màu đỏ, `warn` ≥5 phút màu vàng, `ok` <5 phút bình thường) — không dùng thêm màu thừa.
 
 ## 3. Quản lý trạng thái (zustand)
 
@@ -256,3 +256,5 @@ export const api = {
 - [ ] Màu từ CSS biến, không litteral
 - [ ] Tất cả văn bản động từ phản hồi API
 - [ ] Màu thương hiệu áp dụng qua biến `--pos-primary` (một chỗ duy nhất trong `references/tokens.md`)
+- [ ] Trạng thái thẻ rung lấy từ API `available` (Sẵn sàng / Đang dùng), không suy suy đoán tự build
+- [ ] Toast thông báo ở màn Pha chế tự động đóng sau 5 giây, click để tắt sớm
