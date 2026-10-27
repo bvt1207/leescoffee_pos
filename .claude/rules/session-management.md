@@ -14,23 +14,23 @@
 
 Nếu buộc phải dừng giữa task (timeout/token hết):
 
-1. **Ghi handoff**: Tạo `.claude/docs/handoff.md` (tối đa 15 dòng) ghi rõ:
+1. **Ghi handoff**: Cập nhật `.claude/docs/task_handoff.md` ghi rõ:
    - Đang làm gì (task hiện tại)
    - Đã xong phần nào (file/commit đã hoàn thành)
    - Quyết định đang chờ (nếu có)
    - Việc kế tiếp cần làm
    - Lệnh Van cần chạy thủ công
 
-2. **Đầu phiên mới**: Đọc `handoff.md`, tóm tắt lại cho Van, xóa nội dung file.
+2. **Đầu phiên mới**: Đọc `task_handoff.md`, tóm tắt lại cho Van.
 
 ## Khi Van hỏi
 
 Tóm tắt trong 3-4 câu:
 - Giai đoạn hiện tại (task đang làm)
-- Ran đỏi bench/git (code đã commit, đang chờ Van test migate)
+- Trạng thái bench/git (code đã commit, đang chờ Van test migrate)
 - Việc kế tiếp
 
-## Tác phẩm khi Van duyệt
+## Việc làm khi Van duyệt
 
 Sau khi Van nói "duyệt"/"ok":
 1. Cập nhật CLAUDE.md: tick checklist mục 7, cập nhật mục 10 nếu có thay đổi cấu trúc

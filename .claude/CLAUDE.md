@@ -204,41 +204,24 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
     Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
     gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
   - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
-
-- Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`,
-  `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
-- Mọi DocType mới của app phải chọn đúng `Module = Leescoffee Pos`.
-- Business logic đặt trong `leescoffee_pos/leescoffee_pos/doctype/<doctype>/...py`
-  theo đúng convention chuẩn của Frappe.
-- Document Events (before_insert, validate, on_submit...) khai báo tập trung trong
-  `hooks.py`, trỏ tới file logic riêng.
-- **Không hardcode** tên quán, logo path, banner, hay bất kỳ chuỗi/asset đặc thù nào
-  của Lee's Coffee trong component React hay Python — luôn đọc từ DocType
-  Settings/Branch (mục 1b).
-- **Checklist bắt buộc cho mọi file DocType JSON** (lỗi thực tế đã gặp, dễ tái diễn):
-  - Phải có `"doctype": "DocType"` ở gốc file — thiếu dòng này gây lỗi
-    `KeyError: 'doctype'` khi chạy `bench migrate`.
-  - Giá trị `fieldtype` phải đúng casing chuẩn Frappe (Title Case): `Section Break`,
-    `Link`, `Data`, `Check`, `Select`, `Password`, `Attach Image`, `Small Text`...
-  - Trước khi báo "xong", tự rà lại toàn bộ file JSON vừa tạo theo đúng 2 điểm trên.
-- **Đường dẫn import module**: mọi đường dẫn import trỏ vào code bên trong thư mục module (doctype/, hoặc các thư mục con khác cùng cấp) bắt buộc viết đủ
-  `leescoffee_pos.leescoffee_pos.<đường dẫn>`, không viết tắt 1 cấp `leescoffee_pos.<đường dẫn>`.
-  (Ví dụ: `leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.PosInvoiceHooks.on_submit`).
-
-- **Native lifecycle method vs doc_events** (checklist mới):
-  - Native Document lifecycle method (validate, before_save, on_update, on_submit...)
-    viết trực tiếp trong class kế thừa Document → Frappe tự gọi. **KHÔNG đăng ký lại trong hooks.py -> doc_events**.
-  - Custom cross-cutting logic cần hook từ app (như POS Invoice) → dùng doc_events.
-  - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method".
-    Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
-    gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
-  - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
+- Ví dụ trong mục này viết `...PosInvoiceHooks.on_submit` để minh họa đường dẫn đầy đủ;
+  `hooks.py` thực tế reference module-level wrapper `...pos_invoice_hooks.on_submit`.
+- **Tên module — lệch đã biết, giữ nguyên (quyết định: chỉ ghi chú, không sửa code):**
+  `modules.txt` và Workspace JSON dùng `Leescoffee POS`; 4 DocType JSON dùng
+  `Leescoffee Pos`. Bench đã migrate chạy được với trạng thái này. DocType mới vẫn
+  đặt `Leescoffee Pos` cho đồng nhất với DocType hiện có. Không tự đổi một phía nếu
+  Van chưa yêu cầu (đổi cần `bench migrate` và có thể sinh Module Def trùng).
 
 ## 6. Triển khai & fixtures
 
 - Custom Field gắn lên DocType chuẩn của ERPNext phải khai báo trong `fixtures` của
   `hooks.py` và chạy `bench export-fixtures` để sinh file JSON commit vào git.
   Custom DocType mới hoàn toàn thì **không cần** fixtures.
+- **Hiện trạng `hooks.py` (giữ nguyên, quyết định của Van):** `fixtures` đang export
+  thêm 4 DocType của app (`Leescoffee POS Settings`, `Leescoffee Buzzer`,
+  `Leescoffee Menu`, `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
+  `POS Invoice Item`, `POS Profile`, `Branch`, `Customer.mobile_number`. Đây là ngoại lệ
+  so với nguyên tắc trên — không tự xóa các dòng này.
 - Không commit `site_config.json`, API key SePay, hay bất kỳ secret nào — dùng
   `bench set-config` hoặc biến môi trường trên từng site.
 - Trước khi coi 1 phần là "xong": đây là bước Van tự làm trên bench thật (cài lại
@@ -327,87 +310,77 @@ Các quy tắc bảo trì khác:
 
 ## 10. Cấu trúc thư mục
 
-> Bản khởi tạo này dựng từ ảnh chụp thư mục, chưa đối chiếu với đĩa. Ở lần cập nhật
-> đầu tiên, Claude Code phải kiểm tra lại với thư mục thực tế và sửa cho đúng.
-> Sau đó chỉ cập nhật sau khi Van duyệt task (mục 9, bước 3).
+> Đã đối chiếu với đĩa ngày 2026-10-27. Chỉ cập nhật sau khi Van duyệt task (mục 9, bước 3).
+> Lưu ý: `PROJECTPOS/leescoffee_pos/` chính là **package Python** của app (chứa
+> `hooks.py`, `modules.txt`); repo này không có `pyproject.toml`. Trên bench thật nó
+> tương ứng `frappe-benchver16/apps/leescoffee_pos/leescoffee_pos/`.
 
 ```text
-PROJECTPOS/
+PROJECTPOS/                        # git repo
 ├── .claude/
 │   ├── CLAUDE.md                  # file này — bộ não dự án
-│   ├── CLAUDE.local.md            # ghi chú riêng, không đẩy lên GitHub
-│   ├── memory.md                  # bộ nhớ làm việc của Claude Code (index)
-│   ├── memory/
-│   │   └── memory_note_branding_fallback.md  # note: Branch có field thương hiệu, ưu tiên Branch, fallback Settings
-│   ├── settings.json              # permissions + hooks
-│   ├── settings.local.json        # settings riêng, không đẩy lên GitHub
+│   ├── CLAUDE.local.md            # ghi chú riêng
+│   ├── memory.md                  # index memory (trỏ tới PROJECTPOS/memory/)
+│   ├── settings.json, settings.local.json
 │   ├── agents/                    # chưa dùng
-│   ├── rules/                     # chưa dùng (tách từ CLAUDE.md khi quá dài)
-│   └── skills/                    # chưa dùng (viết khi có quy trình lặp lại)
-└── leescoffee_pos/                # thư mục app Frappe (git repo)
-    ├── pyproject.toml, README.md, license.txt
-    ├── .gitignore, .editorconfig, .eslintrc, .pre-commit-config.yaml
-    └── leescoffee_pos/            # package Python của app
-        ├── __init__.py
-        ├── hooks.py               # hooks, document events, fixtures
-        ├── modules.txt            # danh sách module ("Leescoffee Pos")
-        ├── patches.txt
-        ├── config/
-        ├── patches/
-        ├── public/
-        ├── templates/
-        ├── www/
-        └── leescoffee_pos/        # module "Leescoffee Pos"
-            └── doctype/
-                ├── leescoffee_pos_settings/   # Single DocType — cấu hình gốc (Đã duyệt)
-                │   ├── __init__.py
-                │   ├── leescoffee_pos_settings.json
-                │   └── leescoffee_pos_settings.py
-                ├── leescoffee_buzzer/       # DocType mới: thẻ rung (Đã duyệt)
-                │   ├── __init__.py
-                │   ├── leescoffee_buzzer.json
-                │   └── leescoffee_buzzer.py
-                ├── pos_invoice_hooks/       # Hooks cho POS Invoice (Đã duyệt)
-                │   ├── __init__.py
-                │   └── pos_invoice_hooks.py
-                └── branch_config/           # Mới: config Branch và helper
-                    ├── __init__.py
-                    └── branch_config.py
+│   ├── docs/
+│   │   ├── task_handoff.md        # bàn giao giữa các phiên
+│   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
+│   ├── rules/
+│   │   ├── code-standards.md, project-structure.md, session-management.md
+│   │   └── leescoffee_pos/        # menu.md, pos_invoice_hooks.md, sepay.md, workspace.md
+│   └── skills/
+│       ├── frontend-design/
+│       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
+├── memory/
+│   └── memory_note_branding_fallback.md
+├── package.json, package-lock.json   # node_modules/ không commit
+└── leescoffee_pos/                # package Python của app
+    ├── __init__.py
+    ├── hooks.py                   # doc_events, website_route_rules (/pos/*), fixtures
+    ├── modules.txt                # "Leescoffee POS" (xem mục 5 — lệch tên module)
+    ├── patches.txt, patches/, config/, templates/
+    ├── desktop_icon/leescoffee_pos.json
+    ├── workspace_sidebar/leescoffee_pos.json
+    ├── fixtures/custom_field.json
+    ├── public/
+    │   ├── images/logo.svg
+    │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
+    ├── www/
+    │   ├── pos.html               # trang /pos, nạp /assets/leescoffee_pos/pos/pos.js
+    │   └── pos.py
+    ├── pos/                       # frontend React + Vite (TSX)
+    │   ├── package.json, tsconfig.json, vite.config.ts, pos.html, README.md
+    │   └── src/
+    │       ├── main.tsx, App.tsx, types.ts
+    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub)
+    │       ├── components/        # AppHeader, MenuGrid, SizeModal, CartPanel,
+    │       │                      # CustomerPicker, BuzzerPicker, QrModal
+    │       ├── store/             # cart.ts, search.ts (zustand)
+    │       ├── lib/               # api.ts, pos-context.tsx
+    │       └── styles/global.css
+    └── leescoffee_pos/            # module "Leescoffee Pos"
+        ├── api/
+        │   └── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
+        ├── workspace/leescoffee_pos/leescoffee_pos.json
+        └── doctype/
+            ├── leescoffee_pos_settings/   # Single DocType — cấu hình gốc
+            ├── leescoffee_buzzer/         # thẻ rung
+            ├── leescoffee_menu/           # menu theo Price List
+            ├── leescoffee_menu_item/      # child table của Menu
+            ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
+            ├── sepay/                     # sinh VietQR + webhook SePay
+            └── branch_config/             # helper cấu hình Branch (SePay, branding)
 ```
 
-## 9. Ghi chú logic webhook SePay (dạng code snapshot)
+## 11. Ghi chú SePay
 
-**Hàm:** `leescoffee_pos/leescoffee_pos/doctype/sepay/sepay.py::sepay_webhook()`
+Chi tiết luồng `generate_qr_for_invoice()` và `sepay_webhook()` (đã đối chiếu
+`sepay.py`) và kết quả test: xem `.claude/rules/leescoffee_pos/sepay.md`.
 
-**Luồng xử lý:**
-
-1. **Parse payload JSON** từ SePay (fields: `transferAmount`, `id`/`referenceCode`, `transferType`, `content`/`code`)
-2. **Normalize mã** (bỏ dấu `-`, khoảng trắng, chữ hoa) để so khớp `payment_code` với `content`
-3. **Tìm POS Invoice Draft** (docstatus=0) có `payment_code` khớp `content`
-4. **Idempotent:** Nếu `payment_status == "Đã thanh toán"` → trả về `{success: true, already_processed: true}`
-5. **Validate:** invoice ở Draft, số tiền khớp `rounded_total`/`grand_total` (±0.01 VND), tìm `mode_of_payment` từ `invoice.payments` (match amount hoặc dòng đầu tiên)
-6. **Cập nhật:** reset `invoice.payments` → append 1 dòng (mode_of_payment + amount); `payment_status="Đã thanh toán"`, `transaction_ref`, ghi log `sepay_payment_log` (50 entry); `save()` + `submit()` → ERPNext tự set `status="Paid"`, `docstatus=1`
-7. **Trả về:** `success`, `message`, `invoice_name`, `payment_code`, `transaction_id`, `amount`, `mode_of_payment`, `invoice_status`, `docstatus`, `payment_status`
-
-**Kết quả test (Postman + ngrok):**
-
-- Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
-- `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
-- Gọi lại webhook (same `payment_code`) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
-- Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
-
-**Lưu ý:** SePay config (`api_key`, `VA`, `bank_code`) nằm chỉ ở `Branch`, không fallback `Settings`. Chỉ field `sepay_enabled` là check (0/1). Lưu ý: SePay không dùng `merchant_code`/`secret_key`/`env`/`callback_url` trong config mới.
-
-**Kết quả test (Postman + ngrok):**
-
-- Invoice chuyển sang `status="Paid"`, `docstatus=1`, `payment_status="Đã thanh toán"`
-- `mode_of_payment` trả về giá trị thực tế từ POS Invoice (không hardcode)
-- Gọi lại webhook (same payment_code) → `{success: true, already_processed: true}` (không lỗi 417, không submit lại)
-- Invoice dùng `mode_of_payment` từ cột thanh toán có sẵn, không tạo Payment Entry mới
-
-## 10. Quản lý ngữ cảnh phiên (xem .claude/rules/session-management.md)
+## 12. Quản lý ngữ cảnh phiên (xem .claude/rules/session-management.md)
 
 - Mỗi task là 1 phiên; mỗi phiên cách nhau bởi quá trình review/push của Van.
 - Sau `bench migrate` + test pass, Van nói "duyệt" -> cập nhật CLAUDE.md (tick checklist), commit "docs:"
 - Từ ~60% token, nhắc Van mở phiên mới để tránh tự nén.
-- Nếu cắt giữa task: ghi `.claude/docs/handoff.md` (tối đa 15 dòng)
+- Nếu cắt giữa task: ghi `.claude/docs/task_handoff.md`

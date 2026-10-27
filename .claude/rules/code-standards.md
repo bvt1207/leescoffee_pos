@@ -6,7 +6,8 @@
 
 - **DocType name**: Title Case (`Leescoffee Menu`)
 - **Fieldname**: snake_case (`order_type`, `price_list`)
-- **Module**: `Leescoffee Pos` (viết hoa "Pos", được viết tắt của "Point of Sale")
+- **Module**: `Leescoffee Pos` (viết hoa "Pos", được viết tắt của "Point of Sale") cho DocType mới.
+  Lệch đã biết: `modules.txt` + Workspace JSON dùng `Leescoffee POS` — giữ nguyên, xem CLAUDE.md §5.
 - **Import path**: luôn viết đủ `leescoffee_pos.leescoffee_pos.<path>`, không rút gọn thành 1 cấp.
 
 ## 2. DocType JSON checklist
@@ -25,7 +26,7 @@ Mỗi file JSON DocType mới/sửa **bắt buộc** kiểm tra:
 ## 4. import path convention
 
 ```
-leescoffee_pos.leescoee_pos.doctype.<doctype>.<file>.<function/class>
+leescoffee_pos.leescoffee_pos.doctype.<doctype>.<file>.<function/class>
 ```
 
 Ví dụ đúng:
@@ -33,7 +34,7 @@ Ví dụ đúng:
 leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit
 ```
 
-Không viết tắn 1 cấp:
+Không viết tắt 1 cấp:
 ```
 ❌ leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit
 ```

@@ -27,28 +27,37 @@
 
 ### 2.2 Buzzer Lifecycle (Dine In only)
 
+**Quy tắc (quyết định của Van, 2026-10-27): mỗi thẻ chỉ giữ cho MỘT đơn chưa hoàn thành, không dùng chung.**
+
 - **Take Away không tác động đến Buzzer** — mọi logic buzzer chỉ chạy khi `order_type == "Dine In"`.
 - **Buzzer pool**: `Sẵn sàng` ⇄ `Đang dùng`, không có trạng thái Occupied cố định.
-- **Không dùng chung thẻ**: mỗi thẻ chỉ giữ cho **1 đơn Dine In chưa hoàn thành** tại một thời điểm.
-  "Đang giữ" = có POS Invoice `order_type = Dine In`, `buzzer` = thẻ đó, `docstatus in (0, 1)`,
-  `custom_kitchen_status != "Đã hoàn thành"` (tính cả đơn Draft chưa thanh toán).
-- **Khi tạo đơn** (`api/pos_api.py::create_draft_order` → `_assign_buzzer(profile, buzzer)`):
-  - Cashier chọn thẻ qua `BuzzerPicker` (API `get_buzzers` trả `available`, `used_by`). Dine In bắt buộc có `buzzer`.
-  - Thẻ phải thuộc đúng chi nhánh của POS Profile, `status == "Sẵn sàng"`, và không bị đơn nào khác đang giữ → nếu không thì **ném lỗi**.
-- **Khi Paid + submit** (`on_submit`):
-  - Buzzer `Sẵn sàng` → chuyển sang `Đang dùng`.
-  - Buzzer đã `Đang dùng` → giữ nguyên, không đổi trạng thái (chỉ là chốt an toàn; việc chặn dùng chung nằm ở `_assign_buzzer`).
-  - Trạng thái khác → **ném lỗi**.
-- **Khi `custom_kitchen_status = "Đã hoàn thành"`**: 
-  - Kiểm tra xem còn đơn Dine In nào khác:
-    - Cùng buzzer
-    - Chưa hoàn thành (`custom_kitchen_status != "Đã hoàn thành"`)
-    - Đã thanh toán và submit (`status = "Paid"`, `docstatus = 1`)
-  - **Chỉ reset buzzer về `Sẵn sàng` khi KHÔNG còn đơn nào khác** đáp ứng điều kiện trên.
-- **Reset conditions** (cùng logic kiểm tra đơn khác):
-  - `on_update_after_submit`: khi kitchen status chuyển sang `Đã hoàn thành`.
-  - `confirm_pickup`: khi nhân viên xác nhận khách lấy món (kitchen status = `Đã hoàn thành`).
-  - `on_cancel`: khi đơn bị hủy **và chưa bắt đầu làm** (`custom_kitchen_status` là None, "", hoặc `Chưa làm`).
+- **"Đang giữ"** = tồn tại POS Invoice `order_type = Dine In`, `buzzer` = thẻ đó,
+  `docstatus in (0, 1)`, `custom_kitchen_status != "Đã hoàn thành"` (tính cả đơn Draft chưa thanh toán).
+  Thẻ bị giữ thì không gán được cho đơn khác, kể cả khi `status` của thẻ vẫn là `Sẵn sàng`.
+
+| Bước | Nơi xử lý | Thẻ rung |
+|------|-----------|----------|
+| 1. Tạo đơn Draft | `api/pos_api.py::create_draft_order` → `_assign_buzzer(profile, buzzer)` | **Gán** vào `POS Invoice.buzzer`. `status` thẻ vẫn `Sẵn sàng`, nhưng đã "đang giữ" |
+| 2. Thanh toán (Paid + submit) | hook `on_submit` (sau `pay_cash` hoặc webhook SePay) | `Sẵn sàng` → **`Đang dùng`** |
+| 3a. Pha chế xong | hook `on_update_after_submit` khi `custom_kitchen_status = "Đã hoàn thành"` (vd. `set_kitchen_status`) | `Đang dùng` → **`Sẵn sàng`** |
+| 3b. Hủy đơn Draft | `api/pos_api.py::cancel_draft_order` (xóa hẳn đơn) | `status` chưa từng đổi; đơn bị xóa nên **hết "đang giữ"** → thẻ trống lại |
+
+Chi tiết từng bước:
+
+- **Bước 1 — `_assign_buzzer`**: cashier chọn thẻ qua `BuzzerPicker` (API `get_buzzers`
+  trả `available`, `used_by`). Dine In bắt buộc có `buzzer`. Ném lỗi nếu thẻ không thuộc
+  chi nhánh của POS Profile, `status != "Sẵn sàng"`, hoặc đang bị đơn khác giữ.
+- **Bước 2 — `on_submit`**: thẻ `Sẵn sàng` → `Đang dùng`. Nếu thẻ đã `Đang dùng` → hiện
+  code **bỏ qua, không ném lỗi** (chốt chặn dùng chung nằm ở bước 1). Trạng thái khác → ném lỗi.
+- **Bước 3a**: chỉ reset khi không còn đơn Paid khác cùng thẻ chưa hoàn thành (§2.3).
+- **Các đường reset khác vẫn có trong code** (cùng kiểm tra §2.3):
+  - `confirm_pickup`: nhân viên xác nhận khách lấy món (kitchen status = `Đã hoàn thành`).
+  - `on_cancel`: đơn **đã submit** bị cancel **và chưa bắt đầu làm** (`custom_kitchen_status` là None, "", hoặc `Chưa làm`).
+
+> Lưu ý lệch với CLAUDE.md §3: CLAUDE.md ghi reset buzzer khi nhân viên xác nhận khách
+> đã nhận món, "không tự động reset ngay khi barista đánh dấu xong". Code hiện tại
+> reset ngay ở bước 3a, theo quy tắc mới ở trên. `confirm_pickup` thường không còn gì
+> để reset. Chưa sửa CLAUDE.md §3; chờ Van quyết.
 
 ### 2.3 Kiểm tra đơn khác trước khi reset buzzer (phòng thủ)
 
