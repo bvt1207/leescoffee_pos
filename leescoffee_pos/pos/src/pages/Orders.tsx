@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
@@ -25,10 +25,25 @@ export default function Orders() {
 	const [detail, setDetail] = useState<OrderDetail | null>(null);
 	const [qr, setQr] = useState<QrInfo | null>(null);
 	const [confirmCancel, setConfirmCancel] = useState(false);
-	const [printing, setPrinting] = useState(false);
+	const [receipt, setReceipt] = useState<{ order: OrderDetail; forced: boolean } | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
+	// Đơn đang chờ thanh toán QR — khi xuất hiện trong danh sách đã thanh toán thì mở in bắt buộc.
+	const awaitingQr = useRef<string | null>(null);
+
+	const closeReceipt = useCallback(() => setReceipt(null), []);
+
+	// Sau khi thanh toán: sang tab Đã thanh toán, chọn đúng đơn, mở hóa đơn bắt buộc in.
+	const openPaid = useCallback(async (name: string) => {
+		if (awaitingQr.current === name) awaitingQr.current = null;
+		const d = await api.getOrderDetail(name);
+		setQr(null);
+		setTab("paid");
+		setSelected(name);
+		setDetail(d);
+		setReceipt({ order: d, forced: true });
+	}, []);
 
 	const loadDetail = useCallback(async (name: string | null) => {
 		if (!name) {
@@ -53,12 +68,17 @@ export default function Orders() {
 			setPaid(p || []);
 			setBoard(b || []);
 			setError("");
+
+			const waiting = awaitingQr.current;
+			if (waiting && (p || []).some((o) => o.name === waiting)) {
+				await openPaid(waiting);
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [openPaid]);
 
 	useEffect(() => {
 		loadData();
@@ -110,13 +130,16 @@ export default function Orders() {
 	const payCash = () =>
 		run(async () => {
 			if (!detail) return;
-			await api.payCash(detail.name);
-			await refresh(detail.name);
+			const name = detail.name;
+			await api.payCash(name);
+			await loadData();
+			await openPaid(name);
 		});
 
 	const genQr = () =>
 		run(async () => {
 			if (!detail) return;
+			awaitingQr.current = detail.name;
 			setQr(await api.generateQr(detail.name));
 			await refresh(detail.name);
 		});
@@ -133,6 +156,7 @@ export default function Orders() {
 			if (!detail) return;
 			const waiting = detail.payment_status === "Đang chờ";
 			await api.cancelDraftOrder(detail.name, waiting ? 1 : 0);
+			if (awaitingQr.current === detail.name) awaitingQr.current = null;
 			setConfirmCancel(false);
 			setSelected(null);
 			setDetail(null);
@@ -259,9 +283,16 @@ export default function Orders() {
 										Xác nhận khách đã lấy
 									</button>
 								) : null}
-								<button type="button" className="pos-btn" disabled={busy} onClick={() => setPrinting(true)}>
-									In
-								</button>
+								{!isDraft ? (
+									<button
+										type="button"
+										className="pos-btn"
+										disabled={busy}
+										onClick={() => setReceipt({ order: detail, forced: false })}
+									>
+										In
+									</button>
+								) : null}
 							</div>
 						</>
 					) : (
@@ -303,7 +334,12 @@ export default function Orders() {
 			) : null}
 
 			<QrModal qr={qr} onClose={() => setQr(null)} />
-			<ReceiptModal order={printing ? detail : null} kind="customer" onClose={() => setPrinting(false)} />
+			<ReceiptModal
+				key={receipt ? `${receipt.order.name}-${receipt.forced}` : "none"}
+				order={receipt?.order ?? null}
+				forced={receipt?.forced}
+				onClose={closeReceipt}
+			/>
 		</div>
 	);
 }

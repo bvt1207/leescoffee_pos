@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import ReceiptModal from "../components/ReceiptModal";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
+import type { LabelJob } from "../components/CupLabels";
 import { api } from "../lib/api";
+import { cssVar, printWithPage } from "../lib/print";
 import type { KitchenOrder, OrderDetail } from "../types";
 
 const STEPS = ["Chưa làm", "Đã làm", "Đã hoàn thành"] as const;
@@ -31,8 +34,12 @@ export default function Kitchen() {
 	const [loading, setLoading] = useState(true);
 	const [now, setNow] = useState(Date.now());
 	const [toast, setToast] = useState<string | null>(null);
-	const [ticket, setTicket] = useState<OrderDetail | null>(null);
+	const [labelJob, setLabelJob] = useState<LabelJob | null>(null);
 	const [printBusy, setPrintBusy] = useState<string | null>(null);
+	// Đơn đã in tem ít nhất một lần (chỉ trong state, mất khi tải lại trang)
+	const [printed, setPrinted] = useState<Set<string>>(() => new Set());
+	// Chi tiết đơn (có size) đã tải, tránh gọi lại mỗi lần in
+	const details = useRef(new Map<string, OrderDetail>());
 
 	const load = useCallback(async () => {
 		try {
@@ -113,11 +120,28 @@ export default function Kitchen() {
 		return () => window.clearTimeout(t);
 	}, [toast]);
 
-	// Lấy chi tiết đơn (có size) rồi mở xem trước phiếu pha chế
-	const openTicket = async (name: string) => {
-		setPrintBusy(name);
+	// In tem từng ly: cả đơn (only = undefined) hoặc một ly (only = số ly i).
+	const printCups = async (o: KitchenOrder, only?: number) => {
+		setPrintBusy(o.name);
 		try {
-			setTicket(await api.getOrderDetail(name));
+			let d = details.current.get(o.name);
+			if (!d) {
+				d = await api.getOrderDetail(o.name);
+				details.current.set(o.name, d);
+			}
+			const all = buildCups(o, d);
+			const cups = only ? all.filter((c) => c.i === only) : all;
+			if (!cups.length) return;
+
+			flushSync(() => setLabelJob({ order: o, cups }));
+			const size = `${cssVar("--pos-label-width", "50mm")} ${cssVar("--pos-label-height", "30mm")}`;
+			printWithPage(size, {
+				bodyClass: "is-printing-labels",
+				onAfter: () => {
+					setPrinted((prev) => new Set(prev).add(o.name));
+					setLabelJob(null);
+				},
+			});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		} finally {
@@ -148,16 +172,19 @@ export default function Kitchen() {
 				<div className="pos-empty">Không có đơn nào.</div>
 			) : (
 				<div className="pos-kitchen-grid">
-					{list.map((o, idx) => {
+					{list.map((o) => {
 						const w = waitInfo(o.creation, now);
 						const step = NEXT[o.kitchen_status];
+						// Chỉ tab Chưa làm được in tem; "Đã làm" khóa tới khi đã in ít nhất một lần.
+						const canPrint = o.kitchen_status === "Chưa làm";
+						const needPrint = canPrint && !printed.has(o.name);
+						const cupsOf = canPrint ? cupIndexes(o) : null;
+						const loadingPrint = printBusy === o.name;
 						return (
 							<article key={o.name} className={`pos-kcard pos-kcard--${w.level}`}>
 								<header className="pos-kcard__head">
-									<span className="pos-kcard__seq">{idx + 1}</span>
 									<div className="pos-kcard__id">
 										<strong>{o.name}</strong>
-										<span>{o.customer_name}</span>
 									</div>
 									<div className="pos-kcard__tags">
 										<span className="pos-tag">{typeLabel(o.order_type)}</span>
@@ -176,6 +203,22 @@ export default function Kitchen() {
 												<span className="pos-chip-opt">Đường {it.sugar_level || 100}%</span>
 												<span className="pos-chip-opt">Đá {it.ice_level || 100}%</span>
 											</div>
+											{cupsOf ? (
+												<div className="pos-kcard__cups">
+													{cupsOf.per[i].map((n) => (
+														<button
+															key={n}
+															type="button"
+															className="pos-kcard__cup-print"
+															title={`In tem ly ${n}/${cupsOf.n}`}
+															disabled={loadingPrint}
+															onClick={() => printCups(o, n)}
+														>
+															In {n}/{cupsOf.n}
+														</button>
+													))}
+												</div>
+											) : null}
 										</li>
 									))}
 								</ul>
@@ -187,21 +230,24 @@ export default function Kitchen() {
 										{w.min < 1 ? "Vừa tới" : `${w.min} phút`} · {o.creation.slice(11, 16)}
 									</span>
 									<div className="pos-kcard__actions">
-										<button
-											type="button"
-											className="pos-btn pos-btn--ghost pos-kcard__print"
-											disabled={printBusy === o.name}
-											onClick={() => openTicket(o.name)}
-										>
-											{printBusy === o.name ? "Đang tải…" : "In phiếu"}
-										</button>
+										{canPrint ? (
+											<button
+												type="button"
+												className="pos-btn pos-btn--ghost pos-kcard__print"
+												disabled={loadingPrint}
+												onClick={() => printCups(o)}
+											>
+												{loadingPrint ? "Đang tải…" : "In tất cả tem"}
+											</button>
+										) : null}
 										{step ? (
 											<button
 												type="button"
 												className={`pos-btn pos-kcard__btn ${
 													o.kitchen_status === "Chưa làm" ? "pos-btn--primary" : "pos-btn--success"
 												}`}
-												disabled={busy === o.name}
+												disabled={busy === o.name || needPrint}
+												title={needPrint ? "In tem trước" : undefined}
 												onClick={() => advance(o)}
 											>
 												{busy === o.name ? "Đang lưu…" : step.label}
@@ -221,7 +267,7 @@ export default function Kitchen() {
 				</div>
 			) : null}
 
-			<ReceiptModal order={ticket} kind="kitchen" onClose={() => setTicket(null)} />
+			<CupLabels job={labelJob} />
 		</div>
 	);
 }

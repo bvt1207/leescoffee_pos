@@ -39,6 +39,10 @@
 	--pos-chip-on-media: rgba(255,255,255,.92);
 	--pos-shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.25);
 	--pos-shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.25);
+
+	/* Khổ tem dán ly (màn Pha chế) — đổi theo loại giấy của máy in tem */
+	--pos-label-width: 50mm;
+	--pos-label-height: 30mm;
 }
 
 /* ===== Base — reset, phần tử gốc ===== */
@@ -1262,17 +1266,6 @@ body {
 	gap: 10px;
 }
 
-.pos-kcard__seq {
-	display: grid;
-	place-items: center;
-	width: 36px;
-	height: 36px;
-	flex: none;
-	border-radius: 50%;
-	background: var(--pos-surface-alt);
-	font-weight: 800;
-}
-
 .pos-kcard__id {
 	display: flex;
 	flex-direction: column;
@@ -1351,6 +1344,35 @@ body {
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
+}
+
+.pos-kcard__cups {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.pos-kcard__cup-print {
+	min-height: 40px;
+	padding: 4px 12px;
+	border: 1px solid var(--pos-border);
+	border-radius: 999px;
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.pos-kcard__cup-print:hover {
+	border-color: var(--pos-primary);
+	color: var(--pos-primary);
+}
+
+.pos-kcard__cup-print:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 .pos-kcard__actions {
@@ -1800,29 +1822,9 @@ body {
 	font-weight: 800;
 }
 
-.pos-receipt__buzzer {
-	margin: 4px 0;
-	text-align: center;
-	font-size: 22px;
-	font-weight: 800;
-}
-
 .pos-receipt__foot {
 	text-align: center;
 	font-size: 11px;
-}
-
-.pos-receipt--kitchen .pos-receipt__item-name {
-	font-size: 16px;
-}
-
-.pos-receipt--kitchen .pos-receipt__opts {
-	font-size: 16px;
-	font-weight: 800;
-}
-
-.pos-receipt--kitchen .pos-receipt__note {
-	font-size: 14px;
 }
 
 .pos-receipt-actions {
@@ -1834,6 +1836,90 @@ body {
 
 .pos-receipt-actions .pos-btn {
 	flex: 1;
+}
+
+.pos-receipt-done {
+	padding: 18px 16px;
+	border-top: 1px solid var(--pos-border);
+	text-align: center;
+	font-weight: 700;
+	color: var(--pos-success);
+	background: var(--pos-success-soft);
+}
+
+.pos-receipt-skip {
+	border-top: 1px solid var(--pos-border);
+}
+
+.pos-receipt-skip p {
+	margin: 0;
+	padding: 12px 16px 0;
+	font-weight: 600;
+	color: var(--pos-text);
+}
+
+.pos-receipt-skip .pos-receipt-actions {
+	border-top: none;
+}
+
+/* Tem từng ly — chỉ hiện khi in (khổ theo --pos-label-width/height) */
+
+.pos-print-only {
+	display: none;
+}
+
+.pos-label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5mm;
+	width: var(--pos-label-width);
+	height: var(--pos-label-height);
+	padding: 1.5mm 2mm;
+	overflow: hidden;
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font-family: "Segoe UI", Arial, sans-serif;
+	font-size: 8pt;
+	line-height: 1.2;
+	break-after: page;
+	page-break-after: always;
+}
+
+.pos-label:last-child {
+	break-after: auto;
+	page-break-after: auto;
+}
+
+.pos-label__name {
+	font-size: 10.5pt;
+	font-weight: 800;
+}
+
+.pos-label__opts {
+	font-weight: 700;
+}
+
+.pos-label__note {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	font-style: italic;
+}
+
+.pos-label__foot {
+	display: flex;
+	justify-content: space-between;
+	gap: 2mm;
+	margin-top: auto;
+	font-weight: 700;
+}
+
+.pos-label__who {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-weight: 700;
 }
 
 /* ===== Utilities — trạng thái rỗng, alert ===== */
@@ -1917,13 +2003,9 @@ body {
 	}
 }
 
-/* In: chỉ in phần giấy của ReceiptModal (render ngoài #root qua portal) */
+/* In: chỉ in phần render ngoài #root qua portal (hóa đơn hoặc tem).
+   Khổ giấy (@page size) do lib/print.ts chèn tạm cho từng lần in. */
 @media print {
-	@page {
-		size: 80mm auto;
-		margin: 0;
-	}
-
 	#root {
 		display: none;
 	}
@@ -1957,5 +2039,13 @@ body {
 
 	.pos-receipt {
 		margin: 0;
+	}
+
+	body.is-printing-labels .pos-modal-backdrop--receipt {
+		display: none;
+	}
+
+	body.is-printing-labels .pos-print-only {
+		display: block;
 	}
 }

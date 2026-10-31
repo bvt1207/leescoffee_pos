@@ -51,6 +51,12 @@ Chuyển từ màu viết cứng sang token ở bước refactor d1, giữ nguy�
 --pos-shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.25);
 --pos-shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.25);
 ```
+
+### 1.5b Khổ in tem ly
+```css
+--pos-label-width: 50mm;   /* tem dán ly ở màn Pha chế; lib/print.ts đọc để đặt @page size */
+--pos-label-height: 30mm;
+```
 > Các token ở mục 2–4 bên dưới (`--pos-spacing-*`, `--pos-radius-*`, `--pos-shadow-sm/md/lg`)
 > là thiết kế dự kiến, **chưa có** trong `global.css` (hiện chỉ có `--pos-radius`, `--pos-shadow`).
 
