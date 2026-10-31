@@ -102,6 +102,25 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 - Dọn kiểu `MenuItem` trong `types.ts` (`api.getMenuItems` đang trả `unknown[]`).
 - Dọn đơn Draft cũ (đang giữ thẻ rung + làm chậm webhook, mục C).
 
+### F. Refactor frontend `pos/src` (giữ nguyên logic và giao diện)
+Kế hoạch đầy đủ đã trình Van ngày 2026-10-31; mỗi bước một commit, Van test rồi mới làm bước sau.
+Kiểm tra type: trong `pos/` chạy `../../node_modules/.bin/tsc --noEmit -p . --noUnusedLocals`
+(TS 5.9.3 ở `PROJECTPOS/node_modules`, khác bản @types React 18/router 6 trong `pos/package.json`).
+
+| Bước | Nội dung | Trạng thái |
+|---|---|---|
+| d1 | `global.css`: định dạng, gộp `body` + `.pos-status__badge`, 10 token màu mới, xóa 26 khối của 19 class mồ côi | **Xong — `afe5598`, Van test Pass** |
+| d2 | Sắp lại thứ tự mục CSS, gộp các `@media` cùng breakpoint (rủi ro thứ tự cascade) | Chờ duyệt |
+| a | Xóa biến/import/action thừa (`ICE_SUGAR`, `get`, `add`, `remove`, `setNote`, `modeOfPayment`), `useEffect` toast lặp ở Kitchen, TODO cũ, thụt lề | Chờ duyệt |
+| b | Dọn `types.ts` (`MenuItem` theo API thật, gộp `OrderItem`, `CartLine`, `PosConfig.user?`) | Chờ duyệt |
+| c | `lib/format.ts`: `formatMoney`, `typeLabel`, `timeLabel`, `errorMessage` | Chờ duyệt |
+| e | Component `Modal`, `Tabs`; tách Orders/Kitchen/CartPanel/CustomerPicker; `useCallback` cho `onClose` | Chờ duyệt |
+| f | A11y nhẹ (role/aria cho modal, tab, segmented) | Chờ duyệt |
+
+Quyết định đang chờ cho refactor: (1) bỏ `board` + `getStatusBoard` trong Orders; (2) bỏ alert lỗi
+hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhất Esc/khóa cuộn/focus;
+(4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
+
 ## 4. Quyết định đang chờ Van
 - Duyệt kế hoạch A–D trước khi sửa code.
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
