@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import QrModal from "../components/QrModal";
+import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
 import { formatMoney } from "../store/cart";
 import { useSearch } from "../store/search";
@@ -24,6 +25,7 @@ export default function Orders() {
 	const [detail, setDetail] = useState<OrderDetail | null>(null);
 	const [qr, setQr] = useState<QrInfo | null>(null);
 	const [confirmCancel, setConfirmCancel] = useState(false);
+	const [printing, setPrinting] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
@@ -257,6 +259,9 @@ export default function Orders() {
 										Xác nhận khách đã lấy
 									</button>
 								) : null}
+								<button type="button" className="pos-btn" disabled={busy} onClick={() => setPrinting(true)}>
+									In
+								</button>
 							</div>
 						</>
 					) : (
@@ -298,6 +303,7 @@ export default function Orders() {
 			) : null}
 
 			<QrModal qr={qr} onClose={() => setQr(null)} />
+			<ReceiptModal order={printing ? detail : null} kind="customer" onClose={() => setPrinting(false)} />
 		</div>
 	);
 }

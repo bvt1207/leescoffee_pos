@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
-import type { KitchenOrder } from "../types";
+import type { KitchenOrder, OrderDetail } from "../types";
 
 const STEPS = ["Chưa làm", "Đã làm", "Đã hoàn thành"] as const;
 type Step = (typeof STEPS)[number];
@@ -30,6 +31,8 @@ export default function Kitchen() {
 	const [loading, setLoading] = useState(true);
 	const [now, setNow] = useState(Date.now());
 	const [toast, setToast] = useState<string | null>(null);
+	const [ticket, setTicket] = useState<OrderDetail | null>(null);
+	const [printBusy, setPrintBusy] = useState<string | null>(null);
 
 	const load = useCallback(async () => {
 		try {
@@ -110,6 +113,18 @@ export default function Kitchen() {
 		return () => window.clearTimeout(t);
 	}, [toast]);
 
+	// Lấy chi tiết đơn (có size) rồi mở xem trước phiếu pha chế
+	const openTicket = async (name: string) => {
+		setPrintBusy(name);
+		try {
+			setTicket(await api.getOrderDetail(name));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setPrintBusy(null);
+		}
+	};
+
 	return (
 		<div className="pos-kitchen">
 			{error ? <div className="pos-alert pos-alert--error">{error}</div> : null}
@@ -171,18 +186,28 @@ export default function Kitchen() {
 									<span className={`pos-kcard__wait pos-kcard__wait--${w.level}`}>
 										{w.min < 1 ? "Vừa tới" : `${w.min} phút`} · {o.creation.slice(11, 16)}
 									</span>
-									{step ? (
+									<div className="pos-kcard__actions">
 										<button
 											type="button"
-											className={`pos-btn pos-kcard__btn ${
-												o.kitchen_status === "Chưa làm" ? "pos-btn--primary" : "pos-btn--success"
-											}`}
-											disabled={busy === o.name}
-											onClick={() => advance(o)}
+											className="pos-btn pos-btn--ghost pos-kcard__print"
+											disabled={printBusy === o.name}
+											onClick={() => openTicket(o.name)}
 										>
-											{busy === o.name ? "Đang lưu…" : step.label}
+											{printBusy === o.name ? "Đang tải…" : "In phiếu"}
 										</button>
-									) : null}
+										{step ? (
+											<button
+												type="button"
+												className={`pos-btn pos-kcard__btn ${
+													o.kitchen_status === "Chưa làm" ? "pos-btn--primary" : "pos-btn--success"
+												}`}
+												disabled={busy === o.name}
+												onClick={() => advance(o)}
+											>
+												{busy === o.name ? "Đang lưu…" : step.label}
+											</button>
+										) : null}
+									</div>
 								</footer>
 							</article>
 						);
@@ -195,6 +220,8 @@ export default function Kitchen() {
 					{toast}
 				</div>
 			) : null}
+
+			<ReceiptModal order={ticket} kind="kitchen" onClose={() => setTicket(null)} />
 		</div>
 	);
 }

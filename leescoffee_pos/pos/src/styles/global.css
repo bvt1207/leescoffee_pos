@@ -1353,6 +1353,13 @@ body {
 	gap: 10px;
 }
 
+.pos-kcard__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
 .pos-kcard__wait {
 	font-size: 13px;
 	font-weight: 700;
@@ -1371,6 +1378,11 @@ body {
 	min-height: 56px;
 	min-width: 150px;
 	font-size: 18px;
+}
+
+.pos-kcard__print {
+	min-height: 56px;
+	font-size: 16px;
 }
 
 .pos-toast {
@@ -1700,6 +1712,130 @@ body {
 	color: var(--pos-on-solid);
 }
 
+/* Hóa đơn / phiếu pha chế — xem trước và in (khổ 80mm, vùng in ~72mm) */
+
+.pos-modal--receipt {
+	width: min(380px, 100%);
+	max-height: calc(100vh - 32px);
+	display: flex;
+	flex-direction: column;
+	background: var(--pos-bg);
+}
+
+.pos-receipt-body {
+	flex: 1;
+	overflow-y: auto;
+	text-align: left;
+	background: var(--pos-surface);
+}
+
+.pos-receipt {
+	width: 72mm;
+	max-width: 100%;
+	margin: 0 auto;
+	padding: 4mm 3mm;
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font-family: "Courier New", Courier, monospace;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.pos-receipt__brand {
+	text-align: center;
+}
+
+.pos-receipt__logo {
+	display: block;
+	max-width: 40mm;
+	max-height: 20mm;
+	margin: 0 auto 4px;
+	object-fit: contain;
+}
+
+.pos-receipt__brand-name {
+	font-size: 15px;
+	font-weight: 800;
+}
+
+.pos-receipt__title {
+	margin: 8px 0 6px;
+	text-align: center;
+	font-size: 15px;
+	font-weight: 800;
+	letter-spacing: 0.5px;
+}
+
+.pos-receipt__row {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.pos-receipt__sep {
+	margin: 6px 0;
+	border: none;
+	border-top: 1px dashed var(--pos-text);
+}
+
+.pos-receipt__item {
+	margin-bottom: 6px;
+}
+
+.pos-receipt__item-name {
+	font-weight: 700;
+}
+
+.pos-receipt__opts {
+	font-size: 11px;
+}
+
+.pos-receipt__note {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.pos-receipt__total {
+	font-size: 15px;
+	font-weight: 800;
+}
+
+.pos-receipt__buzzer {
+	margin: 4px 0;
+	text-align: center;
+	font-size: 22px;
+	font-weight: 800;
+}
+
+.pos-receipt__foot {
+	text-align: center;
+	font-size: 11px;
+}
+
+.pos-receipt--kitchen .pos-receipt__item-name {
+	font-size: 16px;
+}
+
+.pos-receipt--kitchen .pos-receipt__opts {
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.pos-receipt--kitchen .pos-receipt__note {
+	font-size: 14px;
+}
+
+.pos-receipt-actions {
+	display: flex;
+	gap: 8px;
+	padding: 12px 16px;
+	border-top: 1px solid var(--pos-border);
+}
+
+.pos-receipt-actions .pos-btn {
+	flex: 1;
+}
+
 /* ===== Utilities — trạng thái rỗng, alert ===== */
 
 .pos-empty {
@@ -1778,5 +1914,48 @@ body {
 
 	.pos-menu-grid {
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	}
+}
+
+/* In: chỉ in phần giấy của ReceiptModal (render ngoài #root qua portal) */
+@media print {
+	@page {
+		size: 80mm auto;
+		margin: 0;
+	}
+
+	#root {
+		display: none;
+	}
+
+	.pos-no-print {
+		display: none;
+	}
+
+	.pos-modal-backdrop--receipt {
+		position: static;
+		display: block;
+		padding: 0;
+		background: none;
+	}
+
+	.pos-modal--receipt {
+		display: block;
+		width: auto;
+		max-height: none;
+		overflow: visible;
+		border-radius: 0;
+		box-shadow: none;
+		background: none;
+	}
+
+	.pos-receipt-body {
+		padding: 0;
+		overflow: visible;
+		background: none;
+	}
+
+	.pos-receipt {
+		margin: 0;
 	}
 }
