@@ -37,7 +37,24 @@ Màu đỏ thương hiệu `#C8102E` được định nghĩa **một lần duy n
 --pos-error: #C8102E;     /* đỏ - lỗi/hủy (dùng chung brand red) */
 ```
 
-### 1.5 Kiểm tra tương đối (WCAG AA)
+### 1.5 Màu phụ dẫn xuất (đã có trong `global.css`)
+Chuyển từ màu viết cứng sang token ở bước refactor d1, giữ nguyên giá trị cũ.
+```css
+--pos-error-soft: #fbe6e3;      /* nền nhạt lỗi/hủy: alert lỗi, hover nút danger, hover Đăng xuất */
+--pos-error-border: #f0c4be;    /* viền lỗi/hủy: alert lỗi, nút danger */
+--pos-warning-soft: #f3e6cf;    /* nền nhạt trạng thái chờ: .pos-status__badge, .pos-tag--warn */
+--pos-note-bg: #fff4d6;         /* nền ghi chú đơn ở màn Pha chế (.pos-kcard__note) */
+--pos-success-soft: #e8f4ec;    /* nền thẻ rung sẵn sàng (.pos-buzzer) */
+--pos-on-solid: #fff;           /* chữ/nền trắng trên nền đậm (nút success/danger-solid, toast, ảnh QR) */
+--pos-overlay: rgba(35, 27, 20, 0.55);          /* lớp phủ sau modal */
+--pos-chip-on-media: rgba(255,255,255,.92);     /* chip nằm trên ảnh món */
+--pos-shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.25);
+--pos-shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.25);
+```
+> Các token ở mục 2–4 bên dưới (`--pos-spacing-*`, `--pos-radius-*`, `--pos-shadow-sm/md/lg`)
+> là thiết kế dự kiến, **chưa có** trong `global.css` (hiện chỉ có `--pos-radius`, `--pos-shadow`).
+
+### 1.6 Kiểm tra tương đối (WCAG AA)
 - `rgba(255,255,255)` trên `#C8102E` → **5.81:1** ✓ đạt AA cho chữ thường (≥4.5:1)
 - `#2A2520` trên `#FFFFFF` → **15.08:1** ✓
 - `#FFFFFF` trên `#2E7D4F` → ~6.5:1 ✓
