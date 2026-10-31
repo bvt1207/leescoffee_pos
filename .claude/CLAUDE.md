@@ -359,9 +359,10 @@ PROJECTPOS/                        # git repo
     │       ├── main.tsx, App.tsx, types.ts
     │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub)
     │       ├── components/        # AppHeader, MenuGrid, SizeModal, CartPanel,
-    │       │                      # CustomerPicker, BuzzerPicker, QrModal
+    │       │                      # CustomerPicker, BuzzerPicker, QrModal,
+    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly)
     │       ├── store/             # cart.ts, search.ts (zustand)
-    │       ├── lib/               # api.ts, pos-context.tsx
+    │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm)
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee Pos"
         ├── api/

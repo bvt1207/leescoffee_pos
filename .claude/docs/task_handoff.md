@@ -1,6 +1,6 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-10-27. Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-01 (chức năng in). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
 ## 1. Mục tiêu hiện tại
@@ -19,8 +19,18 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Màn Pha chế `/pos/kitchen` (`get_kitchen_orders`, `set_kitchen_status` đi từng bước) | Van làm trên bench, đã đồng bộ |
 | Chọn thẻ rung Dine In (`BuzzerPicker`, `get_buzzers` có `available`/`used_by`, `_assign_buzzer`) — mỗi thẻ 1 đơn chưa hoàn thành | Van làm trên bench, đã đồng bộ |
 | Toast 5 giây ở màn Pha chế (bấm để đóng sớm) | Van làm trên bench, đã đồng bộ |
+| `get_order_detail` trả thêm `size` từng món (`_size_labels`: 1 truy vấn gộp, Item Variant Attribute "Size", `abbr` → fallback `attribute_value`; món thường = "") | Đã test (`5d10359`) |
+| In hóa đơn (`ReceiptModal`, khổ 80mm): chỉ đơn đã thanh toán; sau `pay_cash` / QR Paid tự sang tab Đã thanh toán và mở modal **bắt buộc** in (không ×/Đóng/Esc/nền; "Bỏ qua in" có xác nhận chỉ hiện sau lần bấm In đầu); in lại từ panel chi tiết bằng modal thường | Đã test (`7f1246c`) |
+| Màn Pha chế, tab Chưa làm: nút "In i/n" in 1 tem/ly (`CupLabels`, khổ `--pos-label-width/height` mặc định 50x30mm); nút "In phiếu" in phiếu pha chế tổng (`ReceiptModal kind="kitchen"`); "Đã làm" khóa tới khi đã in tem hoặc phiếu | Đã test (`680e169`) |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
+
+**Giới hạn đã biết của chức năng in:**
+- `afterprint` xảy ra cả khi bấm Hủy trong hộp thoại in → modal bắt buộc vẫn báo "Đã in hóa đơn thành công" và "Đã làm" vẫn mở khóa.
+- Trạng thái "đã in" ở màn Pha chế chỉ nằm trong state, tải lại trang là mất.
+- QR Paid được phát hiện theo chu kỳ poll 10 giây của Orders; rời trang Orders trước khi tiền về thì không bật modal bắt buộc (vẫn in lại tay được).
+- Thẻ ở màn Pha chế chưa hiện size (`get_kitchen_orders` không trả size); tem và phiếu có size vì lấy từ `get_order_detail`.
+- `@page size` được `lib/print.ts` chèn tạm cho từng lần in (80mm cho hóa đơn/phiếu, khổ tem cho tem); khổ giấy thật vẫn phụ thuộc driver máy in.
 
 ## 3. Việc cần xem và chỉnh sửa (theo ưu tiên — CHỈ LÀ KẾ HOẠCH, chờ Van duyệt rồi mới sửa code)
 
