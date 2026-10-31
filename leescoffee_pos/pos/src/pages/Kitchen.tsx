@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
 import type { LabelJob } from "../components/CupLabels";
+import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
 import { cssVar, printWithPage } from "../lib/print";
 import type { KitchenOrder, OrderDetail } from "../types";
@@ -35,6 +36,8 @@ export default function Kitchen() {
 	const [now, setNow] = useState(Date.now());
 	const [toast, setToast] = useState<string | null>(null);
 	const [labelJob, setLabelJob] = useState<LabelJob | null>(null);
+	// Phiếu pha chế tổng đang xem trước (modal)
+	const [ticket, setTicket] = useState<OrderDetail | null>(null);
 	const [printBusy, setPrintBusy] = useState<string | null>(null);
 	// Đơn đã in tem ít nhất một lần (chỉ trong state, mất khi tải lại trang)
 	const [printed, setPrinted] = useState<Set<string>>(() => new Set());
@@ -120,17 +123,27 @@ export default function Kitchen() {
 		return () => window.clearTimeout(t);
 	}, [toast]);
 
-	// In tem từng ly: cả đơn (only = undefined) hoặc một ly (only = số ly i).
-	const printCups = async (o: KitchenOrder, only?: number) => {
+	const markPrinted = useCallback((name: string) => {
+		setPrinted((prev) => new Set(prev).add(name));
+	}, []);
+
+	const closeTicket = useCallback(() => setTicket(null), []);
+
+	// Chi tiết đơn (có size), lấy một lần rồi giữ trong cache
+	const getDetail = async (name: string) => {
+		let d = details.current.get(name);
+		if (!d) {
+			d = await api.getOrderDetail(name);
+			details.current.set(name, d);
+		}
+		return d;
+	};
+
+	// In tem: mỗi lần bấm "In i/n" chỉ ra đúng 1 tem (1 trang).
+	const printCup = async (o: KitchenOrder, cupNo: number) => {
 		setPrintBusy(o.name);
 		try {
-			let d = details.current.get(o.name);
-			if (!d) {
-				d = await api.getOrderDetail(o.name);
-				details.current.set(o.name, d);
-			}
-			const all = buildCups(o, d);
-			const cups = only ? all.filter((c) => c.i === only) : all;
+			const cups = buildCups(o, await getDetail(o.name)).filter((c) => c.i === cupNo);
 			if (!cups.length) return;
 
 			flushSync(() => setLabelJob({ order: o, cups }));
@@ -138,10 +151,22 @@ export default function Kitchen() {
 			printWithPage(size, {
 				bodyClass: "is-printing-labels",
 				onAfter: () => {
-					setPrinted((prev) => new Set(prev).add(o.name));
+					markPrinted(o.name);
 					setLabelJob(null);
 				},
 			});
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setPrintBusy(null);
+		}
+	};
+
+	// "In phiếu": mở modal phiếu pha chế tổng cho cả đơn.
+	const openTicket = async (o: KitchenOrder) => {
+		setPrintBusy(o.name);
+		try {
+			setTicket(await getDetail(o.name));
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		} finally {
@@ -212,7 +237,7 @@ export default function Kitchen() {
 															className="pos-kcard__cup-print"
 															title={`In tem ly ${n}/${cupsOf.n}`}
 															disabled={loadingPrint}
-															onClick={() => printCups(o, n)}
+															onClick={() => printCup(o, n)}
 														>
 															In {n}/{cupsOf.n}
 														</button>
@@ -235,9 +260,9 @@ export default function Kitchen() {
 												type="button"
 												className="pos-btn pos-btn--ghost pos-kcard__print"
 												disabled={loadingPrint}
-												onClick={() => printCups(o)}
+												onClick={() => openTicket(o)}
 											>
-												{loadingPrint ? "Đang tải…" : "In tất cả tem"}
+												{loadingPrint ? "Đang tải…" : "In phiếu"}
 											</button>
 										) : null}
 										{step ? (
@@ -268,6 +293,13 @@ export default function Kitchen() {
 			) : null}
 
 			<CupLabels job={labelJob} />
+			<ReceiptModal
+				key={ticket?.name || "none"}
+				order={ticket}
+				kind="kitchen"
+				onPrinted={ticket ? () => markPrinted(ticket.name) : undefined}
+				onClose={closeTicket}
+			/>
 		</div>
 	);
 }

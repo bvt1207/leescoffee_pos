@@ -5,10 +5,16 @@ import { printWithPage } from "../lib/print";
 import { formatMoney } from "../store/cart";
 import type { OrderDetail } from "../types";
 
+export type ReceiptKind = "customer" | "kitchen";
+
 interface Props {
 	order: OrderDetail | null;
+	/** customer = hóa đơn khách; kitchen = phiếu pha chế tổng (không giá, không thương hiệu). */
+	kind?: ReceiptKind;
 	/** Bắt buộc in: không có ×/Đóng, không đóng bằng Esc hay bấm nền. */
 	forced?: boolean;
+	/** Gọi sau mỗi lần in (afterprint). */
+	onPrinted?: () => void;
 	onClose: () => void;
 }
 
@@ -34,7 +40,7 @@ function nowStamp(): string {
 const itemTitle = (name: string, size?: string) => (size ? `${name} (${size})` : name);
 const optsLabel = (sugar?: string, ice?: string) => `Đường ${sugar || 100}% · Đá ${ice || 100}%`;
 
-export default function ReceiptModal({ order, forced = false, onClose }: Props) {
+export default function ReceiptModal({ order, kind = "customer", forced = false, onPrinted, onClose }: Props) {
 	const { config } = usePos();
 	const [attempted, setAttempted] = useState(false);
 	const [done, setDone] = useState(false);
@@ -67,6 +73,9 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 
 	const brand = config?.brand;
 	const isDraft = order.docstatus === 0;
+	const isKitchen = kind === "kitchen";
+	const title = isKitchen ? "PHIẾU PHA CHẾ" : isDraft ? "HÓA ĐƠN TẠM TÍNH" : "HÓA ĐƠN";
+	const heading = isKitchen ? "In phiếu pha chế" : forced ? "In hóa đơn cho khách" : "In lại hóa đơn";
 	const modeLabel = (mode: string) =>
 		config?.payment_modes.find((m) => m.name === mode)?.label || mode;
 	const paidRows = order.payments.filter((p) => p.amount > 0);
@@ -76,6 +85,7 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 		setConfirmSkip(false);
 		printWithPage(RECEIPT_PAGE, {
 			onAfter: () => {
+				onPrinted?.();
 				if (forced) setDone(true);
 			},
 		});
@@ -136,7 +146,7 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="pos-modal__header pos-no-print">
-					<h3>{forced ? "In hóa đơn cho khách" : "In lại hóa đơn"}</h3>
+					<h3>{heading}</h3>
 					{!forced ? (
 						<button type="button" className="pos-modal__close" aria-label="Đóng" onClick={onClose}>
 							×
@@ -145,8 +155,8 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 				</div>
 
 				<div className="pos-modal__body pos-receipt-body">
-					<div className="pos-receipt">
-						{brand ? (
+					<div className={`pos-receipt ${isKitchen ? "pos-receipt--kitchen" : ""}`}>
+						{!isKitchen && brand ? (
 							<div className="pos-receipt__brand">
 								{brand.logo ? (
 									<img className="pos-receipt__logo" src={brand.logo} alt={brand.name || "Logo"} />
@@ -157,7 +167,7 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 							</div>
 						) : null}
 
-						<div className="pos-receipt__title">{isDraft ? "HÓA ĐƠN TẠM TÍNH" : "HÓA ĐƠN"}</div>
+						<div className="pos-receipt__title">{title}</div>
 
 						<div className="pos-receipt__row">
 							<span>Mã đơn</span>
@@ -167,33 +177,44 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 							<span>Giờ</span>
 							<span>{formatStamp(order.creation)}</span>
 						</div>
-						<div className="pos-receipt__row">
-							<span>Khách</span>
-							<span>{order.customer_name}</span>
-						</div>
+						{!isKitchen ? (
+							<div className="pos-receipt__row">
+								<span>Khách</span>
+								<span>{order.customer_name}</span>
+							</div>
+						) : null}
 						<div className="pos-receipt__row">
 							<span>Loại đơn</span>
 							<strong>{typeLabel(order.order_type)}</strong>
 						</div>
 						{order.order_type === "Dine In" ? (
-							<div className="pos-receipt__row">
-								<span>Thẻ rung</span>
-								<strong>#{order.buzzer_number || "—"}</strong>
-							</div>
+							isKitchen ? (
+								<div className="pos-receipt__buzzer">Thẻ #{order.buzzer_number || "—"}</div>
+							) : (
+								<div className="pos-receipt__row">
+									<span>Thẻ rung</span>
+									<strong>#{order.buzzer_number || "—"}</strong>
+								</div>
+							)
 						) : null}
 
 						<hr className="pos-receipt__sep" />
 
 						{order.items.map((it, i) => (
 							<div key={`${it.item_code}-${i}`} className="pos-receipt__item">
-								<div className="pos-receipt__item-name">{itemTitle(it.item_name, it.size)}</div>
-								<div className="pos-receipt__opts">{optsLabel(it.sugar_level, it.ice_level)}</div>
-								<div className="pos-receipt__row">
-									<span>
-										{it.qty} × {formatMoney(it.rate, "")}
-									</span>
-									<span>{formatMoney(it.amount, "")}</span>
+								<div className="pos-receipt__item-name">
+									{isKitchen ? `${it.qty}× ` : ""}
+									{itemTitle(it.item_name, it.size)}
 								</div>
+								<div className="pos-receipt__opts">{optsLabel(it.sugar_level, it.ice_level)}</div>
+								{!isKitchen ? (
+									<div className="pos-receipt__row">
+										<span>
+											{it.qty} × {formatMoney(it.rate, "")}
+										</span>
+										<span>{formatMoney(it.amount, "")}</span>
+									</div>
+								) : null}
 							</div>
 						))}
 
@@ -206,19 +227,23 @@ export default function ReceiptModal({ order, forced = false, onClose }: Props) 
 							</>
 						) : null}
 
-						<hr className="pos-receipt__sep" />
-						<div className="pos-receipt__row pos-receipt__total">
-							<span>Tổng cộng</span>
-							<span>{formatMoney(order.amount, order.currency)}</span>
-						</div>
-						<div className="pos-receipt__row">
-							<span>Thanh toán</span>
-							<span>
-								{isDraft || !paidRows.length
-									? "Chưa thanh toán"
-									: paidRows.map((p) => modeLabel(p.mode_of_payment)).join(", ")}
-							</span>
-						</div>
+						{!isKitchen ? (
+							<>
+								<hr className="pos-receipt__sep" />
+								<div className="pos-receipt__row pos-receipt__total">
+									<span>Tổng cộng</span>
+									<span>{formatMoney(order.amount, order.currency)}</span>
+								</div>
+								<div className="pos-receipt__row">
+									<span>Thanh toán</span>
+									<span>
+										{isDraft || !paidRows.length
+											? "Chưa thanh toán"
+											: paidRows.map((p) => modeLabel(p.mode_of_payment)).join(", ")}
+									</span>
+								</div>
+							</>
+						) : null}
 
 						<hr className="pos-receipt__sep" />
 						<div className="pos-receipt__foot">In lúc {nowStamp()}</div>

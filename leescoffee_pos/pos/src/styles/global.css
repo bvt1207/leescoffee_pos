@@ -1822,9 +1822,29 @@ body {
 	font-weight: 800;
 }
 
+.pos-receipt__buzzer {
+	margin: 4px 0;
+	text-align: center;
+	font-size: 22px;
+	font-weight: 800;
+}
+
 .pos-receipt__foot {
 	text-align: center;
 	font-size: 11px;
+}
+
+.pos-receipt--kitchen .pos-receipt__item-name {
+	font-size: 16px;
+}
+
+.pos-receipt--kitchen .pos-receipt__opts {
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.pos-receipt--kitchen .pos-receipt__note {
+	font-size: 14px;
 }
 
 .pos-receipt-actions {
