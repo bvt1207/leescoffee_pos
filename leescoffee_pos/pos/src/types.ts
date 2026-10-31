@@ -174,6 +174,7 @@ export interface OrderItem {
 	amount: number;
 	sugar_level?: string;
 	ice_level?: string;
+	size?: string;
 }
 
 export interface KitchenItem {

@@ -25,6 +25,8 @@ ORDER_CHANNEL = "POS"
 WALK_IN = "Walk-in Customer"
 LEVELS = (50, 70, 100)
 KITCHEN_FLOW = ["Chưa làm", "Đã làm", "Đã hoàn thành"]
+# Tên Item Attribute dùng làm size (khớp leescoffee_menu.py).
+SIZE_ATTRIBUTE = "Size"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -251,6 +253,35 @@ def _buzzer_number(buzzer_name):
 		return None
 
 	return frappe.db.get_value("Leescoffee Buzzer", buzzer_name, "buzzer_number")
+
+
+def _size_labels(item_codes):
+	"""{variant item_code: nhãn size} — một truy vấn cho cả đơn.
+
+	Nhãn = abbr của Item Attribute Value, rỗng thì lấy attribute_value.
+	Món không phải variant (hoặc không có thuộc tính Size) không có trong kết quả.
+	"""
+	codes = list({c for c in item_codes if c})
+	if not codes:
+		return {}
+
+	rows = frappe.db.sql(
+		"""
+		SELECT iva.parent AS item_code,
+			COALESCE(NULLIF(iav.abbr, ''), iva.attribute_value) AS size
+		FROM `tabItem Variant Attribute` iva
+		INNER JOIN `tabItem` i
+			ON i.name = iva.parent AND IFNULL(i.variant_of, '') != ''
+		LEFT JOIN `tabItem Attribute Value` iav
+			ON iav.parent = iva.attribute AND iav.attribute_value = iva.attribute_value
+		WHERE iva.parenttype = 'Item'
+			AND iva.attribute = %(attr)s
+			AND iva.parent IN %(codes)s
+		""",
+		{"attr": SIZE_ATTRIBUTE, "codes": codes},
+		as_dict=True,
+	)
+	return {r.item_code: r.size or "" for r in rows}
 
 
 # ---------------------------------------------------------------------------
@@ -564,6 +595,7 @@ def get_orders(status="all", limit=50):
 def get_order_detail(invoice_name):
 	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ rung)."""
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
+	sizes = _size_labels([row.item_code for row in invoice.items])
 
 	items = [
 		{
@@ -574,6 +606,7 @@ def get_order_detail(invoice_name):
 			"amount": flt(row.amount),
 			"sugar_level": row.get("sugar_level") or "",
 			"ice_level": row.get("ice_level") or "",
+			"size": sizes.get(row.item_code, ""),
 		}
 		for row in invoice.items
 	]
