@@ -13,7 +13,7 @@ Nguyên tắc (theo CLAUDE.md):
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate
 
 from ..doctype.branch_config.branch_config import (
     get_brand_info,
@@ -309,7 +309,10 @@ def _record_redemption(invoice, points=None):
 	entry.loyalty_points = -points
 	entry.purchase_amount = 0
 	entry.posting_date = invoice.posting_date
-	entry.expiry_date = invoice.posting_date
+	# Hạn dòng âm = hạn của điểm tích (posting_date + expiry_duration), để ERPNext
+	# không bỏ dòng âm khỏi số dư từ ngày hôm sau.
+	duration = cint(frappe.db.get_value("Loyalty Program", lp, "expiry_duration")) or 365
+	entry.expiry_date = add_days(invoice.posting_date, duration)
 	entry.company = invoice.company
 	entry.discretionary_reason = f"Đổi điểm trên hóa đơn {invoice.name}"
 	entry.insert(ignore_permissions=True)
