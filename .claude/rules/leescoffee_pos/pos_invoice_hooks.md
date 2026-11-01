@@ -14,6 +14,7 @@
 | `payment_status` | Select | Trạng thái thanh toán |
 | `transaction_ref` | Data | Mã tham chiếu giao dịch |
 | `sepay_payment_log` | Small Text | JSON log webhook |
+| `redeemed_points` | Int (read only) | Điểm Loyalty đã đổi; `on_submit` ghi Loyalty Point Entry âm qua `pos_api._record_redemption` |
 
 ## 2. Lifecycle Rules
 
