@@ -1,9 +1,10 @@
 import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
 import { usePos } from "../lib/pos-context";
+import type { LoyaltyInfo } from "../types";
 
 const LEVELS = [50, 70, 100] as const;
 
-export default function CartPanel() {
+export default function CartPanel({ loyalty = null }: { loyalty?: LoyaltyInfo | null }) {
 	const lines = useCart((state) => state.lines);
 	const increment = useCart((state) => state.increment);
 	const decrement = useCart((state) => state.decrement);
@@ -17,6 +18,15 @@ export default function CartPanel() {
 	const currency = config?.profile?.currency || "VND";
 	const total = cartTotal(lines);
 	const count = cartCount(lines);
+
+	// Đổi điểm Loyalty: giảm = điểm x conversion_factor (backend chặn lại khi tạo đơn).
+	const redeemPoints = useCart((state) => state.redeemPoints);
+	const setRedeemPoints = useCart((state) => state.setRedeemPoints);
+	const factor = loyalty?.conversion_factor ?? 0;
+	const maxRedeem = loyalty?.max_redeem_points ?? 0;
+	const canRedeem = !!loyalty?.enrolled && (loyalty.loyalty_points ?? 0) > 0 && lines.length > 0;
+	const discount = canRedeem ? Math.min(total, redeemPoints * factor) : 0;
+	const payable = Math.max(0, total - discount);
 
 	// TODO: đường/đá/ghi chú chưa gửi server — chỉ giữ trong state.
 	// Backend sẽ thêm custom field ở task sau.
@@ -136,9 +146,54 @@ export default function CartPanel() {
 					onChange={(event) => setOrderNote(event.target.value)}
 					rows={2}
 				/>
+				{canRedeem ? (
+					<div className="pos-redeem">
+						<div className="pos-redeem__info">
+							<span className="pos-redeem__label">Dùng điểm</span>
+							<small>
+								Tối đa {maxRedeem} điểm · 1 điểm = {formatMoney(factor, currency)}
+							</small>
+						</div>
+						<div className="pos-redeem__stepper">
+							<button
+								type="button"
+								className="pos-step"
+								aria-label="Bớt điểm"
+								disabled={redeemPoints <= 0}
+								onClick={() => setRedeemPoints(redeemPoints - 1)}
+							>
+								−
+							</button>
+							<span className="pos-redeem__value">{redeemPoints}</span>
+							<button
+								type="button"
+								className="pos-step"
+								aria-label="Thêm điểm"
+								disabled={redeemPoints >= maxRedeem}
+								onClick={() => setRedeemPoints(redeemPoints + 1)}
+							>
+								+
+							</button>
+						</div>
+					</div>
+				) : null}
+
+				{discount > 0 ? (
+					<>
+						<div className="pos-redeem__row">
+							<span>Tạm tính</span>
+							<span>{formatMoney(total, currency)}</span>
+						</div>
+						<div className="pos-redeem__row pos-redeem__row--discount">
+							<span>Giảm ({redeemPoints} điểm)</span>
+							<span>−{formatMoney(discount, currency)}</span>
+						</div>
+					</>
+				) : null}
+
 				<div className="pos-cart__total">
-					<span>Tổng cộng</span>
-					<strong>{formatMoney(total, currency)}</strong>
+					<span>{discount > 0 ? "Còn phải trả" : "Tổng cộng"}</span>
+					<strong>{formatMoney(payable, currency)}</strong>
 				</div>
 				{lines.length ? (
 					<button type="button" className="pos-btn pos-btn--ghost" onClick={() => clear()}>

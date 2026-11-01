@@ -230,6 +230,15 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 						{!isKitchen ? (
 							<>
 								<hr className="pos-receipt__sep" />
+								{(order.discount_amount ?? 0) > 0 ? (
+									<div className="pos-receipt__row">
+										<span>
+											Giảm giá đổi điểm
+											{order.redeemed_points ? ` (${order.redeemed_points} điểm)` : ""}
+										</span>
+										<span>−{formatMoney(order.discount_amount ?? 0, "")}</span>
+									</div>
+								) : null}
 								<div className="pos-receipt__row pos-receipt__total">
 									<span>Tổng cộng</span>
 									<span>{formatMoney(order.amount, order.currency)}</span>

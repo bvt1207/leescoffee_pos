@@ -758,6 +758,8 @@ def get_order_detail(invoice_name):
 		"payments": payments,
 		"creation": invoice.creation,
 		"order_note": invoice.get("order_note") or "",
+		"discount_amount": flt(invoice.discount_amount),
+		"redeemed_points": int(flt(invoice.get("redeemed_points"))),
 	}
 
 

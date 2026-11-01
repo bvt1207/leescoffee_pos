@@ -8,6 +8,7 @@ import type {
 	StatusBoardRow,
 	KitchenOrder,
 	BuzzerOption,
+	LoyaltyInfo,
 } from "../types";
 
 const API_BASE =
@@ -116,7 +117,10 @@ export const api = {
 		price_list?: string;
 		order_note?: string;
 		buzzer?: string;
+		redeem_points?: number;
 	}) => call<CreatedOrder>("create_draft_order", p),
+	getCustomerLoyalty: (customer: string, order_total = 0) =>
+		call<LoyaltyInfo>("get_customer_loyalty", { customer, order_total }),
 	getOrders: (status: "all" | "draft" | "paid") => call<OrderSummary[]>("get_orders", { status }),
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
 	payCash: (invoice_name: string) => call<{ invoice_name: string; status: string; payment_status: string; amount: number; currency: string }>("pay_cash", { invoice_name }),

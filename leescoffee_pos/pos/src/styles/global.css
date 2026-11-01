@@ -859,6 +859,75 @@ body {
 	color: var(--pos-primary);
 }
 
+/* Đổi điểm Loyalty */
+
+.pos-loyalty-chip {
+	align-self: flex-start;
+	padding: 4px 12px;
+	border-radius: 999px;
+	background: var(--pos-success-soft);
+	color: var(--pos-success);
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.pos-redeem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 10px;
+	border: 1px solid var(--pos-border);
+	border-radius: 10px;
+	background: var(--pos-bg);
+}
+
+.pos-redeem__info {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.pos-redeem__label {
+	font-weight: 700;
+	color: var(--pos-text);
+}
+
+.pos-redeem__info small {
+	font-size: 12px;
+	color: var(--pos-text-muted);
+}
+
+.pos-redeem__stepper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pos-redeem__stepper .pos-step:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.pos-redeem__value {
+	min-width: 28px;
+	text-align: center;
+	font-size: 18px;
+	font-weight: 800;
+}
+
+.pos-redeem__row {
+	display: flex;
+	justify-content: space-between;
+	font-size: 14px;
+	color: var(--pos-text-muted);
+}
+
+.pos-redeem__row--discount {
+	font-weight: 700;
+	color: var(--pos-success);
+}
+
 .pos-create-bar {
 	display: flex;
 	align-items: center;

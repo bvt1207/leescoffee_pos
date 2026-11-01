@@ -16,6 +16,9 @@ interface CartState {
 	setOrderNote: (note: string) => void;
 	clear: () => void;
 	orderNote: string;
+	// Số điểm Loyalty khách muốn đổi cho đơn đang tạo (0 = không đổi).
+	redeemPoints: number;
+	setRedeemPoints: (points: number) => void;
 }
 
 // Dòng giỏ phân biệt theo item_code + ice + sugar (cùng món khác đường/đá
@@ -27,6 +30,7 @@ export function cartLineKey(line: CartLine): string {
 export const useCart = create<CartState>((set, get) => ({
 	lines: [],
 	orderNote: "",
+	redeemPoints: 0,
 
 	add: (item) =>
 		set((state) => {
@@ -140,7 +144,9 @@ export const useCart = create<CartState>((set, get) => ({
 
 	setOrderNote: (note) => set({ orderNote: note }),
 
-	clear: () => set({ lines: [], orderNote: "" }),
+	setRedeemPoints: (points) => set({ redeemPoints: Math.max(0, Math.floor(points || 0)) }),
+
+	clear: () => set({ lines: [], orderNote: "", redeemPoints: 0 }),
 }));
 
 export function cartTotal(lines: CartLine[]): number {

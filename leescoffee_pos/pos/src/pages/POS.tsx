@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuGrid from "../components/MenuGrid";
 import CartPanel from "../components/CartPanel";
@@ -6,9 +6,9 @@ import CustomerPicker from "../components/CustomerPicker";
 import BuzzerPicker from "../components/BuzzerPicker";
 import { api } from "../lib/api";
 import { usePos } from "../lib/pos-context";
-import { useCart, cartCount } from "../store/cart";
+import { useCart, cartCount, cartTotal } from "../store/cart";
 import { useSearch } from "../store/search";
-import type { BuzzerOption, CustomerOption, OrderType } from "../types";
+import type { BuzzerOption, CustomerOption, LoyaltyInfo, OrderType } from "../types";
 
 export default function POS() {
 	const navigate = useNavigate();
@@ -17,6 +17,9 @@ export default function POS() {
 	const clear = useCart((state) => state.clear);
 	const orderNote = useCart((state) => state.orderNote);
 	const search = useSearch((state) => state.search);
+	const redeemPoints = useCart((state) => state.redeemPoints);
+	const setRedeemPoints = useCart((state) => state.setRedeemPoints);
+	const total = cartTotal(lines);
 
 	const [orderType, setOrderType] = useState<OrderType>("Take Away");
 	const [customer, setCustomer] = useState<CustomerOption | null>(null);
@@ -25,6 +28,40 @@ export default function POS() {
 	const [modeOfPayment] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [formError, setFormError] = useState("");
+	const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
+
+	// Đổi khách -> bỏ điểm đang chọn.
+	useEffect(() => {
+		setRedeemPoints(0);
+	}, [customer?.name, setRedeemPoints]);
+
+	// Điểm của khách + mức đổi tối đa theo tổng giỏ hiện tại (trễ 300ms).
+	useEffect(() => {
+		const name = customer?.name;
+		if (!name) {
+			setLoyalty(null);
+			return;
+		}
+		let cancelled = false;
+		const timer = window.setTimeout(async () => {
+			try {
+				const info = await api.getCustomerLoyalty(name, total);
+				if (!cancelled) setLoyalty(info?.enrolled ? info : null);
+			} catch {
+				if (!cancelled) setLoyalty(null);
+			}
+		}, 300);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [customer?.name, total]);
+
+	// Tổng giỏ giảm hoặc mất chương trình -> ép số điểm về mức tối đa mới.
+	const maxRedeem = loyalty?.max_redeem_points ?? 0;
+	useEffect(() => {
+		if (redeemPoints > maxRedeem) setRedeemPoints(maxRedeem);
+	}, [redeemPoints, maxRedeem, setRedeemPoints]);
 
 	// Price List lấy từ menu đầu tiên có price_list.
 	const priceList = useMemo(
@@ -82,6 +119,7 @@ export default function POS() {
 				price_list: priceList,
 				order_note: orderNote.trim() || undefined,
 				buzzer: orderType === "Dine In" ? buzzer?.name : undefined,
+				redeem_points: redeemPoints > 0 ? redeemPoints : undefined,
 			});
 
 			clear();
@@ -136,9 +174,15 @@ export default function POS() {
 					) : null}
 
 					<CustomerPicker value={customer} onChange={setCustomer} />
+					{loyalty ? (
+						<div className="pos-loyalty-chip">
+							{loyalty.tier_name ? `Hạng ${loyalty.tier_name} · ` : ""}
+							{loyalty.loyalty_points ?? 0} điểm
+						</div>
+					) : null}
 				</section>
 
-				<CartPanel />
+				<CartPanel loyalty={loyalty} />
 
 				{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
 				{needBuzzer && lines.length > 0 ? (

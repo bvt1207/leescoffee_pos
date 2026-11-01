@@ -113,6 +113,19 @@ export interface OrderDetail {
 	payments: OrderPayment[];
 	creation: string;
 	order_note?: string;
+	discount_amount?: number;
+	redeemed_points?: number;
+}
+
+export interface LoyaltyInfo {
+	enrolled: boolean;
+	program?: string;
+	tier_name?: string;
+	loyalty_points?: number;
+	total_spent?: number;
+	conversion_factor?: number;
+	collection_factor?: number;
+	max_redeem_points?: number;
 }
 
 export interface CreatedOrder {
