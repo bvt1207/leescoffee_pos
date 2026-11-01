@@ -283,6 +283,103 @@ def _size_labels(item_codes):
 	)
 	return {r.item_code: r.size or "" for r in rows}
 
+def _record_redemption(invoice, points=None):
+	"""Ghi dòng điểm âm khi đơn có đổi điểm."""
+	if points is None:
+		points = invoice.get("redeemed_points")
+	points = int(flt(points))
+	if points <= 0 or not invoice.customer:
+		return
+
+	lp = frappe.db.get_value("Customer", invoice.customer, "loyalty_program")
+	if not lp:
+		return
+
+	# Chống ghi trùng nếu hàm bị gọi lại
+	if frappe.db.exists("Loyalty Point Entry", {
+		"invoice_type": "POS Invoice", "invoice": invoice.name, "loyalty_points": ["<", 0],
+	}):
+		return
+
+	entry = frappe.new_doc("Loyalty Point Entry")
+	entry.loyalty_program = lp
+	entry.customer = invoice.customer
+	entry.invoice_type = "POS Invoice"
+	entry.invoice = invoice.name
+	entry.loyalty_points = -points
+	entry.purchase_amount = 0
+	entry.posting_date = invoice.posting_date
+	entry.expiry_date = invoice.posting_date
+	entry.company = invoice.company
+	entry.discretionary_reason = f"Đổi điểm trên hóa đơn {invoice.name}"
+	entry.insert(ignore_permissions=True)
+
+
+def _loyalty_info(customer, company, order_total=0):
+	"""Thông tin tích điểm của khách; None nếu Walk-in hoặc chưa có chương trình.
+
+	max_redeem_points = min(điểm hiện có, floor(order_total / conversion_factor)).
+	"""
+	if not customer or customer == WALK_IN:
+		return None
+
+	lp = frappe.db.get_value("Customer", customer, "loyalty_program")
+	if not lp:
+		return None
+
+	from erpnext.accounts.doctype.loyalty_program.loyalty_program import (
+		get_loyalty_program_details_with_points,
+	)
+
+	details = get_loyalty_program_details_with_points(customer, loyalty_program=lp, company=company)
+	points = int(flt(details.get("loyalty_points")))
+	cf = flt(frappe.db.get_value("Loyalty Program", lp, "conversion_factor"))
+	by_total = int(flt(order_total) // cf) if cf > 0 else 0
+
+	return {
+		"program": lp,
+		"tier_name": details.get("tier_name") or "",
+		"loyalty_points": points,
+		"total_spent": flt(details.get("total_spent")),
+		"conversion_factor": cf,
+		"collection_factor": flt(details.get("collection_factor")),
+		"max_redeem_points": max(0, min(points, by_total)),
+	}
+
+
+def _apply_redemption(invoice, customer, company, redeem_points):
+	"""Đổi điểm = giảm thẳng trên Grand Total (gọi sau khi append items, trước insert).
+
+	Không dùng redeem_loyalty_points gốc của ERPNext; dòng điểm âm ghi ở on_submit.
+	"""
+	redeem = int(flt(redeem_points))
+	if redeem <= 0:
+		return
+
+	pre_total = sum(flt(row.qty) * flt(row.rate) for row in invoice.items)
+	info = _loyalty_info(customer, company, pre_total)
+	if not info:
+		frappe.throw(
+			_("Khách {0} chưa tham gia chương trình tích điểm, không đổi điểm được.").format(customer)
+		)
+
+	if redeem > info["max_redeem_points"]:
+		frappe.throw(
+			_(
+				"Chỉ đổi được tối đa {0} điểm (khách có {1} điểm, 1 điểm = {2} {3}, đơn {4} {3})."
+			).format(
+				info["max_redeem_points"],
+				info["loyalty_points"],
+				info["conversion_factor"],
+				invoice.currency,
+				pre_total,
+			)
+		)
+
+	invoice.apply_discount_on = "Grand Total"
+	invoice.additional_discount_percentage = 0
+	invoice.discount_amount = redeem * info["conversion_factor"]
+	invoice.redeemed_points = redeem
 
 # ---------------------------------------------------------------------------
 # API giao diện
@@ -379,6 +476,19 @@ def search_customers(query=None, limit=8):
 
 
 @frappe.whitelist()
+def get_customer_loyalty(customer, order_total=0):
+	"""Điểm tích lũy của khách cho màn POS.
+
+	Walk-in hoặc chưa có chương trình -> {"enrolled": False}.
+	"""
+	profile = _get_pos_profile()
+	info = _loyalty_info(customer, profile.company, order_total)
+	if not info:
+		return {"enrolled": False}
+	return {"enrolled": True, **info}
+
+
+@frappe.whitelist()
 def create_customer(customer_name, mobile_no=None):
 	customer_name = str(customer_name or "").strip()
 	mobile_no = "".join(ch for ch in str(mobile_no or "") if ch.isdigit() or ch == "+")
@@ -416,12 +526,14 @@ def create_draft_order(
 	branch_name=None,
 	price_list=None,
 	order_note=None,
-	buzzer=None
+	buzzer=None,
+	redeem_points=0,
 ):
 	"""Tạo POS Invoice ở trạng thái Draft từ giỏ hàng.
 
 	- Thanh toán tại quầy: đơn được tạo Draft, nhân viên thu tiền ở màn Orders.
 	- Thanh toán QR: đơn được tạo Draft, sinh mã VietQR, webhook SePay sẽ submit.
+	- redeem_points > 0: đổi điểm thành giảm giá trên Grand Total (xem _apply_redemption).
 	"""
 	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
 
@@ -524,6 +636,8 @@ def create_draft_order(
 		row["rate"] = rate
 		row["price_list_rate"] = rate
 		invoice.append("items", row)
+
+	_apply_redemption(invoice, customer, profile.company, redeem_points)
 
 	if order_type == "Dine In":
 		invoice.buzzer = _assign_buzzer(profile, buzzer)

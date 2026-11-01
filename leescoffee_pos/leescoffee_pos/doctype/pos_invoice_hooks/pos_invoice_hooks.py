@@ -11,6 +11,7 @@ Hooks for POS Invoice DocType to handle Leescoffee POS business logic.
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 
 class PosInvoiceHooks:
@@ -58,6 +59,12 @@ class PosInvoiceHooks:
                         doc.buzzer
                     )
                 )
+
+        # Đơn có đổi điểm: ghi dòng Loyalty Point Entry âm (ERPNext đã tự ghi dòng tích).
+        if flt(doc.get("redeemed_points")) > 0:
+            from leescoffee_pos.leescoffee_pos.api.pos_api import _record_redemption
+
+            _record_redemption(doc)
 
     @staticmethod
     def before_save(doc, method=None):
