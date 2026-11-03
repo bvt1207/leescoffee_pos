@@ -25,6 +25,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 
 | Đổi điểm Loyalty (backend): `create_draft_order(redeem_points)` → giảm thẳng Grand Total (`apply_discount_on="Grand Total"`, `discount_amount = điểm × conversion_factor`, field `POS Invoice.redeemed_points`); `on_submit` gọi `_record_redemption` ghi Loyalty Point Entry âm (hạn = posting_date + `expiry_duration`, mặc định 365); API `get_customer_loyalty(customer, order_total)`. Không dùng `redeem_loyalty_points` gốc, giữ `allow_partial_payment = 0` | Đã test (`f58d68b`, `63b8126`) |
 | Đổi điểm Loyalty (UI `/pos`): chip hạng + điểm dưới ô khách, ô "Dùng điểm" trong giỏ (stepper 0..`max_redeem_points` theo tổng giỏ, gọi lại `get_customer_loyalty` trễ 300ms), Tạm tính / Giảm / Còn phải trả; gửi `redeem_points`; hóa đơn in dòng "Giảm giá đổi điểm" (`get_order_detail` thêm `discount_amount`, `redeemed_points`) | Đã test (`fbd6745`) |
+| CTKM tự áp (backend): `create_draft_order` bật Pricing Rule (`ignore_pricing_rule = 0`, không ép rate) qua `_build_invoice` (dựng trong bộ nhớ: `set_missing_values` + `calculate_taxes_and_totals`); điểm đổi tối đa tính trên tổng sau luật; API `preview_pricing` (không ghi DB); `get_order_detail` thêm `price_list_rate`, `discount_percentage`, `pricing_rules` | Đã test (`88ebf01`) |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
