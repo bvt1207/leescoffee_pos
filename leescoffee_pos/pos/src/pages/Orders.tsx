@@ -10,6 +10,15 @@ import type { OrderDetail, OrderSummary, QrInfo, StatusBoardRow } from "../types
 type Tab = "draft" | "paid" | "kitchen";
 
 const typeLabel = (t: string) => (t === "Take Away" ? "Mang đi" : "Tại quán");
+
+// Món có CTKM: giá gốc (price_list_rate) cao hơn giá bán (rate) do server trả.
+const itemPromo = (it: OrderDetail["items"][number]) =>
+	(it.discount_percentage ?? 0) > 0 || (it.price_list_rate ?? 0) > it.rate;
+const promoTotal = (items: OrderDetail["items"]) =>
+	items.reduce(
+		(sum, it) => sum + (itemPromo(it) ? ((it.price_list_rate ?? 0) - it.rate) * it.qty : 0),
+		0
+	);
 const timeLabel = (iso: string) => (iso ? String(iso).slice(11, 16) : "");
 
 export default function Orders() {
@@ -242,10 +251,35 @@ export default function Orders() {
 											) : null}
 										</div>
 										<span>x{it.qty}</span>
-										<strong>{formatMoney(it.amount, detail.currency)}</strong>
+										<strong>
+											{itemPromo(it) ? (
+												<span className="pos-price-old">
+													{formatMoney((it.price_list_rate ?? 0) * it.qty, detail.currency)}
+												</span>
+											) : null}
+											{formatMoney(it.amount, detail.currency)}
+											{(it.discount_percentage ?? 0) > 0 ? (
+												<span className="pos-promo-chip">−{it.discount_percentage}%</span>
+											) : null}
+										</strong>
 									</div>
 								))}
 							</div>
+
+							{promoTotal(detail.items) > 0 ? (
+								<div className="pos-detail__row pos-detail__row--promo">
+									<span>Khuyến mãi</span>
+									<span>−{formatMoney(promoTotal(detail.items), detail.currency)}</span>
+								</div>
+							) : null}
+							{(detail.discount_amount ?? 0) > 0 ? (
+								<div className="pos-detail__row pos-detail__row--promo">
+									<span>
+										Đổi điểm{detail.redeemed_points ? ` (${detail.redeemed_points} điểm)` : ""}
+									</span>
+									<span>−{formatMoney(detail.discount_amount ?? 0, detail.currency)}</span>
+								</div>
+							) : null}
 
 							<div className="pos-order-detail__total">
 								<span>Tổng cộng</span>

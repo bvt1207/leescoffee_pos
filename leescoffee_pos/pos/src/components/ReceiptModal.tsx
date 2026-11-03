@@ -38,6 +38,12 @@ function nowStamp(): string {
 }
 
 const itemTitle = (name: string, size?: string) => (size ? `${name} (${size})` : name);
+
+// Món có CTKM: giá gốc (price_list_rate) cao hơn giá bán (rate) do server trả.
+type Item = OrderDetail["items"][number];
+const itemPromo = (it: Item) => (it.discount_percentage ?? 0) > 0 || (it.price_list_rate ?? 0) > it.rate;
+const promoTotal = (items: Item[]) =>
+	items.reduce((sum, it) => sum + (itemPromo(it) ? ((it.price_list_rate ?? 0) - it.rate) * it.qty : 0), 0);
 const optsLabel = (sugar?: string, ice?: string) => `Đường ${sugar || 100}% · Đá ${ice || 100}%`;
 
 export default function ReceiptModal({ order, kind = "customer", forced = false, onPrinted, onClose }: Props) {
@@ -207,6 +213,12 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 									{itemTitle(it.item_name, it.size)}
 								</div>
 								<div className="pos-receipt__opts">{optsLabel(it.sugar_level, it.ice_level)}</div>
+								{!isKitchen && itemPromo(it) ? (
+									<div className="pos-receipt__opts">
+										Giá gốc {formatMoney(it.price_list_rate ?? 0, "")}
+										{(it.discount_percentage ?? 0) > 0 ? ` · KM −${it.discount_percentage}%` : " · KM"}
+									</div>
+								) : null}
 								{!isKitchen ? (
 									<div className="pos-receipt__row">
 										<span>
@@ -230,6 +242,12 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 						{!isKitchen ? (
 							<>
 								<hr className="pos-receipt__sep" />
+								{promoTotal(order.items) > 0 ? (
+									<div className="pos-receipt__row">
+										<span>Khuyến mãi</span>
+										<span>−{formatMoney(promoTotal(order.items), "")}</span>
+									</div>
+								) : null}
 								{(order.discount_amount ?? 0) > 0 ? (
 									<div className="pos-receipt__row">
 										<span>

@@ -9,6 +9,7 @@ import type {
 	KitchenOrder,
 	BuzzerOption,
 	LoyaltyInfo,
+	PricingPreview,
 } from "../types";
 
 const API_BASE =
@@ -119,6 +120,12 @@ export const api = {
 		buzzer?: string;
 		redeem_points?: number;
 	}) => call<CreatedOrder>("create_draft_order", p),
+	previewPricing: (p: {
+		items: Array<{ item_code: string; qty: number }>;
+		customer?: string;
+		price_list: string;
+		redeem_points?: number;
+	}) => call<PricingPreview>("preview_pricing", p),
 	getCustomerLoyalty: (customer: string, order_total = 0) =>
 		call<LoyaltyInfo>("get_customer_loyalty", { customer, order_total }),
 	getOrders: (status: "all" | "draft" | "paid") => call<OrderSummary[]>("get_orders", { status }),

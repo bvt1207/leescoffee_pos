@@ -6,9 +6,9 @@ import CustomerPicker from "../components/CustomerPicker";
 import BuzzerPicker from "../components/BuzzerPicker";
 import { api } from "../lib/api";
 import { usePos } from "../lib/pos-context";
-import { useCart, cartCount, cartTotal } from "../store/cart";
+import { useCart, cartCount } from "../store/cart";
 import { useSearch } from "../store/search";
-import type { BuzzerOption, CustomerOption, LoyaltyInfo, OrderType } from "../types";
+import type { BuzzerOption, CustomerOption, LoyaltyInfo, OrderType, PricingPreview } from "../types";
 
 export default function POS() {
 	const navigate = useNavigate();
@@ -19,7 +19,6 @@ export default function POS() {
 	const search = useSearch((state) => state.search);
 	const redeemPoints = useCart((state) => state.redeemPoints);
 	const setRedeemPoints = useCart((state) => state.setRedeemPoints);
-	const total = cartTotal(lines);
 
 	const [orderType, setOrderType] = useState<OrderType>("Take Away");
 	const [customer, setCustomer] = useState<CustomerOption | null>(null);
@@ -29,13 +28,22 @@ export default function POS() {
 	const [submitting, setSubmitting] = useState(false);
 	const [formError, setFormError] = useState("");
 	const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
+	const [preview, setPreview] = useState<PricingPreview | null>(null);
+	const [previewError, setPreviewError] = useState("");
+	const [previewLoading, setPreviewLoading] = useState(false);
+
+	// Price List lấy từ menu đầu tiên có price_list.
+	const priceList = useMemo(
+		() => menus?.find((m) => m.price_list)?.price_list || null,
+		[menus]
+	);
 
 	// Đổi khách -> bỏ điểm đang chọn.
 	useEffect(() => {
 		setRedeemPoints(0);
 	}, [customer?.name, setRedeemPoints]);
 
-	// Điểm của khách + mức đổi tối đa theo tổng giỏ hiện tại (trễ 300ms).
+	// Hạng + điểm của khách (chip). Mức đổi tối đa lấy từ preview (tính sau CTKM).
 	useEffect(() => {
 		const name = customer?.name;
 		if (!name) {
@@ -43,31 +51,73 @@ export default function POS() {
 			return;
 		}
 		let cancelled = false;
+		api
+			.getCustomerLoyalty(name)
+			.then((info) => {
+				if (!cancelled) setLoyalty(info?.enrolled ? info : null);
+			})
+			.catch(() => {
+				if (!cancelled) setLoyalty(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [customer?.name]);
+
+	// Chỉ những gì ảnh hưởng giá: mã + số lượng theo đúng thứ tự dòng giỏ.
+	const pricingKey = lines.map((l) => `${l.item_code}:${l.qty}`).join("|");
+
+	// Xem trước giá sau CTKM + đổi điểm (trễ 300ms, bỏ kết quả cũ).
+	useEffect(() => {
+		if (!pricingKey || !priceList) {
+			setPreview(null);
+			setPreviewError("");
+			setPreviewLoading(false);
+			return;
+		}
+		const items = pricingKey.split("|").map((part) => {
+			const i = part.lastIndexOf(":");
+			return { item_code: part.slice(0, i), qty: Number(part.slice(i + 1)) };
+		});
+		const base = { items, customer: customer?.name, price_list: priceList };
+		let cancelled = false;
+		setPreviewLoading(true);
 		const timer = window.setTimeout(async () => {
 			try {
-				const info = await api.getCustomerLoyalty(name, total);
-				if (!cancelled) setLoyalty(info?.enrolled ? info : null);
-			} catch {
-				if (!cancelled) setLoyalty(null);
+				const res = await api.previewPricing({ ...base, redeem_points: redeemPoints || undefined });
+				if (cancelled) return;
+				setPreview(res);
+				setPreviewError("");
+			} catch (err) {
+				if (cancelled) return;
+				// Điểm đang chọn vượt mức mới (giỏ vừa giảm) -> lấy mức tối đa rồi ép điểm.
+				if (redeemPoints > 0) {
+					try {
+						const res0 = await api.previewPricing(base);
+						if (cancelled) return;
+						const max0 = res0.max_redeem_points || 0;
+						if (max0 < redeemPoints) {
+							// Effect chạy lại với số điểm mới.
+							setRedeemPoints(max0);
+							return;
+						}
+					} catch {
+						/* rơi xuống báo lỗi */
+					}
+				}
+				if (!cancelled) {
+					setPreview(null);
+					setPreviewError(err instanceof Error ? err.message : String(err));
+				}
+			} finally {
+				if (!cancelled) setPreviewLoading(false);
 			}
 		}, 300);
 		return () => {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [customer?.name, total]);
-
-	// Tổng giỏ giảm hoặc mất chương trình -> ép số điểm về mức tối đa mới.
-	const maxRedeem = loyalty?.max_redeem_points ?? 0;
-	useEffect(() => {
-		if (redeemPoints > maxRedeem) setRedeemPoints(maxRedeem);
-	}, [redeemPoints, maxRedeem, setRedeemPoints]);
-
-	// Price List lấy từ menu đầu tiên có price_list.
-	const priceList = useMemo(
-		() => menus?.find((m) => m.price_list)?.price_list || null,
-		[menus]
-	);
+	}, [pricingKey, customer?.name, redeemPoints, priceList, setRedeemPoints]);
 
 	const usableModes = useMemo(
 		() => (config?.payment_modes || []).filter((mode) => mode.has_account),
@@ -182,7 +232,12 @@ export default function POS() {
 					) : null}
 				</section>
 
-				<CartPanel loyalty={loyalty} />
+				<CartPanel
+					loyalty={loyalty}
+					preview={preview}
+					previewError={previewError}
+					previewLoading={previewLoading}
+				/>
 
 				{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
 				{needBuzzer && lines.length > 0 ? (

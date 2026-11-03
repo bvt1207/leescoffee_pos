@@ -188,6 +188,29 @@ export interface OrderItem {
 	sugar_level?: string;
 	ice_level?: string;
 	size?: string;
+	price_list_rate?: number;
+	discount_percentage?: number;
+	pricing_rules?: string[];
+}
+
+export interface PricingPreviewItem {
+	item_code: string;
+	qty: number;
+	price_list_rate: number;
+	rate: number;
+	discount_percentage: number;
+	saved: number;
+	rules: { name: string; title: string }[];
+	is_free_item: number;
+}
+
+export interface PricingPreview {
+	items: PricingPreviewItem[];
+	total_before: number;
+	total_discount_rules: number;
+	loyalty_discount: number;
+	grand_total: number;
+	max_redeem_points: number;
 }
 
 export interface KitchenItem {

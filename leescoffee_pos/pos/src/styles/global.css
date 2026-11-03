@@ -859,6 +859,49 @@ body {
 	color: var(--pos-primary);
 }
 
+/* CTKM tự áp (Pricing Rule) */
+
+.pos-price-old {
+	margin-right: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--pos-text-muted);
+	text-decoration: line-through;
+}
+
+.pos-promo-chip {
+	display: inline-block;
+	align-self: flex-start;
+	margin: 4px 0 0 6px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--pos-success-soft);
+	color: var(--pos-success);
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.pos-cart-line--free {
+	border-style: dashed;
+	opacity: 0.9;
+}
+
+.pos-cart__hint {
+	font-size: 12px;
+	color: var(--pos-text-muted);
+}
+
+.pos-cart__hint--error {
+	color: var(--pos-warning);
+}
+
+.pos-detail__row--promo {
+	justify-content: space-between;
+	font-weight: 700;
+	color: var(--pos-success);
+}
+
 /* Đổi điểm Loyalty */
 
 .pos-loyalty-chip {
