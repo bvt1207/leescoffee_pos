@@ -351,15 +351,16 @@ def _loyalty_info(customer, company, order_total=0):
 
 
 def _apply_redemption(invoice, customer, company, redeem_points):
-	"""Đổi điểm = giảm thẳng trên Grand Total (gọi sau khi append items, trước insert).
+	"""Đổi điểm = giảm thẳng trên Grand Total (gọi sau _build_invoice, trước insert).
 
-	Không dùng redeem_loyalty_points gốc của ERPNext; dòng điểm âm ghi ở on_submit.
+	Tổng làm gốc là grand_total SAU Pricing Rule. Không dùng redeem_loyalty_points gốc
+	của ERPNext; dòng điểm âm ghi ở on_submit.
 	"""
 	redeem = int(flt(redeem_points))
 	if redeem <= 0:
 		return
 
-	pre_total = sum(flt(row.qty) * flt(row.rate) for row in invoice.items)
+	pre_total = flt(invoice.grand_total)
 	info = _loyalty_info(customer, company, pre_total)
 	if not info:
 		frappe.throw(
@@ -383,6 +384,7 @@ def _apply_redemption(invoice, customer, company, redeem_points):
 	invoice.additional_discount_percentage = 0
 	invoice.discount_amount = redeem * info["conversion_factor"]
 	invoice.redeemed_points = redeem
+	invoice.calculate_taxes_and_totals()
 
 # ---------------------------------------------------------------------------
 # API giao diện
@@ -537,9 +539,8 @@ def create_draft_order(
 	- Thanh toán tại quầy: đơn được tạo Draft, nhân viên thu tiền ở màn Orders.
 	- Thanh toán QR: đơn được tạo Draft, sinh mã VietQR, webhook SePay sẽ submit.
 	- redeem_points > 0: đổi điểm thành giảm giá trên Grand Total (xem _apply_redemption).
+	- Pricing Rule (CTKM) do ERPNext tự áp; điểm đổi tối đa tính trên tổng SAU luật.
 	"""
-	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
-
 	rows = _normalize_items(items)
 	if not rows:
 		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
@@ -549,16 +550,113 @@ def create_draft_order(
 
 	profile = _get_pos_profile(branch_name)
 	mode = _resolve_mode_of_payment(profile.company, mode_of_payment)
-
-	# Price List bắt buộc — lấy từ menu đang chọn (cùng nguồn với get_menu_items).
-	# Không fallback sang profile.selling_price_list.
-	if not price_list:
-		frappe.throw(_("Thiếu Price List của menu."))
-	effective_price_list = price_list.strip()
-
+	effective_price_list = _require_price_list(price_list)
 	customer = _resolve_customer(customer_name)
 
 	_ensure_opening_entry(profile)
+
+	invoice = _build_invoice(profile, rows, order_type, customer, effective_price_list, mode, order_note)
+	_apply_redemption(invoice, customer, profile.company, redeem_points)
+
+	if order_type == "Dine In":
+		invoice.buzzer = _assign_buzzer(profile, buzzer)
+
+	try:
+		invoice.insert(ignore_permissions=True)
+	except Exception as exc:
+		frappe.throw(_("Không tạo được đơn: {0}").format(str(exc)))
+
+	invoice.reload()
+
+	return {
+		"invoice_name": invoice.name,
+		"order_type": order_type,
+		"grand_total": flt(invoice.grand_total),
+		"amount": flt(invoice.rounded_total or invoice.grand_total),
+		"currency": invoice.currency,
+		"qty_sum": sum(flt(row.qty) for row in invoice.items),
+		"buzzer_number": _buzzer_number(invoice.buzzer),
+	}
+
+
+@frappe.whitelist()
+def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
+	"""Xem trước giá sau CTKM (Pricing Rule) và đổi điểm — dựng hóa đơn trong bộ nhớ, không ghi DB.
+
+	Trả về từng dòng (giá gốc, giá sau luật, % giảm, số tiền tiết kiệm, luật áp dụng,
+	cờ quà tặng) cùng các tổng và mức đổi điểm tối đa theo tổng sau luật.
+	"""
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+
+	rows = _normalize_items(items)
+	if not rows:
+		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
+
+	profile = _get_pos_profile()
+	mode = _resolve_mode_of_payment(profile.company, None)
+	effective_price_list = _require_price_list(price_list)
+	cust = _resolve_customer(customer)
+
+	invoice = _build_invoice(profile, rows, "Take Away", cust, effective_price_list, mode)
+	after_rules = flt(invoice.grand_total)
+	info = _loyalty_info(cust, profile.company, after_rules)
+	_apply_redemption(invoice, cust, profile.company, redeem_points)
+
+	rules_by_row = [get_applied_pricing_rules(row.get("pricing_rules")) for row in invoice.items]
+	names = sorted({n for rules in rules_by_row for n in rules})
+	titles = {}
+	if names:
+		titles = {
+			r.name: r.title or r.name
+			for r in frappe.get_all(
+				"Pricing Rule", filters={"name": ["in", names]}, fields=["name", "title"]
+			)
+		}
+
+	out_items, total_before = [], 0
+	for row, rules in zip(invoice.items, rules_by_row):
+		free = cint(row.get("is_free_item"))
+		plr = flt(row.price_list_rate)
+		rate = 0 if free else flt(row.rate)
+		if not free:
+			total_before += plr * flt(row.qty)
+		out_items.append(
+			{
+				"item_code": row.item_code,
+				"qty": flt(row.qty),
+				"price_list_rate": plr,
+				"rate": rate,
+				"discount_percentage": flt(row.discount_percentage),
+				"saved": (plr - rate) * flt(row.qty),
+				"rules": [{"name": n, "title": titles.get(n, n)} for n in rules],
+				"is_free_item": free,
+			}
+		)
+
+	return {
+		"items": out_items,
+		"total_before": total_before,
+		"total_discount_rules": total_before - flt(invoice.total),
+		"loyalty_discount": flt(invoice.discount_amount),
+		"grand_total": flt(invoice.grand_total),
+		"max_redeem_points": info["max_redeem_points"] if info else 0,
+	}
+
+
+def _require_price_list(price_list):
+	"""Price List bắt buộc — lấy từ menu đang chọn, không fallback sang POS Profile."""
+	if not price_list:
+		frappe.throw(_("Thiếu Price List của menu."))
+	return str(price_list).strip()
+
+
+def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_note=""):
+	"""Dựng POS Invoice trong bộ nhớ (CHƯA insert) và để ERPNext tự áp Pricing Rule.
+
+	Không gán rate/price_list_rate: set_missing_values chỉ điền field đang trống.
+	Vẫn chặn template và món chưa có giá trong Price List của menu.
+	"""
+	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
 
 	invoice = frappe.new_doc("POS Invoice")
 	invoice.is_pos = 1
@@ -622,7 +720,7 @@ def create_draft_order(
 
 		# Lấy rate từ Item Price theo ĐÚNG Price List của menu đang dùng.
 		# Không fallback sang giá khác; không có thì throw nêu tên món và size.
-		rate = LeescoffeeMenu.get_price_for_item(code, effective_price_list)
+		rate = LeescoffeeMenu.get_price_for_item(code, price_list)
 		if rate is None:
 			frappe.throw(
 				_(
@@ -636,36 +734,18 @@ def create_draft_order(
 		row["uom"] = item.stock_uom
 		row["stock_uom"] = item.stock_uom
 		row["conversion_factor"] = 1
-		row["rate"] = rate
-		row["price_list_rate"] = rate
+		# Không gán rate/price_list_rate — ERPNext lấy giá theo Price List và áp CTKM.
 		invoice.append("items", row)
 
-	_apply_redemption(invoice, customer, profile.company, redeem_points)
+	# Giá theo đúng Price List của menu; bật Pricing Rule (CTKM).
+	invoice.selling_price_list = price_list
+	invoice.ignore_pricing_rule = 0
 
-	if order_type == "Dine In":
-		invoice.buzzer = _assign_buzzer(profile, buzzer)
+	invoice.set_missing_values()
+	invoice.calculate_taxes_and_totals()
+	return invoice
 
-	# Đính giá theo đúng Price List của menu (POS Profile), không để ERPNext
-	# tự điền giá từ Price List khác.
-	invoice.selling_price_list = effective_price_list
-	invoice.ignore_pricing_rule = 1
 
-	try:
-		invoice.insert(ignore_permissions=True)
-	except Exception as exc:
-		frappe.throw(_("Không tạo được đơn: {0}").format(str(exc)))
-
-	invoice.reload()
-
-	return {
-		"invoice_name": invoice.name,
-		"order_type": order_type,
-		"grand_total": flt(invoice.grand_total),
-		"amount": flt(invoice.rounded_total or invoice.grand_total),
-		"currency": invoice.currency,
-		"qty_sum": sum(flt(row.qty) for row in invoice.items),
-		"buzzer_number": _buzzer_number(invoice.buzzer),
-	}
 @frappe.whitelist()
 def get_orders(status="all", limit=50):
 	"""Danh sách đơn cho màn hình Orders.
@@ -710,7 +790,9 @@ def get_orders(status="all", limit=50):
 
 @frappe.whitelist()
 def get_order_detail(invoice_name):
-	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ rung)."""
+	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ rung, CTKM)."""
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 	sizes = _size_labels([row.item_code for row in invoice.items])
 
@@ -724,6 +806,9 @@ def get_order_detail(invoice_name):
 			"sugar_level": row.get("sugar_level") or "",
 			"ice_level": row.get("ice_level") or "",
 			"size": sizes.get(row.item_code, ""),
+			"price_list_rate": flt(row.price_list_rate),
+			"discount_percentage": flt(row.discount_percentage),
+			"pricing_rules": get_applied_pricing_rules(row.get("pricing_rules")),
 		}
 		for row in invoice.items
 	]
