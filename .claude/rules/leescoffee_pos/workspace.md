@@ -16,7 +16,7 @@ Ví dụ: `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`
 {
     "doctype": "Workspace",
     "name": "[Workspace Name]",
-    "module": "Leescoffee Pos",
+    "module": "Leescoffee POS",
     "public": 1,
     "icon": "[frappe-icon-name]",
     "color": "#[hex-color]",
@@ -39,7 +39,7 @@ Ví dụ: `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`
 |--------|-------------|---------|
 | `doctype` | `"Workspace"` | Bắt buộc, đúng chữ |
 | `name` | `"Leescoffee POS"` | Tên hiển thị trên Desk |
-| `module` | `"Leescoffee Pos"` | Module của app (viết hoa "Pos") |
+| `module` | `"Leescoffee POS"` | Phải khớp chính xác module của các DocType (xem §7) |
 | `public` | `1` | Hiển thị cho tất cả user |
 | `icon` | `"menu"` | Tên icon Frappe (không cần prefix) |
 | `color` | `"#16828A"` | Màu hex, brand của app |
@@ -97,8 +97,9 @@ bench --site <site-name> export-fixtures
 ## 7. Workspace hiện có: `leescoffee_pos`
 
 File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`
-(`name`/`title`/`label` = `leescoffee_pos`, `module` = `Leescoffee POS` — lệch tên module đã biết,
-CLAUDE.md §5; mục 2 ở trên ghi `Leescoffee Pos`, **không** đổi JSON cho khớp).
+(`name`/`title`/`label` = `leescoffee_pos`, `module` = `Leescoffee POS`).
+
+- **Quy tắc module:** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
 
 - 1 card "Lee's Coffee Setup" (`link_count: 6`), thứ tự link: Branch, POS Profile,
   POS Opening Entry, POS Closing Entry, Leescoffee Menu, Leescoffee Buzzer.

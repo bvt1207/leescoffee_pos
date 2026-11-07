@@ -41,7 +41,7 @@ leescoffee_pos/
 ├── public/                    # images/logo.svg; pos/ = output build Vite
 ├── www/pos.html, pos.py       # route /pos (+ /pos/* qua website_route_rules)
 ├── pos/                       # React + Vite + TSX (src/pages, components, store, lib, styles)
-└── leescoffee_pos/            # module "Leescoffee Pos"
+└── leescoffee_pos/            # module "Leescoffee POS"
     ├── api/pos_api.py         # whitelisted API cho frontend POS
     ├── workspace/leescoffee_pos/leescoffee_pos.json
     └── doctype/

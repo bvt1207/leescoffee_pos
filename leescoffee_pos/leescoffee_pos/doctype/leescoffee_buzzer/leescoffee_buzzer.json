@@ -3,7 +3,8 @@
   "doctype": "DocType",
   "name": "Leescoffee Buzzer",
   "autoname": "field:buzzer_number",
-  "module": "Leescoffee Pos",
+  "module": "Leescoffee POS",
+  "modified": "2026-11-08 16:00:00.000000",
   "istable": 0,
   "issingle": 0,
   "fields": [

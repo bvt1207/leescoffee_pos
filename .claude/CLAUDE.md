@@ -78,7 +78,7 @@ không cần động vào.
 Khi cần dữ liệu mới không có sẵn trong ERPNext (loại đơn, kênh đặt món, trạng thái
 pha chế, thẻ rung...), thứ tự ưu tiên:
 
-1. Custom DocType **mới hoàn toàn**, đặt đúng `module = Leescoffee Pos` khi tạo, để
+1. Custom DocType **mới hoàn toàn**, đặt đúng `module = Leescoffee POS` khi tạo, để
    file JSON nằm trong app (đi theo git bình thường) — **không phải Custom DocType
    rời trong DB**.
 2. Chỉ dùng Custom Field (gắn lên DocType chuẩn như **`POS Invoice`**) khi thực sự
@@ -189,7 +189,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 
 - Quy ước chi tiết được lưu trong `.claude/rules/` (xem file cụ thể).
 - Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`, `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
-- Mọi DocType mới của app phải chọn đúng `Module = Leescoffee Pos`.
+- Mọi DocType mới của app phải chọn đúng `Module = Leescoffee POS`.
 - Business logic đặt trong `leescoffee_pos/leescoffee_pos/doctype/<doctype>/...py` theo đúng convention chuẩn của Frappe.
 - Document Events (before_insert, validate, on_submit...) khai báo tập trung trong `hooks.py`, trỏ tới file logic riêng.
 - **Không hardcode** tên quán, logo path, banner, hay bất kỳ chuỗi/asset đặc thù nào của Lee's Coffee trong component React hay Python — luôn đọc từ `Branch` (mục 1b).
@@ -210,11 +210,8 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   - DocType thuần cấu hình (như Leescoffee Menu Item), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
 - Ví dụ trong mục này viết `...PosInvoiceHooks.on_submit` để minh họa đường dẫn đầy đủ;
   `hooks.py` thực tế reference module-level wrapper `...pos_invoice_hooks.on_submit`.
-- **Tên module — lệch đã biết, giữ nguyên (quyết định: chỉ ghi chú, không sửa code):**
-  `modules.txt` và Workspace JSON dùng `Leescoffee POS`; 4 DocType JSON dùng
-  `Leescoffee Pos`. Bench đã migrate chạy được với trạng thái này. DocType mới vẫn
-  đặt `Leescoffee Pos` cho đồng nhất với DocType hiện có. Không tự đổi một phía nếu
-  Van chưa yêu cầu (đổi cần `bench migrate` và có thể sinh Module Def trùng).
+- **Tên module (đã thống nhất 2026-11-08):** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
+  Mỗi khi sửa `module` trong JSON, thêm/tăng `"modified"` để migrate nạp lại.
 
 ## 6. Triển khai & fixtures
 
@@ -368,7 +365,7 @@ PROJECTPOS/                        # git repo
     │       ├── store/             # cart.ts, search.ts (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm)
     │       └── styles/global.css
-    └── leescoffee_pos/            # module "Leescoffee Pos"
+    └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
         │   └── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         ├── workspace/leescoffee_pos/leescoffee_pos.json

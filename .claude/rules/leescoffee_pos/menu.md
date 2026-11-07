@@ -4,7 +4,7 @@
 
 ## 1. DocType
 
-- `Leescoffee Menu` (module "Leescoffee Pos"): `menu_name`, `price_list` (Link → Price List), `currency` (default VND), `items` (Table → Leescoffee Menu Item).
+- `Leescoffee Menu` (module "Leescoffee POS"): `menu_name`, `price_list` (Link → Price List), `currency` (default VND), `items` (Table → Leescoffee Menu Item).
 - `Leescoffee Menu Item` (child table): `item_code` (Link → Item), `item_name`, `item_type`, `price`, `currency`.
 
 ## 2. Price logic (shared between `get_price_for_item()` and `load_item_price()`)
