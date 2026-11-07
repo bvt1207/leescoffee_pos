@@ -93,3 +93,23 @@ bench --site <site-name> export-fixtures
 - Workspace chỉ gom shortcut, không chứa logic nghiệp vụ
 - `is_standard: 1` bắt buộc để fixture hoạt động
 - Icon lấy từ [Frappe Icons](https://frappeframework.com/docs/user/en/desk/icons) (ví dụ: `menu`, `coffee`, `table`, `kitchen`)
+
+## 7. Workspace hiện có: `leescoffee_pos`
+
+File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`
+(`name`/`title`/`label` = `leescoffee_pos`, `module` = `Leescoffee POS` — lệch tên module đã biết,
+CLAUDE.md §5; mục 2 ở trên ghi `Leescoffee Pos`, **không** đổi JSON cho khớp).
+
+- 1 card "Lee's Coffee Setup" (`link_count: 6`), thứ tự link: Branch, POS Profile,
+  POS Opening Entry, POS Closing Entry, Leescoffee Menu, Leescoffee Buzzer.
+- 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
+
+Quy tắc khi sửa JSON workspace:
+
+- `link_count` của Card Break = số dòng `type: Link` ngay sau nó.
+- `card_name` trong `content` phải khớp chính xác `label` của Card Break.
+- Mỗi lần sửa phải **tăng `modified`**, nếu không migrate bỏ qua file. Không đổi `creation`, `name`.
+- Nạp lại workspace có thể **nhân bản** dòng `Workspace Link` (Van ghi nhận trên bench) → xóa
+  trước khi migrate:
+  `frappe.db.delete("Workspace Link", {"parent": "leescoffee_pos", "parenttype": "Workspace"}); frappe.db.commit()`
+  rồi kiểm tra `frappe.db.count("Workspace Link", {"parent": "leescoffee_pos"})` = số Link + số Card Break.
