@@ -18,8 +18,9 @@ def resolve_pos_profile_name():
         "POS Profile User",
         filters={"user": frappe.session.user, "parenttype": "POS Profile"},
         fields=["parent", "default"],
-        order_by="`default` desc",
     )
+    # Frappe v16 chặn backtick trong order_by -> sắp xếp bằng Python (default = 1 trước).
+    user_rows.sort(key=lambda r: r.get("default") or 0, reverse=True)
     for row in user_rows:
         if frappe.db.get_value("POS Profile", {"name": row.parent, "disabled": 0, "branch": ["is", "set"]}, "name"):
             return row.parent
