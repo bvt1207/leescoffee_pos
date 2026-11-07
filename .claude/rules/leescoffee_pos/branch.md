@@ -2,7 +2,7 @@
 
 > Paths: `leescoffee_pos/leescoffee_pos/doctype/branch_config/branch_config.py`,
 > `leescoffee_pos/leescoffee_pos/api/pos_api.py` (`_get_pos_profile`, `get_pos_config`).
-> Từ 2026-11-08: code **không còn đọc `Leescoffee POS Settings`** (DocType chờ xóa ở giai đoạn 2).
+> Từ 2026-11-08: code **không còn đọc `Leescoffee POS Settings`** (DocType đã xóa: patch `patches/v1_remove_pos_settings.py`).
 
 ## 1. Field trên Branch (Custom Field, `fixtures/custom_field.json`)
 

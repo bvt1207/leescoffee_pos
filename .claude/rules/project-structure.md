@@ -45,7 +45,6 @@ leescoffee_pos/
     ├── api/pos_api.py         # whitelisted API cho frontend POS
     ├── workspace/leescoffee_pos/leescoffee_pos.json
     └── doctype/
-        ├── leescoffee_pos_settings/   # NGƯNG DÙNG, chờ xóa (giai đoạn 2)
         ├── leescoffee_buzzer/         # __init__.py, .json, .py
         ├── leescoffee_menu/           # __init__.py, .json, .py
         ├── leescoffee_menu_item/      # __init__.py, .json, .py

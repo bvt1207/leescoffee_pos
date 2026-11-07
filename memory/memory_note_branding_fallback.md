@@ -8,7 +8,7 @@ metadata:
 **Trạng thái (2026-11-08):** `branch_config.get_brand_info()`, `get_branch_config()`,
 `get_sepay_config()` chỉ đọc từ `Branch`. Chi nhánh lấy từ `POS Profile.branch`, hoặc
 `resolve_pos_profile_name()` khi không có profile. `Leescoffee POS Settings` không còn được
-code đọc; DocType chờ xóa ở giai đoạn 2. Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.
+code đọc; DocType đã xóa (patch `v1_remove_pos_settings`). Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.
 
 **Why:** Van quyết định gom cấu hình về Branch để triển khai nhiều doanh nghiệp/chi nhánh
 (white-label); Settings thiếu field `brand_*` từng gây `AttributeError: brand_banner`.

@@ -109,7 +109,7 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 - Giai đoạn 1 (Đã test Pass — `1b92c1a`, `b041c8e`): Branch là nguồn cấu hình duy nhất, thêm Custom Field
   `Branch-company`, `get_default_branch()` lấy từ POS Profile (`resolve_pos_profile_name`),
   `get_pos_config` trả `warnings` khi lệch company. Rule: `.claude/rules/leescoffee_pos/branch.md`.
-- **Giai đoạn 2 (chưa làm, chờ Van duyệt):** xóa thư mục `doctype/leescoffee_pos_settings/`, dòng
+- **Giai đoạn 2 (đã code, chờ Van test):** xóa thư mục `doctype/leescoffee_pos_settings/`, dòng
   fixture `DocType = Leescoffee POS Settings` ở `hooks.py`, patch xóa DocType + bản ghi Single
   (`tabSingles`) + Workspace Link còn sót trên DB.
 
@@ -140,7 +140,7 @@ hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhấ
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
 
 ## 4. Quyết định đang chờ Van
-- Duyệt kế hoạch A–C trước khi sửa code. Duyệt giai đoạn 2 xóa Leescoffee POS Settings (mục D).
+- Duyệt kế hoạch A–C trước khi sửa code. Test giai đoạn 2 xóa Leescoffee POS Settings (mục D).
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
 
 ## 5. Quy ước bắt buộc

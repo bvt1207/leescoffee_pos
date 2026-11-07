@@ -17,7 +17,7 @@
     {"hidden": 0, "is_query_report": 0, "label": "Leescoffee Menu", "link_count": 0, "link_to": "Leescoffee Menu", "link_type": "DocType", "onboard": 0, "type": "Link"},
     {"hidden": 0, "is_query_report": 0, "label": "Leescoffee Buzzer", "link_count": 0, "link_to": "Leescoffee Buzzer", "link_type": "DocType", "onboard": 0, "type": "Link"}
   ],
-  "modified": "2026-10-22 01:30:00.000000",
+  "modified": "2026-11-08 10:00:00.000000",
   "modified_by": "Administrator",
   "module": "Leescoffee POS",
   "name": "leescoffee_pos",

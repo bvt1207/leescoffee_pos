@@ -30,7 +30,8 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
   - **`Branch` là nguồn cấu hình duy nhất** (từ 2026-11-08): thương hiệu (`brand_name`,
     `brand_logo`, `brand_banner`, `brand_phone`, `brand_address`), SePay
     (`sepay_*`) và `company`. Chi nhánh lấy từ `POS Profile.branch`. Code
-    **không còn đọc `Leescoffee POS Settings`**; DocType này chờ xóa ở giai đoạn 2.
+    **không còn `Leescoffee POS Settings`** (đã xóa khỏi repo; patch
+    `patches/v1_remove_pos_settings.py` xóa DocType + bản ghi Single trên DB).
     Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.
 - Giao diện thiết kế theo phong cách quán cà phê nói chung (đẹp, chuyên nghiệp, đủ
   tốt để demo) — không thiết kế riêng theo bộ nhận diện của Lee's Coffee.
@@ -221,8 +222,8 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   `hooks.py` và chạy `bench export-fixtures` để sinh file JSON commit vào git.
   Custom DocType mới hoàn toàn thì **không cần** fixtures.
 - **Hiện trạng `hooks.py` (giữ nguyên, quyết định của Van):** `fixtures` đang export
-  thêm 4 DocType của app (`Leescoffee POS Settings` — chờ xóa ở giai đoạn 2,
-  `Leescoffee Buzzer`, `Leescoffee Menu`, `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
+  thêm 3 DocType của app (`Leescoffee Buzzer`, `Leescoffee Menu`,
+  `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
   `POS Invoice Item`, `POS Profile`, `Branch`, `Customer.mobile_number`. Đây là ngoại lệ
   so với nguyên tắc trên — không tự xóa các dòng này.
 - Không commit `site_config.json`, API key SePay, hay bất kỳ secret nào — dùng
@@ -238,7 +239,8 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
 - [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
       mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**. *Đã ngưng dùng
-      (2026-11-08): code chỉ đọc Branch; xóa DocType ở giai đoạn 2.*
+      (2026-11-08): code chỉ đọc Branch; DocType đã xóa (giai đoạn 2, patch
+      `v1_remove_pos_settings`) — chờ Van test.*
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
@@ -344,7 +346,8 @@ PROJECTPOS/                        # git repo
     ├── __init__.py
     ├── hooks.py                   # doc_events, website_route_rules (/pos/*), fixtures
     ├── modules.txt                # "Leescoffee POS" (xem mục 5 — lệch tên module)
-    ├── patches.txt, patches/, config/, templates/
+    ├── patches.txt, patches/      # v1_remove_pos_settings.py (post_model_sync)
+    ├── config/, templates/
     ├── desktop_icon/leescoffee_pos.json
     ├── workspace_sidebar/leescoffee_pos.json
     ├── fixtures/custom_field.json
@@ -370,7 +373,6 @@ PROJECTPOS/                        # git repo
         │   └── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         ├── workspace/leescoffee_pos/leescoffee_pos.json
         └── doctype/
-            ├── leescoffee_pos_settings/   # NGƯNG DÙNG — chờ xóa (giai đoạn 2)
             ├── leescoffee_buzzer/         # thẻ rung
             ├── leescoffee_menu/           # menu theo Price List
             ├── leescoffee_menu_item/      # child table của Menu
