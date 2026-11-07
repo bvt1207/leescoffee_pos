@@ -106,7 +106,7 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 
 ### D. ĐÃ XỬ LÝ (2026-11-08) `brand_banner` / bỏ Leescoffee POS Settings
 - Van sửa trên bench: `get_brand_info()` chỉ đọc Branch bằng `branch.get(...)` (hết `AttributeError`).
-- Giai đoạn 1 (commit task này, chờ Van test): Branch là nguồn cấu hình duy nhất, thêm Custom Field
+- Giai đoạn 1 (Đã test Pass — `1b92c1a`, `b041c8e`): Branch là nguồn cấu hình duy nhất, thêm Custom Field
   `Branch-company`, `get_default_branch()` lấy từ POS Profile (`resolve_pos_profile_name`),
   `get_pos_config` trả `warnings` khi lệch company. Rule: `.claude/rules/leescoffee_pos/branch.md`.
 - **Giai đoạn 2 (chưa làm, chờ Van duyệt):** xóa thư mục `doctype/leescoffee_pos_settings/`, dòng

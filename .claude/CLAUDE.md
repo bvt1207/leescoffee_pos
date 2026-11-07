@@ -243,7 +243,7 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
       (không còn fallback Settings). **Đã test Pass**. Thêm field `company` và bỏ
-      phụ thuộc Settings (2026-11-08) — chờ Van test.
+      phụ thuộc Settings (2026-11-08) — **Đã test Pass** (`1b92c1a`, `b041c8e`).
 - [x] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook, dùng native ERPNext POS Invoice.payments flow (xóa create_payment_entry())
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
 - [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
