@@ -17,7 +17,7 @@ from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate
 
 from ..doctype.branch_config.branch_config import (
     get_brand_info,
-    get_default_branch,
+    resolve_pos_profile_name,
 )
 
 ORDER_TYPES = ("Take Away", "Dine In")
@@ -34,32 +34,43 @@ SIZE_ATTRIBUTE = "Size"
 
 
 def _get_pos_profile(branch_name=None):
-	"""Trả về POS Profile của chi nhánh (fallback: POS Profile duy nhất đang bật)."""
-	branch_name = branch_name or get_default_branch()
+	"""Trả về POS Profile đang dùng.
 
-	profile_name = None
+	- Có `branch_name`: POS Profile đang bật của chi nhánh đó, không có thì throw.
+	- Không có: `resolve_pos_profile_name()` (POS Profile gán cho user, hoặc
+	  POS Profile đang bật duy nhất; không xác định được thì throw).
+	"""
 	if branch_name:
 		profile_name = frappe.db.get_value(
 			"POS Profile",
 			{"branch": branch_name, "disabled": 0},
 			"name",
 		)
-
-	if not profile_name:
-		profiles = frappe.get_all(
-			"POS Profile",
-			filters={"disabled": 0},
-			pluck="name",
-			limit=1,
-		)
-		profile_name = profiles[0] if profiles else None
-
-	if not profile_name:
-		frappe.throw(
-			_("Chưa cấu hình POS Profile. Vui lòng tạo POS Profile cho chi nhánh trước khi dùng POS.")
-		)
+		if not profile_name:
+			frappe.throw(
+				_("Chi nhánh {0} chưa có POS Profile đang bật. Vui lòng tạo POS Profile và gán Branch.").format(
+					branch_name
+				)
+			)
+	else:
+		profile_name = resolve_pos_profile_name()
 
 	return frappe.get_doc("POS Profile", profile_name)
+
+
+def _company_warnings(profile):
+	"""Cảnh báo (không chặn) khi Branch.company khác POS Profile.company."""
+	branch = getattr(profile, "branch", None)
+	if not branch:
+		return []
+	branch_company = frappe.db.get_value("Branch", branch, "company")
+	if not branch_company or branch_company == profile.company:
+		return []
+	msg = _("Chi nhánh {0} thuộc công ty {1}, nhưng POS Profile {2} thuộc công ty {3}.").format(
+		branch, branch_company, profile.name, profile.company
+	)
+	frappe.log_error(title="Leescoffee POS: lệch company Branch/POS Profile", message=msg)
+	return [msg]
 
 
 def _get_payment_modes(company):
@@ -409,6 +420,7 @@ def get_pos_config(branch_name=None):
 			"selling_price_list": profile.get("selling_price_list") or "",
 		},
 		"payment_modes": _get_payment_modes(profile.company),
+		"warnings": _company_warnings(profile),
 	}
 
 
@@ -424,7 +436,7 @@ def get_menu_items(price_list=None):
 def get_buzzers(branch_name=None):
 	"""Danh sách thẻ rung kèm trạng thái thực tế cho popup chọn thẻ."""
 	profile = _get_pos_profile(branch_name)
-	branch = getattr(profile, "branch", None) or branch_name or get_default_branch()
+	branch = getattr(profile, "branch", None) or branch_name
 
 	buzzers = frappe.get_all(
 		"Leescoffee Buzzer",

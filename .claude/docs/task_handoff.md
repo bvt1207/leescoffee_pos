@@ -104,15 +104,14 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 - **Test:** TC1 webhook mã gốc có `-` → khớp; TC2 nội dung không có `-`/viết thường → vẫn khớp;
   TC3 mã không tồn tại → lỗi "Không tìm thấy POS Invoice", Error Log.
 
-### D. (THẤP) `brand_banner` trong `get_brand_info`
-- **File/hàm:** `branch_config.py::get_brand_info()` dòng 95 đọc `settings.brand_banner`;
-  `get_branch_config()` dòng 42 đọc `branch.brand_banner`. JSON Settings trong repo **không có**
-  field `brand_banner`; Branch vẫn có Custom Field `brand_banner`. Frontend: `types.ts` `banner: string`.
-- **Rủi ro (chưa xác minh):** nếu Branch không có banner, biểu thức đọc tới `settings.brand_banner`;
-  field không còn trên Settings có thể gây lỗi khi gọi `get_pos_config` → màn POS không load.
-- **Test (bench console):** `frappe.get_single("Leescoffee POS Settings").get("brand_banner")`;
-  gọi `get_brand_info("<branch không có banner>")` xem có lỗi không. Hướng sửa nếu lỗi: dùng
-  `settings.get("brand_banner")` hoặc bỏ hẳn banner.
+### D. ĐÃ XỬ LÝ (2026-11-08) `brand_banner` / bỏ Leescoffee POS Settings
+- Van sửa trên bench: `get_brand_info()` chỉ đọc Branch bằng `branch.get(...)` (hết `AttributeError`).
+- Giai đoạn 1 (commit task này, chờ Van test): Branch là nguồn cấu hình duy nhất, thêm Custom Field
+  `Branch-company`, `get_default_branch()` lấy từ POS Profile (`resolve_pos_profile_name`),
+  `get_pos_config` trả `warnings` khi lệch company. Rule: `.claude/rules/leescoffee_pos/branch.md`.
+- **Giai đoạn 2 (chưa làm, chờ Van duyệt):** xóa thư mục `doctype/leescoffee_pos_settings/`, dòng
+  fixture `DocType = Leescoffee POS Settings` ở `hooks.py`, patch xóa DocType + bản ghi Single
+  (`tabSingles`) + Workspace Link còn sót trên DB.
 
 ### E. Đã biết (chưa xếp ưu tiên chi tiết)
 - Test thật `pay_cash` và QR SePay qua `/pos`.
@@ -141,7 +140,7 @@ hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhấ
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
 
 ## 4. Quyết định đang chờ Van
-- Duyệt kế hoạch A–D trước khi sửa code.
+- Duyệt kế hoạch A–C trước khi sửa code. Duyệt giai đoạn 2 xóa Leescoffee POS Settings (mục D).
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
 
 ## 5. Quy ước bắt buộc

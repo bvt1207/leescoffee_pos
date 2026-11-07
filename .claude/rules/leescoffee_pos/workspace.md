@@ -89,7 +89,7 @@ bench --site <site-name> export-fixtures
 
 ## 6. Lưu ý
 
-- **Không hardcode** branding Lee's Coffee — dùng tên chung ("Leescoffee POS") hoặc cấu hình từ Settings
+- **Không hardcode** branding Lee's Coffee — dùng tên chung ("Leescoffee POS") hoặc cấu hình từ Branch
 - Workspace chỉ gom shortcut, không chứa logic nghiệp vụ
 - `is_standard: 1` bắt buộc để fixture hoạt động
 - Icon lấy từ [Frappe Icons](https://frappeframework.com/docs/user/en/desk/icons) (ví dụ: `menu`, `coffee`, `table`, `kitchen`)

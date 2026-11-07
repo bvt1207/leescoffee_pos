@@ -1,22 +1,19 @@
 ---
 name: branding-fallback-branch-vs-settings
-description: Branding ưu tiên Branch, fallback Settings (đã làm trong get_brand_info); SePay config thì KHÔNG fallback
+description: Branch là nguồn cấu hình duy nhất (branding + SePay + company); không còn fallback Leescoffee POS Settings
 metadata:
   type: feedback
 ---
 
-**Trạng thái (đối chiếu code 2026-10-27): đã triển khai** trong
-`leescoffee_pos/leescoffee_pos/doctype/branch_config/branch_config.py::get_brand_info()`:
-`name`, `logo`, `banner`, `phone`, `address` lấy từ field `brand_*` của Branch trước, rỗng thì lấy từ `Leescoffee POS Settings`.
+**Trạng thái (2026-11-08):** `branch_config.get_brand_info()`, `get_branch_config()`,
+`get_sepay_config()` chỉ đọc từ `Branch`. Chi nhánh lấy từ `POS Profile.branch`, hoặc
+`resolve_pos_profile_name()` khi không có profile. `Leescoffee POS Settings` không còn được
+code đọc; DocType chờ xóa ở giai đoạn 2. Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.
 
-**Phạm vi fallback — dễ nhầm:**
-- **Branding**: Branch → fallback Settings (giữ nguyên).
-- **SePay** (`sepay_enabled`, `sepay_api_key`, `sepay_va_account`, `sepay_bank_code`): **chỉ Branch, không fallback Settings**.
-  Dòng "không còn fallback Settings" ở CLAUDE.md §7 chỉ nói về SePay.
-
-**Why:** Branding là cấu hình theo chi nhánh, nhưng không phải chi nhánh nào cũng có logo/tên riêng nên cần mặc định chung. Tài khoản nhận tiền thì phải đúng của từng chi nhánh, không được dùng mặc định.
+**Why:** Van quyết định gom cấu hình về Branch để triển khai nhiều doanh nghiệp/chi nhánh
+(white-label); Settings thiếu field `brand_*` từng gây `AttributeError: brand_banner`.
 
 **How to apply:**
-- Frontend/hóa đơn cần branding → gọi `get_brand_info()` (qua `get_pos_config`), không đọc thẳng Settings.
-- Không hardcode giá trị branding nào (tên "Lee's Coffee", logo, banner) vào code/template/asset.
-- Chưa xác minh: CLAUDE.md §1b ghi Banner field đã bị xóa khỏi Settings, nhưng `get_brand_info()` vẫn đọc `settings.brand_banner`. Cần kiểm tra trên bench.
+- Cần branding → `get_brand_info()` (qua `get_pos_config`), không đọc Settings.
+- Không thêm fallback mới sang Settings; field Branch rỗng thì trả `""`.
+- Không hardcode giá trị branding nào vào code/template/asset.

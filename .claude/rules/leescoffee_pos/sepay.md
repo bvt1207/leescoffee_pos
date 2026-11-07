@@ -19,7 +19,7 @@
   của invoice (đọc bằng `get_decrypted_password` vì field kiểu Password).
 - Key ở Branch **phải trùng** key cấu hình webhook bên SePay.
 - **Hiện trạng: code CHƯA kiểm tra key** — xem §5 và `.claude/docs/task_handoff.md` mục A.
-- **Không fallback Settings** cho SePay config (branding thì vẫn fallback — xem `memory/memory_note_branding_fallback.md`).
+- **Chỉ đọc Branch** cho SePay config (branding cũng chỉ đọc Branch — xem `branch.md`).
 - **Không dùng** `merchant_code`, `secret_key`, `env`, `callback_url` (đã loại bỏ).
 
 Helper trong `branch_config.py`:

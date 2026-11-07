@@ -2,17 +2,62 @@ import frappe
 from frappe import _
 
 
+def resolve_pos_profile_name():
+    """Xác định POS Profile khi nơi gọi không truyền chi nhánh.
+
+    Thứ tự:
+      1. POS Profile đang bật, có gán branch, mà user hiện tại nằm trong bảng
+         "POS Profile User" (applicable_for_users). Ưu tiên dòng `default = 1`.
+      2. Nếu không có: đúng MỘT POS Profile đang bật có gán branch.
+      3. Còn lại: frappe.throw (không đoán bừa).
+
+    Returns:
+        str: tên POS Profile.
+    """
+    user_rows = frappe.get_all(
+        "POS Profile User",
+        filters={"user": frappe.session.user, "parenttype": "POS Profile"},
+        fields=["parent", "default"],
+        order_by="`default` desc",
+    )
+    for row in user_rows:
+        if frappe.db.get_value("POS Profile", {"name": row.parent, "disabled": 0, "branch": ["is", "set"]}, "name"):
+            return row.parent
+
+    profiles = frappe.get_all(
+        "POS Profile",
+        filters={"disabled": 0, "branch": ["is", "set"]},
+        pluck="name",
+    )
+    if len(profiles) == 1:
+        return profiles[0]
+
+    if not profiles:
+        frappe.throw(
+            _("Không xác định được chi nhánh: chưa có POS Profile nào đang bật và được gán Branch.")
+        )
+    frappe.throw(
+        _(
+            "Không xác định được chi nhánh: có {0} POS Profile đang bật ({1}). "
+            "Hãy gán user {2} vào bảng Applicable for Users của đúng POS Profile."
+        ).format(len(profiles), ", ".join(profiles), frappe.session.user)
+    )
+
+
 def get_default_branch():
-    """Get the default branch from Leescoffee POS Settings."""
-    settings = frappe.get_single("Leescoffee POS Settings")
-    return settings.default_branch or ""
+    """Chi nhánh mặc định, lấy từ POS Profile (không còn Leescoffee POS Settings).
+
+    Giữ tên hàm cũ để không vỡ nơi gọi. Ném lỗi nếu không xác định được.
+    """
+    profile_name = resolve_pos_profile_name()
+    return frappe.db.get_value("POS Profile", profile_name, "branch")
 
 
 def get_branch_config(branch_name=None):
     """Get all configuration fields for a specific branch.
 
     Args:
-        branch_name (str): Name of the Branch. If None, uses default branch.
+        branch_name (str): Name of the Branch. If None, lấy branch từ POS Profile (get_default_branch).
 
     Returns:
         dict: Dictionary containing all branch config fields.
@@ -28,7 +73,10 @@ def get_branch_config(branch_name=None):
 
     config = {}
 
-    # SePay configuration - no fallback to Settings
+    # Branch là nguồn cấu hình duy nhất (SePay + thương hiệu + company)
+    config["company"] = branch.get("company") or ""
+
+    # SePay configuration
     config["sepay_enabled"] = branch.sepay_enabled if branch.sepay_enabled is not None else 0
     config["sepay_api_key"] = branch.sepay_api_key or ""
 
@@ -36,12 +84,12 @@ def get_branch_config(branch_name=None):
     config["sepay_va_account"] = branch.sepay_va_account or ""
     config["sepay_bank_code"] = branch.sepay_bank_code or ""
 
-    # Branding - keep fallback to Settings
-    config["brand_name"] = branch.brand_name or ""
-    config["brand_logo"] = branch.brand_logo or ""
-    config["brand_banner"] = branch.brand_banner or ""
-    config["brand_phone"] = branch.brand_phone or ""
-    config["brand_address"] = branch.brand_address or ""
+    # Branding - chỉ đọc từ Branch
+    config["brand_name"] = branch.get("brand_name") or ""
+    config["brand_logo"] = branch.get("brand_logo") or ""
+    config["brand_banner"] = branch.get("brand_banner") or ""
+    config["brand_phone"] = branch.get("brand_phone") or ""
+    config["brand_address"] = branch.get("brand_address") or ""
 
     return config
 
@@ -50,7 +98,7 @@ def get_sepay_config(branch_name=None):
     """Get SePay configuration for a branch.
 
     Args:
-        branch_name (str): Name of the Branch. If None, uses default branch.
+        branch_name (str): Name of the Branch. If None, lấy branch từ POS Profile (get_default_branch).
 
     Returns:
         dict: SePay configuration dictionary.
@@ -72,10 +120,12 @@ def get_sepay_config(branch_name=None):
 
 
 def get_brand_info(branch_name=None):
-    """Get branding information for a branch with fallback to Settings.
+    """Get branding information for a branch.
+
+    Chỉ đọc từ Branch.
 
     Args:
-        branch_name (str): Name of the Branch. If None, uses default branch.
+        branch_name (str): Name of the Branch. If None, lấy branch từ POS Profile (get_default_branch).
 
     Returns:
         dict: Branding information dictionary.
@@ -87,14 +137,13 @@ def get_brand_info(branch_name=None):
         return {}
 
     branch = frappe.get_doc("Branch", branch_name)
-    settings = frappe.get_single("Leescoffee POS Settings")
 
     return {
-        "name": branch.brand_name or settings.brand_name or "",
-        "logo": branch.brand_logo or settings.brand_logo or "",
-        "banner": branch.brand_banner or settings.brand_banner or "",
-        "phone": branch.brand_phone or settings.brand_phone or "",
-        "address": branch.brand_address or settings.brand_address or "",
+        "name": branch.get("brand_name") or "",
+        "logo": branch.get("brand_logo") or "",
+        "banner": branch.get("brand_banner") or "",
+        "phone": branch.get("brand_phone") or "",
+        "address": branch.get("brand_address") or "",
     }
 
 
@@ -102,7 +151,7 @@ def get_sepay_enabled(branch_name=None):
     """Check if SePay is enabled for a branch.
 
     Args:
-        branch_name (str): Name of the Branch. If None, uses default branch.
+        branch_name (str): Name of the Branch. If None, lấy branch từ POS Profile (get_default_branch).
 
     Returns:
         int: 1 if enabled, 0 if disabled.

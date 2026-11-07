@@ -2,4 +2,4 @@
 
 > File memory nằm ở `PROJECTPOS/memory/`.
 
-- [Branding: Branch trước, fallback Settings; SePay không fallback](../memory/memory_note_branding_fallback.md) — đã làm trong `get_brand_info()`
+- [Branch là nguồn cấu hình duy nhất (branding + SePay + company)](../memory/memory_note_branding_fallback.md) — không còn fallback Settings (2026-11-08)

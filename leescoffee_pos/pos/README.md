@@ -99,6 +99,6 @@ Danh sách hàm: `get_pos_config`, `get_menu_items`, `get_buzzers`,
 ## Ghi chú
 
 - **Không hardcode** branding Lee's Coffee: tên quán/logo/banner đọc từ
-  `Branch` / `Leescoffee POS Settings` qua `get_pos_config` → `get_brand_info()`.
+  `Branch` (chi nhánh của POS Profile) qua `get_pos_config` → `get_brand_info()`.
 - Màu chủ đạo nằm ở biến CSS `--pos-accent` (mặc định nâu cà phê trung tính).
 - Giỏ hàng chỉ tồn tại trong RAM của tab đang mở — đóng tab là mất giỏ.

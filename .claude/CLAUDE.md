@@ -26,12 +26,12 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
   thương hiệu hay bất kỳ nội dung đặc thù nào của Lee's Coffee vào code, template,
   hay asset tĩnh (frontend lẫn backend).
 - Mọi thông tin thương hiệu (tên quán, logo, banner, màu chủ đạo...) phải là **dữ
-  liệu cấu hình** đọc từ DocType (Settings/Branch), không phải giá trị viết chết
-  trong code.
-  - *Lưu ý: `brand_banner` cần xác minh trên bench. File JSON của Leescoffee POS
-    Settings trong repo không còn field này (chỉ có `brand_name`, `brand_logo`,
-    `brand_phone`, `brand_address`). Branch vẫn có Custom Field `brand_banner`, và
-    `branch_config.get_brand_info()` vẫn đọc `settings.brand_banner`.*
+  liệu cấu hình** đọc từ **`Branch`**, không phải giá trị viết chết trong code.
+  - **`Branch` là nguồn cấu hình duy nhất** (từ 2026-11-08): thương hiệu (`brand_name`,
+    `brand_logo`, `brand_banner`, `brand_phone`, `brand_address`), SePay
+    (`sepay_*`) và `company`. Chi nhánh lấy từ `POS Profile.branch`. Code
+    **không còn đọc `Leescoffee POS Settings`**; DocType này chờ xóa ở giai đoạn 2.
+    Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.
 - Giao diện thiết kế theo phong cách quán cà phê nói chung (đẹp, chuyên nghiệp, đủ
   tốt để demo) — không thiết kế riêng theo bộ nhận diện của Lee's Coffee.
 - Dữ liệu mẫu để test/demo (tên món, giá, logo Lee's Coffee...) nhập qua Desk UI
@@ -151,8 +151,7 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 
 ## 4. Định hướng phát triển & môi trường làm việc
 
-- Hiện trạng: app Frappe đã scaffold, đã có DocType đầu tiên (`Leescoffee POS
-Settings`), đang làm `Leescoffee Buzzer` + Custom Field trên POS Invoice.
+- Hiện trạng: xem checklist mục 7 và `.claude/docs/task_handoff.md`.
 - Cách tiếp cận: làm từng phần nhỏ nhất một, theo đúng thứ tự phụ thuộc (mục 7).
 - Frontend React/TSX cho POS phát triển riêng, gọi REST API của Frappe (hoặc nhúng
   qua Frappe Web Page nếu tiện hơn khi demo) — chưa chốt cứng, quyết định khi bắt
@@ -192,7 +191,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 - Mọi DocType mới của app phải chọn đúng `Module = Leescoffee Pos`.
 - Business logic đặt trong `leescoffee_pos/leescoffee_pos/doctype/<doctype>/...py` theo đúng convention chuẩn của Frappe.
 - Document Events (before_insert, validate, on_submit...) khai báo tập trung trong `hooks.py`, trỏ tới file logic riêng.
-- **Không hardcode** tên quán, logo path, banner, hay bất kỳ chuỗi/asset đặc thù nào của Lee's Coffee trong component React hay Python — luôn đọc từ DocType Settings/Branch (mục 1b).
+- **Không hardcode** tên quán, logo path, banner, hay bất kỳ chuỗi/asset đặc thù nào của Lee's Coffee trong component React hay Python — luôn đọc từ `Branch` (mục 1b).
 - **Checklist bắt buộc cho mọi file DocType JSON** (lỗi thực tế đã gặp, dễ tái diễn):
   - Phải có `"doctype": "DocType"` ở gốc file — thiếu dòng này gây lỗi `KeyError: 'doctype'` khi chạy `bench migrate`.
   - Giá trị `fieldtype` phải đúng casing chuẩn Frappe (Title Case): `Section Break`, `Link`, `Data`, `Check`, `Select`, `Password`, `Attach Image`, `Small Text`...
@@ -207,7 +206,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method".
     Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
     gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
-  - DocType thuần cấu hình (như Leescoffee POS Settings), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
+  - DocType thuần cấu hình (như Leescoffee Menu Item), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
 - Ví dụ trong mục này viết `...PosInvoiceHooks.on_submit` để minh họa đường dẫn đầy đủ;
   `hooks.py` thực tế reference module-level wrapper `...pos_invoice_hooks.on_submit`.
 - **Tên module — lệch đã biết, giữ nguyên (quyết định: chỉ ghi chú, không sửa code):**
@@ -222,8 +221,8 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   `hooks.py` và chạy `bench export-fixtures` để sinh file JSON commit vào git.
   Custom DocType mới hoàn toàn thì **không cần** fixtures.
 - **Hiện trạng `hooks.py` (giữ nguyên, quyết định của Van):** `fixtures` đang export
-  thêm 4 DocType của app (`Leescoffee POS Settings`, `Leescoffee Buzzer`,
-  `Leescoffee Menu`, `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
+  thêm 4 DocType của app (`Leescoffee POS Settings` — chờ xóa ở giai đoạn 2,
+  `Leescoffee Buzzer`, `Leescoffee Menu`, `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
   `POS Invoice Item`, `POS Profile`, `Branch`, `Customer.mobile_number`. Đây là ngoại lệ
   so với nguyên tắc trên — không tự xóa các dòng này.
 - Không commit `site_config.json`, API key SePay, hay bất kỳ secret nào — dùng
@@ -238,11 +237,13 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
 - [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
-      mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**.
+      mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**. *Đã ngưng dùng
+      (2026-11-08): code chỉ đọc Branch; xóa DocType ở giai đoạn 2.*
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
-      (không còn fallback Settings). **Đã test Pass**
+      (không còn fallback Settings). **Đã test Pass**. Thêm field `company` và bỏ
+      phụ thuộc Settings (2026-11-08) — chờ Van test.
 - [x] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook, dùng native ERPNext POS Invoice.payments flow (xóa create_payment_entry())
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
 - [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
@@ -332,7 +333,7 @@ PROJECTPOS/                        # git repo
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
-│   │   └── leescoffee_pos/        # menu.md, pos_invoice_hooks.md, sepay.md, workspace.md
+│   │   └── leescoffee_pos/        # branch.md, menu.md, pos_invoice_hooks.md, sepay.md, workspace.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -369,13 +370,13 @@ PROJECTPOS/                        # git repo
         │   └── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         ├── workspace/leescoffee_pos/leescoffee_pos.json
         └── doctype/
-            ├── leescoffee_pos_settings/   # Single DocType — cấu hình gốc
+            ├── leescoffee_pos_settings/   # NGƯNG DÙNG — chờ xóa (giai đoạn 2)
             ├── leescoffee_buzzer/         # thẻ rung
             ├── leescoffee_menu/           # menu theo Price List
             ├── leescoffee_menu_item/      # child table của Menu
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
             ├── sepay/                     # sinh VietQR + webhook SePay
-            └── branch_config/             # helper cấu hình Branch (SePay, branding)
+            └── branch_config/             # helper cấu hình Branch (SePay, branding, company)
 ```
 
 ## 11. Ghi chú SePay
