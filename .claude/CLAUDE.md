@@ -240,7 +240,7 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [x] DocType cấu hình gốc `Leescoffee POS Settings` (Single DocType) — chi nhánh
       mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**. *Đã ngưng dùng
       (2026-11-08): code chỉ đọc Branch; DocType đã xóa (giai đoạn 2, patch
-      `v1_remove_pos_settings`) — chờ Van test.*
+      `v1_remove_pos_settings`) — **Đã test Pass** (`b2e1614`).*
 - [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
