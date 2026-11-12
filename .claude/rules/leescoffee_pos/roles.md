@@ -33,6 +33,7 @@ Không cấp Cancel / Delete / Amend.
 | Sales Invoice | S R W C Sub | — | S R W C Sub |
 | Address | R | — | R W C |
 | Contact | R | — | R W C |
+| Branch | — | — | S R W C |
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
 
@@ -48,7 +49,10 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Patch chỉ **bật** cờ đang 0, không tắt cờ nào; quyền người dùng tự thêm được giữ.
 - Site đang chạy: `patches.txt` [post_model_sync] (chạy 1 lần, ghi Patch Log).
 - Site cài mới: `hooks.after_install` gọi cùng `execute()` (install-app không chạy patch).
-- Muốn áp lại sau khi sửa `PERMS`: `bench --site <site> execute leescoffee_pos.patches.v1_create_pos_roles.execute`.
+- Muốn áp lại sau khi sửa `PERMS`: đổi nhãn sau `#` của dòng patch trong `patches.txt`
+  (vd. `leescoffee_pos.patches.v1_create_pos_roles #2026-11-12 manager-branch`) → migrate chạy lại
+  (Patch Log lưu nguyên dòng). Hoặc chạy tay:
+  `bench --site <site> execute leescoffee_pos.patches.v1_create_pos_roles.execute`.
 
 ## 4. Quy tắc module
 

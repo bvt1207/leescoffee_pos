@@ -65,6 +65,7 @@ PERMS = {
 		"Sales Invoice": _INVOICE,
 		"Address": ["read", "write", "create"],
 		"Contact": ["read", "write", "create"],
+		"Branch": _MASTER_RW,
 	},
 }
 
