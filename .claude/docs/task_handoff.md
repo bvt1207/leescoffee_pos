@@ -29,6 +29,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Workspace `leescoffee_pos`: card "Lee's Coffee Setup" thêm Branch, POS Opening Entry, POS Closing Entry (`link_count` 6, `modified` 2026-11-08 15:00) — xóa `Workspace Link` trước khi migrate (rule `workspace.md` §7) | Đã test (`724e2dc`) |
 | Thống nhất module `Leescoffee POS` cho 3 DocType JSON (Menu, Menu Item, Buzzer; thêm `modified` 2026-11-08 16:00) — sửa PermissionError của user thường ở `/desk/leescoffee_pos` | Đã test (`f32640d`) |
 | 3 role `POS CASHIER`/`POS KITCHEN`/`POS MANAGER`: fixture `role.json`, quyền qua patch `v1_create_pos_roles` + `after_install` (không fixture Custom DocPerm); bảng quyền + role ERPNext đi kèm MANAGER ở `rules/leescoffee_pos/roles.md` | Đã test (`b4fa3f4`) |
+| POS MANAGER thêm quyền Branch (S R W C); chạy lại patch bằng nhãn `#` trong `patches.txt` | Đã test (`2caf0df`) |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
