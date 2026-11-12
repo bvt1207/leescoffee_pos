@@ -70,7 +70,7 @@ dễ chặn nhầm user ERPNext khác.
 - Để patch hợp nhất (không xóa tay): patch chỉ bổ sung cờ thiếu.
 - Xóa Role → mất Custom DocPerm + Has Role của role đó (user mất role). Nếu buộc xóa: `bench backup` trước.
 
-## 7. Phân quyền màn POS (UI + API pha chế) — ĐÃ LÀM (2026-11-12)
+## 7. Phân quyền màn POS (UI + API pha chế) — ĐÃ LÀM, đã test Pass (`2be2ae8`)
 
 | Role | Menu thấy | Tab Pha chế thấy | Được chuyển |
 |---|---|---|---|
