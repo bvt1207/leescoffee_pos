@@ -20,6 +20,7 @@
 │       ├── branch.md
 │       ├── menu.md
 │       ├── pos_invoice_hooks.md
+│       ├── roles.md
 │       ├── sepay.md
 │       └── workspace.md
 ├── skills/
@@ -35,8 +36,9 @@
 ```text
 leescoffee_pos/
 ├── hooks.py                   # doc_events, website_route_rules, fixtures
-├── modules.txt                # "Leescoffee POS" (lệch tên module, xem CLAUDE.md §5)
-├── fixtures/custom_field.json
+├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, CLAUDE.md §5)
+├── fixtures/custom_field.json, role.json
+├── patches.txt, patches/       # v1_remove_pos_settings, v1_create_pos_roles
 ├── desktop_icon/, workspace_sidebar/
 ├── public/                    # images/logo.svg; pos/ = output build Vite
 ├── www/pos.html, pos.py       # route /pos (+ /pos/* qua website_route_rules)

@@ -27,7 +27,8 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Đổi điểm Loyalty (UI `/pos`): chip hạng + điểm dưới ô khách, ô "Dùng điểm" trong giỏ (stepper 0..`max_redeem_points` theo tổng giỏ, gọi lại `get_customer_loyalty` trễ 300ms), Tạm tính / Giảm / Còn phải trả; gửi `redeem_points`; hóa đơn in dòng "Giảm giá đổi điểm" (`get_order_detail` thêm `discount_amount`, `redeemed_points`) | Đã test (`fbd6745`) |
 | CTKM tự áp (backend): `create_draft_order` bật Pricing Rule (`ignore_pricing_rule = 0`, không ép rate) qua `_build_invoice` (dựng trong bộ nhớ: `set_missing_values` + `calculate_taxes_and_totals`); điểm đổi tối đa tính trên tổng sau luật; API `preview_pricing` (không ghi DB); `get_order_detail` thêm `price_list_rate`, `discount_percentage`, `pricing_rules` | Đã test (`88ebf01`) |
 | Workspace `leescoffee_pos`: card "Lee's Coffee Setup" thêm Branch, POS Opening Entry, POS Closing Entry (`link_count` 6, `modified` 2026-11-08 15:00) — xóa `Workspace Link` trước khi migrate (rule `workspace.md` §7) | Đã test (`724e2dc`) |
-| Thống nhất module `Leescoffee POS` cho 3 DocType JSON (Menu, Menu Item, Buzzer; thêm `modified` 2026-11-08 16:00) — sửa PermissionError của user thường ở `/desk/leescoffee_pos` | Chờ Van test |
+| Thống nhất module `Leescoffee POS` cho 3 DocType JSON (Menu, Menu Item, Buzzer; thêm `modified` 2026-11-08 16:00) — sửa PermissionError của user thường ở `/desk/leescoffee_pos` | Đã test (`f32640d`) |
+| 3 role `POS CASHIER`/`POS KITCHEN`/`POS MANAGER`: fixture `role.json`, quyền qua patch `v1_create_pos_roles` + `after_install` (không fixture Custom DocPerm); bảng quyền + role ERPNext đi kèm MANAGER ở `rules/leescoffee_pos/roles.md` | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
@@ -142,6 +143,7 @@ hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhấ
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
 
 ## 4. Quyết định đang chờ Van
+- Phân quyền API `pos_api` theo role (`frappe.only_for`) — đề xuất từng hàm ở `rules/leescoffee_pos/roles.md` §7, chưa làm.
 - Duyệt kế hoạch A–C trước khi sửa code.
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
 

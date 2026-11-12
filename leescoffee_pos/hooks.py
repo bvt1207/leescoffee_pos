@@ -86,7 +86,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "leescoffee_pos.install.before_install"
-# after_install = "leescoffee_pos.install.after_install"
+# Cài mới: install-app không chạy patch -> tạo Role POS + quyền ở đây (idempotent).
+after_install = "leescoffee_pos.patches.v1_create_pos_roles.execute"
 
 # Uninstallation
 # ------------
@@ -251,6 +252,8 @@ fixtures = [
 		],
 	},
     {"dt": "Custom Field", "filters": [["dt", "=", "POS Invoice Item"]]},
+	# Chỉ Role; quyền (Custom DocPerm) đặt qua patches/v1_create_pos_roles.py, KHÔNG dùng fixture.
+	{"dt": "Role", "filters": [["name", "in", ["POS CASHIER", "POS KITCHEN", "POS MANAGER"]]]},
 ]
 
 # Request Events

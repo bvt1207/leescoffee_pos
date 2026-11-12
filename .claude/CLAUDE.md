@@ -223,6 +223,10 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
   `POS Invoice Item`, `POS Profile`, `Branch`, `Customer.mobile_number`. Đây là ngoại lệ
   so với nguyên tắc trên — không tự xóa các dòng này.
+- **Role & quyền (2026-11-12):** 3 role `POS CASHIER` / `POS KITCHEN` / `POS MANAGER` qua fixture
+  `role.json`; quyền DocType **chỉ** qua patch `v1_create_pos_roles` (+ `after_install` cho cài
+  mới), **không** dùng fixture `Custom DocPerm`. Bảng quyền, role ERPNext đi kèm MANAGER, ghi chú
+  phân quyền API: `.claude/rules/leescoffee_pos/roles.md`.
 - Không commit `site_config.json`, API key SePay, hay bất kỳ secret nào — dùng
   `bench set-config` hoặc biến môi trường trên từng site.
 - Trước khi coi 1 phần là "xong": đây là bước Van tự làm trên bench thật (cài lại
@@ -332,7 +336,7 @@ PROJECTPOS/                        # git repo
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
-│   │   └── leescoffee_pos/        # branch.md, menu.md, pos_invoice_hooks.md, sepay.md, workspace.md
+│   │   └── leescoffee_pos/        # branch.md, menu.md, pos_invoice_hooks.md, roles.md, sepay.md, workspace.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -342,12 +346,12 @@ PROJECTPOS/                        # git repo
 └── leescoffee_pos/                # package Python của app
     ├── __init__.py
     ├── hooks.py                   # doc_events, website_route_rules (/pos/*), fixtures
-    ├── modules.txt                # "Leescoffee POS" (xem mục 5 — lệch tên module)
-    ├── patches.txt, patches/      # v1_remove_pos_settings.py (post_model_sync)
+    ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
+    ├── patches.txt, patches/      # v1_remove_pos_settings.py, v1_create_pos_roles.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/leescoffee_pos.json
     ├── workspace_sidebar/leescoffee_pos.json
-    ├── fixtures/custom_field.json
+    ├── fixtures/custom_field.json, role.json
     ├── public/
     │   ├── images/logo.svg
     │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build

@@ -1,0 +1,23 @@
+[
+ {
+  "doctype": "Role",
+  "name": "POS CASHIER",
+  "role_name": "POS CASHIER",
+  "desk_access": 1,
+  "disabled": 0
+ },
+ {
+  "doctype": "Role",
+  "name": "POS KITCHEN",
+  "role_name": "POS KITCHEN",
+  "desk_access": 0,
+  "disabled": 0
+ },
+ {
+  "doctype": "Role",
+  "name": "POS MANAGER",
+  "role_name": "POS MANAGER",
+  "desk_access": 1,
+  "disabled": 0
+ }
+]
