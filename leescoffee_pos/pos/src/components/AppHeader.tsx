@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { usePos } from "../lib/pos-context";
+import { navOf, usePos } from "../lib/pos-context";
 import { useSearch } from "../store/search";
 
 export default function AppHeader() {
@@ -13,6 +13,7 @@ export default function AppHeader() {
 	const displayName = user?.full_name || user?.name || "";
 	const initial = (displayName || "?").trim().slice(0, 1).toUpperCase();
 
+	const nav = navOf(config);
 	const isKitchen = pathname.startsWith("/kitchen");
 	const placeholder = pathname.startsWith("/orders") ? "Tìm đơn…" : "Tìm món…";
 
@@ -86,9 +87,9 @@ export default function AppHeader() {
 
 			<div className="pos-header__right">
 				<nav className="pos-header__nav">
-					<NavLink to="/" end className="pos-navlink">Bán món</NavLink>
-					<NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink>
-					<NavLink to="/kitchen" className="pos-navlink">Pha chế</NavLink>
+					{nav.includes("sell") ? <NavLink to="/" end className="pos-navlink">Bán món</NavLink> : null}
+					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink> : null}
+					{nav.includes("kitchen") ? <NavLink to="/kitchen" className="pos-navlink">Pha chế</NavLink> : null}
 				</nav>
 
 				{displayName ? (

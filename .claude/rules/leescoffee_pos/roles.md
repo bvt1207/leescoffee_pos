@@ -70,7 +70,34 @@ dễ chặn nhầm user ERPNext khác.
 - Để patch hợp nhất (không xóa tay): patch chỉ bổ sung cờ thiếu.
 - Xóa Role → mất Custom DocPerm + Has Role của role đó (user mất role). Nếu buộc xóa: `bench backup` trước.
 
-## 7. Phân quyền API — CHƯA làm (task sau, dùng `frappe.only_for`)
+## 7. Phân quyền màn POS (UI + API pha chế) — ĐÃ LÀM (2026-11-12)
+
+| Role | Menu thấy | Tab Pha chế thấy | Được chuyển |
+|---|---|---|---|
+| POS MANAGER (+ System Manager, Administrator) | Bán món, Đơn hàng, Pha chế | Chưa làm, Đã làm, Đã hoàn thành | Chưa làm→Đã làm, Đã làm→Đã hoàn thành |
+| POS CASHIER | Bán món, Đơn hàng, Pha chế | Đã làm, Đã hoàn thành | Đã làm→Đã hoàn thành |
+| POS KITCHEN | Pha chế | Chưa làm, Đã hoàn thành (chỉ xem) | Chưa làm→Đã làm |
+
+- **Nguồn duy nhất**: hằng ở đầu `api/pos_api.py`: `NAV_BY_ROLE`, `KITCHEN_TABS_BY_ROLE`,
+  `KITCHEN_TRANSITIONS_BY_ROLE` (khóa `manager`/`cashier`/`kitchen`). Đổi quyền chỉ sửa ở đây.
+- `_pos_roles()` → `{manager, cashier, kitchen}`; nhiều role = **hợp quyền**.
+- `get_pos_config` trả `roles`, `nav`, `kitchen_tabs`, `kitchen_transitions`; frontend chỉ đọc
+  các khóa này (`lib/pos-context.tsx`: `navOf`, `kitchenTabsOf`, `kitchenTransitionsOf`), không tự suy từ role.
+- **Chặn thật ở backend**: `get_kitchen_orders` (status ngoài quyền → `PermissionError`; không truyền
+  status → chỉ trả tab được phép), `set_kitchen_status` (sai bước → `ValidationError`, đúng bước nhưng
+  sai role → `PermissionError`). User không có role POS (và không phải System Manager/Administrator)
+  → `PermissionError`; frontend hiện thông báo, `nav` rỗng.
+- "Đã hoàn thành" chỉ lấy `posting_date = nowdate()` ở backend (Chưa làm / Đã làm lấy mọi ngày).
+- Frontend: `AppHeader` ẩn mục theo `nav`; `App.tsx` chuyển hướng mục không được phép sang mục đầu
+  tiên được phép (KITCHEN mở `/pos`, `/pos/orders` → `/pos/kitchen`); `Kitchen.tsx` tab theo
+  `kitchen_tabs`, nút chỉ hiện khi bước nằm trong `kitchen_transitions`, tab mặc định = tab đầu tiên được phép.
+
+**Tồn đọng:**
+- Toast "Mời khách … đến quầy nhận món" chỉ hiện trên máy bấm nút; pha chế và thu ngân khác máy
+  thì thu ngân chỉ thấy đơn sau chu kỳ làm mới 5 giây.
+- KITCHEN không thấy tab "Đã làm": bấm "Đã làm" xong đơn biến mất khỏi màn hình họ cho tới khi giao món.
+
+## 8. Phân quyền các API còn lại — CHƯA làm (task sau, dùng `frappe.only_for`)
 
 API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa chặn được việc gọi API.
 
@@ -85,14 +112,14 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `pos_api.create_draft_order` | CASHIER, MANAGER |
 | `pos_api.preview_pricing` | CASHIER, MANAGER |
 | `pos_api.get_orders` | CASHIER, MANAGER |
-| `pos_api.get_order_detail` | CASHIER, MANAGER (KITCHEN nếu màn pha chế cần xem chi tiết) |
+| `pos_api.get_order_detail` | KITCHEN, CASHIER, MANAGER (KITCHEN cần để in tem / phiếu pha chế) |
 | `pos_api.pay_cash` | CASHIER, MANAGER |
 | `pos_api.cancel_draft_order` | CASHIER, MANAGER; `force=1` chỉ MANAGER |
 | `pos_api.generate_qr` | CASHIER, MANAGER |
 | `pos_api.confirm_pickup` | CASHIER, MANAGER |
 | `pos_api.get_status_board` | KITCHEN, CASHIER, MANAGER |
-| `pos_api.get_kitchen_orders` | KITCHEN, MANAGER (CASHIER nếu quầy kiêm pha chế) |
-| `pos_api.set_kitchen_status` | KITCHEN, MANAGER (CASHIER nếu quầy kiêm pha chế) |
+| `pos_api.get_kitchen_orders` | ĐÃ LÀM (§7) — lọc theo `KITCHEN_TABS_BY_ROLE` |
+| `pos_api.set_kitchen_status` | ĐÃ LÀM (§7) — theo `KITCHEN_TRANSITIONS_BY_ROLE` |
 | `pos_invoice_hooks.get_status_board_orders` | KITCHEN, CASHIER, MANAGER |
 | `sepay.generate_qr_for_invoice` | CASHIER, MANAGER |
 | `sepay.sepay_webhook` | Guest (giữ) — cần xác thực API key (task_handoff mục A) |

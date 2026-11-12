@@ -25,11 +25,33 @@ export interface PosProfile {
 	selling_price_list: string;
 }
 
+export type KitchenStep = "Chưa làm" | "Đã làm" | "Đã hoàn thành";
+
+/** Mục điều hướng: sell = Bán món, orders = Đơn hàng, kitchen = Pha chế. */
+export type NavKey = "sell" | "orders" | "kitchen";
+
+export interface PosRoles {
+	manager: boolean;
+	cashier: boolean;
+	kitchen: boolean;
+}
+
+export interface KitchenTransition {
+	from: KitchenStep;
+	to: KitchenStep;
+}
+
 export interface PosConfig {
 	brand: BrandInfo;
 	branch: string;
 	profile: PosProfile;
 	payment_modes: PaymentMode[];
+	warnings?: string[];
+	/** Phân quyền theo role, backend tính (pos_api.*_BY_ROLE). Optional để chịu được backend cũ. */
+	roles?: PosRoles;
+	nav?: NavKey[];
+	kitchen_tabs?: KitchenStep[];
+	kitchen_transitions?: KitchenTransition[];
 }
 
 export interface MenuSize {
@@ -225,7 +247,7 @@ export interface KitchenOrder {
 	name: string;
 	customer_name: string;
 	order_type: OrderType;
-	kitchen_status: "Chưa làm" | "Đã làm" | "Đã hoàn thành";
+	kitchen_status: KitchenStep;
 	buzzer_number: string | null;
 	order_note: string | null;
 	creation: string;

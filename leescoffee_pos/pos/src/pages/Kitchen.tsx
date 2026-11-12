@@ -4,16 +4,11 @@ import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
 import type { LabelJob } from "../components/CupLabels";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context";
 import { cssVar, printWithPage } from "../lib/print";
-import type { KitchenOrder, OrderDetail } from "../types";
+import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
-const STEPS = ["Chưa làm", "Đã làm", "Đã hoàn thành"] as const;
-type Step = (typeof STEPS)[number];
-
-const NEXT: Record<string, { to: Step; label: string } | undefined> = {
-	"Chưa làm": { to: "Đã làm", label: "Đã làm" },
-	"Đã làm": { to: "Đã hoàn thành", label: "Đã hoàn thành" },
-};
+type Step = KitchenStep;
 
 const typeLabel = (t: string) => (t === "Take Away" ? "Mang đi" : "Tại quán");
 
@@ -28,8 +23,17 @@ function waitInfo(creation: string, now: number) {
 }
 
 export default function Kitchen() {
+	const { config } = usePos();
+	// Tab và bước chuyển theo role, lấy từ get_pos_config (backend vẫn kiểm tra lại).
+	const tabs = kitchenTabsOf(config);
+	const transitions = kitchenTransitionsOf(config);
+	const nextOf = useCallback(
+		(from: string) => transitions.find((t) => t.from === from),
+		[transitions]
+	);
+
 	const [orders, setOrders] = useState<KitchenOrder[]>([]);
-	const [tab, setTab] = useState<Step>("Chưa làm");
+	const [tab, setTab] = useState<Step>(() => tabs[0] ?? "Chưa làm");
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -72,6 +76,11 @@ export default function Kitchen() {
 		return () => window.clearTimeout(t);
 	}, [toast]);
 
+	// Tab đang chọn không còn được phép (đổi user / tải lại config) -> về tab đầu tiên được phép.
+	useEffect(() => {
+		if (tabs.length && !tabs.includes(tab)) setTab(tabs[0]);
+	}, [tabs, tab]);
+
 	const localToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
 		.toISOString()
 		.slice(0, 10);
@@ -96,7 +105,7 @@ export default function Kitchen() {
 	);
 
 	const advance = async (o: KitchenOrder) => {
-		const step = NEXT[o.kitchen_status];
+		const step = nextOf(o.kitchen_status);
 		if (!step) return;
 		setBusy(o.name);
 		try {
@@ -179,7 +188,7 @@ export default function Kitchen() {
 			{error ? <div className="pos-alert pos-alert--error">{error}</div> : null}
 
 			<div className="pos-tabs" role="tablist">
-				{STEPS.map((s) => (
+				{tabs.map((s) => (
 					<button
 						key={s}
 						type="button"
@@ -199,7 +208,8 @@ export default function Kitchen() {
 				<div className="pos-kitchen-grid">
 					{list.map((o) => {
 						const w = waitInfo(o.creation, now);
-						const step = NEXT[o.kitchen_status];
+						// Chỉ có nút khi role được phép bước này; tab chỉ xem thì không có nút.
+						const step = nextOf(o.kitchen_status);
 						// Chỉ tab Chưa làm được in tem; "Đã làm" khóa tới khi đã in ít nhất một lần.
 						const canPrint = o.kitchen_status === "Chưa làm";
 						const needPrint = canPrint && !printed.has(o.name);
@@ -275,7 +285,7 @@ export default function Kitchen() {
 												title={needPrint ? "In tem trước" : undefined}
 												onClick={() => advance(o)}
 											>
-												{busy === o.name ? "Đang lưu…" : step.label}
+												{busy === o.name ? "Đang lưu…" : step.to}
 											</button>
 										) : null}
 									</div>

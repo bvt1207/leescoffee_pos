@@ -7,6 +7,7 @@ import type {
 	QrInfo,
 	StatusBoardRow,
 	KitchenOrder,
+	KitchenStep,
 	BuzzerOption,
 	LoyaltyInfo,
 	PricingPreview,
@@ -144,6 +145,6 @@ export const api = {
 		{ invoice_name, force }
 	),
 	getKitchenOrders: () => call<KitchenOrder[]>("get_kitchen_orders"),
-	setKitchenStatus: (invoice_name: string, status: string) =>
+	setKitchenStatus: (invoice_name: string, status: KitchenStep) =>
 		call<{ invoice_name: string; kitchen_status: string }>("set_kitchen_status", { invoice_name, status }),
 };

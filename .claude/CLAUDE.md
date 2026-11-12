@@ -132,6 +132,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
   (hook `on_update_after_submit`), hoặc khi hủy đơn Draft (đơn bị xóa nên thẻ hết bị giữ).
   Đơn đã submit bị cancel khi chưa `Đã làm` cũng nhả thẻ (hook `on_cancel`).
   Chi tiết: `.claude/rules/leescoffee_pos/pos_invoice_hooks.md` §2.2.
+- **Phân quyền màn POS theo role** (MANAGER / CASHIER / KITCHEN: menu, tab Pha chế, bước chuyển):
+  cấu hình duy nhất ở hằng `*_BY_ROLE` trong `api/pos_api.py`, chặn ở backend. Bảng quyền + tồn đọng:
+  `.claude/rules/leescoffee_pos/roles.md` §7.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

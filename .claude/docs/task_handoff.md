@@ -30,6 +30,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Thống nhất module `Leescoffee POS` cho 3 DocType JSON (Menu, Menu Item, Buzzer; thêm `modified` 2026-11-08 16:00) — sửa PermissionError của user thường ở `/desk/leescoffee_pos` | Đã test (`f32640d`) |
 | 3 role `POS CASHIER`/`POS KITCHEN`/`POS MANAGER`: fixture `role.json`, quyền qua patch `v1_create_pos_roles` + `after_install` (không fixture Custom DocPerm); bảng quyền + role ERPNext đi kèm MANAGER ở `rules/leescoffee_pos/roles.md` | Đã test (`b4fa3f4`) |
 | POS MANAGER thêm quyền Branch (S R W C); chạy lại patch bằng nhãn `#` trong `patches.txt` | Đã test (`2caf0df`) |
+| Phân quyền màn POS theo role: `get_pos_config` trả `roles`/`nav`/`kitchen_tabs`/`kitchen_transitions`; `get_kitchen_orders`, `set_kitchen_status` chặn theo role; "Đã hoàn thành" chỉ hôm nay (backend); frontend ẩn menu/tab/nút, KITCHEN tự về `/pos/kitchen` (rule `roles.md` §7) | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
@@ -144,7 +145,7 @@ hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhấ
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
 
 ## 4. Quyết định đang chờ Van
-- Phân quyền API `pos_api` theo role (`frappe.only_for`) — đề xuất từng hàm ở `rules/leescoffee_pos/roles.md` §7, chưa làm.
+- Phân quyền các API `pos_api` còn lại theo role (`frappe.only_for`) — đề xuất từng hàm ở `rules/leescoffee_pos/roles.md` §8, chưa làm.
 - Duyệt kế hoạch A–C trước khi sửa code.
 - `on_submit` hook còn bỏ qua khi thẻ đã `Đang dùng` (không ném lỗi) — có siết lại không.
 
@@ -158,6 +159,7 @@ hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhấ
 ## 6. Vấn đề đã biết
 | Vấn đề | Ghi chú |
 |---|---|
+| Toast "Mời khách…" chỉ hiện trên máy bấm nút; thu ngân khác máy thấy đơn sau chu kỳ 5 giây. KITCHEN không thấy tab "Đã làm" nên đơn biến mất khỏi màn họ tới khi giao | Chờ realtime (roles.md §7) |
 | Một số món (vd. `Americano`) chưa có `Item Price` trong Price List | Nhập giá trong Desk |
 
 ## 7. Cách chạy trên bench (Van tự làm — giữ nguyên lệnh cũ)

@@ -1,7 +1,30 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "./api";
-import type { MenuGroup, PosConfig } from "../types";
+import type { KitchenStep, KitchenTransition, MenuGroup, NavKey, PosConfig } from "../types";
+
+const ALL_NAV: NavKey[] = ["sell", "orders", "kitchen"];
+const ALL_STEPS: KitchenStep[] = ["Chưa làm", "Đã làm", "Đã hoàn thành"];
+
+/** Mục điều hướng được phép (backend cũ không trả `nav` -> hiện đủ như trước). */
+export function navOf(config: PosConfig | null): NavKey[] {
+	return config?.nav ?? ALL_NAV;
+}
+
+/** Tab pha chế được xem. */
+export function kitchenTabsOf(config: PosConfig | null): KitchenStep[] {
+	return config?.kitchen_tabs ?? ALL_STEPS;
+}
+
+/** Bước chuyển được phép. */
+export function kitchenTransitionsOf(config: PosConfig | null): KitchenTransition[] {
+	return (
+		config?.kitchen_transitions ?? [
+			{ from: "Chưa làm", to: "Đã làm" },
+			{ from: "Đã làm", to: "Đã hoàn thành" },
+		]
+	);
+}
 
 interface PosContextValue {
 	config: PosConfig | null;

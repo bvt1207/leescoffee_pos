@@ -29,8 +29,82 @@ KITCHEN_FLOW = ["Chưa làm", "Đã làm", "Đã hoàn thành"]
 SIZE_ATTRIBUTE = "Size"
 
 # ---------------------------------------------------------------------------
+# Phân quyền màn POS theo role — NGUỒN DUY NHẤT (frontend đọc qua get_pos_config).
+# Đổi quyền (vd. cho KITCHEN thấy cả 3 tab) chỉ sửa các hằng dưới đây.
+# Khóa: "manager" | "cashier" | "kitchen" (xem _pos_roles). User nhiều role = hợp quyền.
+# ---------------------------------------------------------------------------
+ROLE_MANAGER = "POS MANAGER"
+ROLE_CASHIER = "POS CASHIER"
+ROLE_KITCHEN = "POS KITCHEN"
+# Role ngoài app được tính là manager.
+MANAGER_EQUIVALENT_ROLES = ("System Manager", "Administrator")
+
+# Mục điều hướng: "sell" = Bán món (/), "orders" = Đơn hàng, "kitchen" = Pha chế.
+NAV_ORDER = ["sell", "orders", "kitchen"]
+NAV_BY_ROLE = {
+	"manager": ["sell", "orders", "kitchen"],
+	"cashier": ["sell", "orders", "kitchen"],
+	"kitchen": ["kitchen"],
+}
+# Tab trạng thái được xem ở màn Pha chế.
+KITCHEN_TABS_BY_ROLE = {
+	"manager": ["Chưa làm", "Đã làm", "Đã hoàn thành"],
+	"cashier": ["Đã làm", "Đã hoàn thành"],
+	"kitchen": ["Chưa làm", "Đã hoàn thành"],
+}
+# Bước được chuyển (từ, sang).
+KITCHEN_TRANSITIONS_BY_ROLE = {
+	"manager": [("Chưa làm", "Đã làm"), ("Đã làm", "Đã hoàn thành")],
+	"cashier": [("Đã làm", "Đã hoàn thành")],
+	"kitchen": [("Chưa làm", "Đã làm")],
+}
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _pos_roles(user=None):
+	"""{manager, cashier, kitchen} của user (System Manager / Administrator = manager)."""
+	user = user or frappe.session.user
+	roles = set(frappe.get_roles(user))
+	return {
+		"manager": user == "Administrator"
+		or ROLE_MANAGER in roles
+		or bool(roles.intersection(MANAGER_EQUIVALENT_ROLES)),
+		"cashier": ROLE_CASHIER in roles,
+		"kitchen": ROLE_KITCHEN in roles,
+	}
+
+
+def _union_by_role(mapping, roles, order):
+	"""Hợp các danh sách trong mapping theo role đang có, giữ thứ tự `order`."""
+	got = set()
+	for key, enabled in roles.items():
+		if enabled:
+			got.update(mapping.get(key, []))
+	return [x for x in order if x in got]
+
+
+def _kitchen_tabs(roles=None):
+	return _union_by_role(KITCHEN_TABS_BY_ROLE, roles or _pos_roles(), KITCHEN_FLOW)
+
+
+def _kitchen_transitions(roles=None):
+	roles = roles or _pos_roles()
+	pairs = set()
+	for key, enabled in roles.items():
+		if enabled:
+			pairs.update(KITCHEN_TRANSITIONS_BY_ROLE.get(key, []))
+	return sorted(pairs, key=lambda p: KITCHEN_FLOW.index(p[0]))
+
+
+def _require_pos_role(roles):
+	if not any(roles.values()):
+		frappe.throw(
+			_("Tài khoản chưa được gán role POS (POS MANAGER / POS CASHIER / POS KITCHEN)."),
+			frappe.PermissionError,
+		)
 
 
 def _get_pos_profile(branch_name=None):
@@ -404,8 +478,9 @@ def _apply_redemption(invoice, customer, company, redeem_points):
 
 @frappe.whitelist()
 def get_pos_config(branch_name=None):
-	"""Thông tin cấu hình cho giao diện: thương hiệu, POS Profile, phương thức thanh toán."""
+	"""Thông tin cấu hình cho giao diện: thương hiệu, POS Profile, phương thức thanh toán, quyền."""
 	profile = _get_pos_profile(branch_name)
+	roles = _pos_roles()
 
 	return {
 		"brand": get_brand_info(getattr(profile, "branch", None) or branch_name),
@@ -421,6 +496,11 @@ def get_pos_config(branch_name=None):
 		},
 		"payment_modes": _get_payment_modes(profile.company),
 		"warnings": _company_warnings(profile),
+		# Phân quyền màn POS (rỗng hết nếu user không có role POS -> frontend chặn).
+		"roles": roles,
+		"nav": _union_by_role(NAV_BY_ROLE, roles, NAV_ORDER),
+		"kitchen_tabs": _kitchen_tabs(roles),
+		"kitchen_transitions": [{"from": a, "to": b} for a, b in _kitchen_transitions(roles)],
 	}
 
 
@@ -952,25 +1032,56 @@ def get_status_board():
 
 @frappe.whitelist()
 def get_kitchen_orders(status=None, limit=100):
-	"""Đơn đã thanh toán cho màn pha chế, đơn cũ nhất lên đầu."""
-	filters = {"docstatus": 1, "status": "Paid"}
+	"""Đơn đã thanh toán cho màn pha chế, đơn cũ nhất lên đầu.
+
+	Chỉ trả trạng thái nằm trong KITCHEN_TABS_BY_ROLE của user. "Đã hoàn thành" chỉ lấy
+	đơn posting_date = hôm nay (Chưa làm / Đã làm lấy mọi ngày).
+	"""
+	roles = _pos_roles()
+	_require_pos_role(roles)
+	allowed = _kitchen_tabs(roles)
+
 	if status:
 		if status not in KITCHEN_FLOW:
 			frappe.throw(_("Trạng thái không hợp lệ."))
-		filters["custom_kitchen_status"] = status
+		if status not in allowed:
+			frappe.throw(
+				_("Bạn không có quyền xem đơn ở trạng thái '{0}'.").format(status),
+				frappe.PermissionError,
+			)
+		statuses = [status]
 	else:
-		filters["custom_kitchen_status"] = ["in", KITCHEN_FLOW]
+		statuses = allowed
 
-	orders = frappe.get_all(
-		"POS Invoice",
-		filters=filters,
-		fields=["name", "customer", "customer_name", "order_type",
-			"custom_kitchen_status", "buzzer", "order_note", "creation", "modified"],
-		order_by="creation asc",
-		limit=min(int(limit), 200),
-	)
+	if not statuses:
+		return []
+
+	fields = ["name", "customer", "customer_name", "order_type",
+		"custom_kitchen_status", "buzzer", "order_note", "creation", "modified"]
+	base = {"docstatus": 1, "status": "Paid"}
+	cap = min(int(limit), 200)
+
+	orders = []
+	open_statuses = [s for s in statuses if s != "Đã hoàn thành"]
+	if open_statuses:
+		orders += frappe.get_all(
+			"POS Invoice",
+			filters={**base, "custom_kitchen_status": ["in", open_statuses]},
+			fields=fields,
+			order_by="creation asc",
+			limit=cap,
+		)
+	if "Đã hoàn thành" in statuses:
+		orders += frappe.get_all(
+			"POS Invoice",
+			filters={**base, "custom_kitchen_status": "Đã hoàn thành", "posting_date": nowdate()},
+			fields=fields,
+			order_by="creation asc",
+			limit=cap,
+		)
 	if not orders:
 		return []
+	orders.sort(key=lambda o: o.creation)
 
 	names = [o.name for o in orders]
 	rows = frappe.get_all(
@@ -1000,7 +1111,9 @@ def get_kitchen_orders(status=None, limit=100):
 
 @frappe.whitelist()
 def set_kitchen_status(invoice_name, status):
-	"""Đổi trạng thái pha chế, chỉ cho đi tiến từng bước."""
+	"""Đổi trạng thái pha chế, chỉ cho đi tiến từng bước, đúng bước role được phép."""
+	roles = _pos_roles()
+	_require_pos_role(roles)
 	if status not in KITCHEN_FLOW:
 		frappe.throw(_("Trạng thái không hợp lệ."))
 
@@ -1012,6 +1125,12 @@ def set_kitchen_status(invoice_name, status):
 	if KITCHEN_FLOW.index(status) != KITCHEN_FLOW.index(current) + 1:
 		frappe.throw(
 			_("Không thể chuyển {0} từ '{1}' sang '{2}'.").format(invoice_name, current, status)
+		)
+
+	if (current, status) not in _kitchen_transitions(roles):
+		frappe.throw(
+			_("Vai trò của bạn không được chuyển đơn từ '{0}' sang '{1}'.").format(current, status),
+			frappe.PermissionError,
 		)
 
 	invoice.custom_kitchen_status = status
