@@ -4,6 +4,7 @@ import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
 import type { LabelJob } from "../components/CupLabels";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { optionParts } from "../lib/options";
 import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context";
 import { cssVar, printWithPage } from "../lib/print";
 import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
@@ -234,10 +235,15 @@ export default function Kitchen() {
 												<span className="pos-kcard__qty">{it.qty}×</span>
 												<span className="pos-kcard__name">{it.item_name}</span>
 											</div>
-											<div className="pos-kcard__opts">
-												<span className="pos-chip-opt">Đường {it.sugar_level || 100}%</span>
-												<span className="pos-chip-opt">Đá {it.ice_level || 100}%</span>
-											</div>
+											{optionParts(it.options).length ? (
+												<div className="pos-kcard__opts">
+													{optionParts(it.options).map((part) => (
+														<span key={part} className="pos-chip-opt">
+															{part}
+														</span>
+													))}
+												</div>
+											) : null}
 											{cupsOf ? (
 												<div className="pos-kcard__cups">
 													{cupsOf.per[i].map((n) => (

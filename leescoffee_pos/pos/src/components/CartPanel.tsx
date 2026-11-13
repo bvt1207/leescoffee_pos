@@ -1,8 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
 import { usePos } from "../lib/pos-context";
+import { formatCartOptions, isSelected, missingRequired, toggleOption } from "../lib/options";
 import type { LoyaltyInfo, PricingPreview, PricingPreviewItem } from "../types";
-
-const LEVELS = [50, 70, 100] as const;
 
 interface Props {
 	loyalty?: LoyaltyInfo | null;
@@ -30,7 +30,7 @@ export default function CartPanel({
 	const increment = useCart((state) => state.increment);
 	const decrement = useCart((state) => state.decrement);
 	const removeLine = useCart((state) => state.removeLine);
-	const changeIceSugar = useCart((state) => state.changeIceSugar);
+	const setLineOptions = useCart((state) => state.setLineOptions);
 	const orderNote = useCart((state) => state.orderNote);
 	const setOrderNote = useCart((state) => state.setOrderNote);
 	const clear = useCart((state) => state.clear);
@@ -57,8 +57,16 @@ export default function CartPanel({
 	};
 	const freeItems = (preview?.items || []).filter((p) => p.is_free_item);
 
-	// TODO: đường/đá/ghi chú chưa gửi server — chỉ giữ trong state.
-	// Backend sẽ thêm custom field ở task sau.
+	// Chỉ mở chip tùy chọn của MỘT dòng; dòng vừa thêm tự mở, dòng khác hiện tóm tắt.
+	const [expanded, setExpanded] = useState<string | null>(null);
+	const prevCount = useRef(lines.length);
+	useEffect(() => {
+		if (lines.length > prevCount.current) {
+			const last = lines[lines.length - 1];
+			if (last?.option_groups?.length) setExpanded(cartLineKey(last));
+		}
+		prevCount.current = lines.length;
+	}, [lines]);
 
 	return (
 		<aside className="pos-cart">
@@ -76,12 +84,14 @@ export default function CartPanel({
 				) : (
 					lines.map((line, idx) => {
 						const key = cartLineKey(line);
-						const sugar = line.sugar ?? 100;
-						const ice = line.ice ?? 100;
+						const groups = line.option_groups || [];
+						const missing = missingRequired(line.options, groups);
+						const isOpen = expanded === key;
+						const summary = formatCartOptions(line.options, groups);
 						const pv = previewFor(idx);
 						const promo = hasPromo(pv) ? pv : undefined;
 						return (
-							<div key={key} className="pos-cart-line">
+							<div key={key} className={`pos-cart-line${missing.length ? " is-missing" : ""}`}>
 								<div className="pos-cart-line__head">
 									<div className="pos-cart-line__name">
 										{line.item_name}
@@ -115,38 +125,23 @@ export default function CartPanel({
 								{promo ? <span className="pos-promo-chip">{promoLabel(promo)}</span> : null}
 
 								<div className="pos-cart-line__body">
-									<div className="pos-cart-line__options">
-										<div className="pos-cart-line__option">
-											<span className="pos-cart-line__option-label">Đường</span>
-											<div className="pos-segmented pos-segmented--sm">
-												{LEVELS.map((v) => (
-													<button
-														type="button"
-														key={`sugar-${v}`}
-														className={sugar === v ? "is-active" : ""}
-														onClick={() => changeIceSugar(key, ice, v)}
-													>
-														{v}%
-													</button>
-												))}
-											</div>
-										</div>
-										<div className="pos-cart-line__option">
-											<span className="pos-cart-line__option-label">Đá</span>
-											<div className="pos-segmented pos-segmented--sm">
-												{LEVELS.map((v) => (
-													<button
-														type="button"
-														key={`ice-${v}`}
-														className={ice === v ? "is-active" : ""}
-														onClick={() => changeIceSugar(key, v, sugar)}
-													>
-														{v}%
-													</button>
-												))}
-											</div>
-										</div>
-									</div>
+									{groups.length ? (
+										<button
+											type="button"
+											className="pos-cart-line__summary"
+											aria-expanded={isOpen}
+											onClick={() => setExpanded(isOpen ? null : key)}
+										>
+											<span className="pos-cart-line__summary-text">
+												{summary || "Chọn tùy chọn"}
+											</span>
+											<span className="pos-cart-line__summary-caret" aria-hidden>
+												{isOpen ? "▴" : "▾"}
+											</span>
+										</button>
+									) : (
+										<span />
+									)}
 
 									<div className="pos-cart-line__qty">
 										<button
@@ -168,6 +163,51 @@ export default function CartPanel({
 										</button>
 									</div>
 								</div>
+
+								{groups.length && isOpen ? (
+									<div className="pos-optgroups">
+										{groups.map((g) => (
+											<div key={g.name} className="pos-optgroup">
+												<span className="pos-optgroup__title">
+													{g.title}
+													{g.required ? <span className="pos-optgroup__req"> *</span> : null}
+													{g.selection_type === "Chọn nhiều" ? (
+														<span className="pos-optgroup__hint"> · chọn nhiều</span>
+													) : null}
+												</span>
+												<div
+													className="pos-optchips"
+													role={g.selection_type === "Chọn 1" ? "radiogroup" : "group"}
+													aria-label={g.title}
+												>
+													{g.values.map((v) => {
+														const on = isSelected(line.options, g.name, v.label);
+														return (
+															<button
+																type="button"
+																key={v.label}
+																className={`pos-optchip${on ? " is-active" : ""}`}
+																role={g.selection_type === "Chọn 1" ? "radio" : "checkbox"}
+																aria-checked={on}
+																onClick={() =>
+																	setExpanded(setLineOptions(key, toggleOption(line.options, g, v.label)))
+																}
+															>
+																{v.label}
+															</button>
+														);
+													})}
+												</div>
+											</div>
+										))}
+									</div>
+								) : null}
+
+								{missing.length ? (
+									<div className="pos-cart-line__missing">
+										Chọn {missing.map((g) => g.title).join(", ")}
+									</div>
+								) : null}
 
 								{line.note ? <div className="pos-cart-line__note">{line.note}</div> : null}
 							</div>

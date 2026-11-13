@@ -5,6 +5,7 @@ import CartPanel from "../components/CartPanel";
 import CustomerPicker from "../components/CustomerPicker";
 import BuzzerPicker from "../components/BuzzerPicker";
 import { api } from "../lib/api";
+import { missingRequired } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { useCart, cartCount } from "../store/cart";
 import { useSearch } from "../store/search";
@@ -64,8 +65,14 @@ export default function POS() {
 		};
 	}, [customer?.name]);
 
-	// Chỉ những gì ảnh hưởng giá: mã + số lượng theo đúng thứ tự dòng giỏ.
-	const pricingKey = lines.map((l) => `${l.item_code}:${l.qty}`).join("|");
+	// Dòng gửi server: mã + số lượng + tùy chọn, đúng thứ tự dòng giỏ (preview ghép theo vị trí).
+	// Tùy chọn không đổi giá nhưng server kiểm tra hợp lệ, nên vẫn nằm trong khóa preview.
+	const orderItems = useMemo(
+		() => lines.map((l) => ({ item_code: l.item_code, qty: l.qty, options: l.options })),
+		[lines]
+	);
+	const pricingKey = lines.length ? JSON.stringify(orderItems) : "";
+	const missingLine = lines.find((l) => missingRequired(l.options, l.option_groups).length);
 
 	// Xem trước giá sau CTKM + đổi điểm (trễ 300ms, bỏ kết quả cũ).
 	useEffect(() => {
@@ -75,10 +82,7 @@ export default function POS() {
 			setPreviewLoading(false);
 			return;
 		}
-		const items = pricingKey.split("|").map((part) => {
-			const i = part.lastIndexOf(":");
-			return { item_code: part.slice(0, i), qty: Number(part.slice(i + 1)) };
-		});
+		const items = JSON.parse(pricingKey) as typeof orderItems;
 		const base = { items, customer: customer?.name, price_list: priceList };
 		let cancelled = false;
 		setPreviewLoading(true);
@@ -127,7 +131,7 @@ export default function POS() {
 	const selectedMode = modeOfPayment || usableModes[0]?.name || "";
 	const needBuzzer = orderType === "Dine In" && !buzzer;
 	const canSubmit =
-		!submitting && !loading && lines.length > 0 && !!priceList && !needBuzzer;
+		!submitting && !loading && lines.length > 0 && !!priceList && !needBuzzer && !missingLine;
 
 	const chooseDineIn = () => {
 		setOrderType("Dine In");
@@ -152,17 +156,16 @@ export default function POS() {
 			setFormError("Chọn thẻ rung cho đơn tại quán.");
 			return;
 		}
+		if (missingLine) {
+			setFormError(`Chọn đủ tùy chọn bắt buộc cho món ${missingLine.item_name}.`);
+			return;
+		}
 
 		setSubmitting(true);
 		setFormError("");
 		try {
 			const result = await api.createDraftOrder({
-				items: lines.map((line) => ({
-					item_code: line.item_code,
-					qty: line.qty,
-					sugar: line.sugar ?? 100,
-					ice: line.ice ?? 100,
-				})),
+				items: orderItems,
 				order_type: orderType,
 				customer_name: customer?.name,
 				mode_of_payment: selectedMode || undefined,
@@ -240,6 +243,11 @@ export default function POS() {
 				/>
 
 				{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
+				{missingLine ? (
+					<div className="pos-cart__hint pos-cart__hint--error">
+						Món {missingLine.item_name} còn tùy chọn bắt buộc chưa chọn.
+					</div>
+				) : null}
 				{needBuzzer && lines.length > 0 ? (
 					<div className="pos-alert pos-alert--error">Chọn thẻ rung cho đơn tại quán.</div>
 				) : null}

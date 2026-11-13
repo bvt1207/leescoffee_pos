@@ -26,7 +26,7 @@
 │  │  chip "N size", badge qty]   │ - Tên khách                      │ │
 │  │ Cả thẻ bấm, không nút phụ    │ - Phương thức thanh toán         │ │
 │  │ Món 1 size: thêm thẳng giỏ   │ - Dòng món: tên+size, giá,       │ │
-│  │ Món nhiều size: mở SizeModal │   Đường/Đá 50/70/100%, +/− 44px  │ │
+│  │ Món nhiều size: mở SizeModal │   chip tùy chọn động, +/− 44px   │ │
 │  │ Size rate=null: mờ, không chọn│ - Ghi chú đơn (footer)           │ │
 │  │                              │ - Nút Tạo đơn (disabled khi      │ │
 │  │                              │   thiếu Price List)              │ │
@@ -38,7 +38,7 @@
 - Body: lưới món chiếm cột trái, giỏ hàng cột phải (sticky). Loại đơn, tên khách, thanh toán chuyển lên đầu giỏ (`.pos-order-setup`).
 - Chip lọc menu (`.pos-chip`) + chip lọc từ khóa tìm (qua `useSearch`).
 - Thẻ món (`MenuCard`): nút bấm toàn thẻ, ảnh vuông (`pos-menu-card__media`), tên luôn hiển thị 2 dòng, chip "N size", badge số lượng. Không hiển thị giá. Món 1 size (label rỗng) thêm thẳng giỏ; nhiều size mở `SizeModal`; size `rate=null` mờ, không chọn được.
-- Giỏ hàng: mỗi dòng có tên+size, giá, nút xóa, Đường/Đá 50/70/100% (đã sửa đảo nhãn), nút +/− 44px; ghi chú đơn ở footer; trạng thái giỏ trống.
+- Giỏ hàng: mỗi dòng có tên+size, giá, nút xóa, **chip tùy chọn động** theo `option_groups` của món (thu gọn = 1 dòng tóm tắt, chỉ mở 1 dòng; món không có nhóm không hiện gì), nút +/− 44px; ghi chú đơn ở footer; trạng thái giỏ trống.
 - Price List lấy từ menu đầu tiên có `price_list`. Box lỗi chỉ hiện khi `!loading && !priceList`. Lỗi tạo đơn hiện cạnh nút Tạo đơn.
 - **Không còn footer nav** (thanh điều hướng dưới) — điều hướng nằm ở Header.
 
@@ -62,7 +62,7 @@
 
 - Trái: tab 3 tabs — **Chờ thanh toán** (Draft), **Đã thanh toán** (Paid), **Pha chế** (kitchen). Nhãn từ thực tế không tham khảo; kiểm `custom_kitchen_status` + `payment_status`.
 - Dưới tab: danh sách đơn theo tab; thẻ đơn có `customer_name`, `amount` (formatMoney), `name`, `order_type` tag (Mang đi/Tại quán), buzzer, **"Chờ QR"** khi `payment_status="Đang chờ"`, bếp status, giờ tạo. Ô tìm header (`store/search`) lọc mã đơn/tên khách.
-- Phải: panel chi tiết 380px, sticky: khách + mã + loại, dòng món (Đường x%·Đá y%), tổng, ghi chú, bếp; nút 52px: Thu tiền / QR / Hủy (viền đỏ); Xác nhận lấy chỉ Dine In Paid + bếp "Đã hoàn thành". Hủy đơn: hộp xác nhận + "Đang chờ QR" hiển cảnh báo → tự force=1. Nhãn thống nhất; key món có index; bỏ nút Quay lại Bán.
+- Phải: panel chi tiết 380px, sticky: khách + mã + loại, dòng món (chuỗi tùy chọn `formatOptions`), tổng, ghi chú, bếp; nút 52px: Thu tiền / QR / Hủy (viền đỏ); Xác nhận lấy chỉ Dine In Paid + bếp "Đã hoàn thành". Hủy đơn: hộp xác nhận + "Đang chờ QR" hiển cảnh báo → tự force=1. Nhãn thống nhất; key món có index; bỏ nút Quay lại Bán.
 
 ### Thanh toán (Payment) — tham chiếu `ury-payment.png`
 
@@ -107,7 +107,7 @@ src/
 ├── components/
 │   ├── AppHeader.tsx      # Header + NavLink pha chế + ô tìm trang (đổi theo trang)
 │   ├── MenuGrid.tsx       # Chip filter menu + lưới món (MenuCard + SizeModal)
-│   ├── CartPanel.tsx      # Giỏ hàng: lines, Đường/Đá, ghi chú, tổng
+│   ├── CartPanel.tsx      # Giỏ hàng: lines, chip tùy chọn (lib/options.ts), ghi chú, tổng
 │   ├── CustomerPicker.tsx # Tìm khách + tạo mới (debounced search, dropdown)
 │   ├── QrModal.tsx        # Hiển thị QR thanh toán
 │   ├── SizeModal.tsx      # Modal chọn size (ảnh, tên, lưới size)
@@ -151,7 +151,7 @@ Routes:
 3. User gõ tìm kiếm hoặc chọn chip menu → lọc món
 4. User bấm thẻ món → nếu 1 size: thêm thẳng giỏ; nếu nhiều size: mở SizeModal
 5. User chọn size → thêm vào cart
-6. Ở giỏ: chỉnh Đường/Đá 50/70/100%, nhập ghi chú đơn (footer × `orderNote` → lưu `order_note`) — đã triển khai trên backend.
+6. Ở giỏ: chọn chip tùy chọn (mặc định chọn sẵn; nhóm bắt buộc chưa chọn chặn Tạo đơn), nhập ghi chú đơn (footer × `orderNote` → lưu `order_note`) — đã triển khai trên backend.
 7. User bấm "Tạo đơn" → `create_draft_order({price_list})` → chuyển `/pos/orders?draft=<name>` + xóa cart
    - Disabled khi thiếu priceList hoặc không có món
 
@@ -200,7 +200,7 @@ Routes:
 
 **Mẫu thẻ đơn:**
 - Chữ lớn, [#{seq}] mã / khách, loại, thẻ rung, thời gian chờ (>=5 phút vàng, >=10 phút đỏ)
-- Dòng món: tên + chip "Đường x%·Đá y%"
+- Dòng món: tên + mỗi nhóm tùy chọn một chip `pos-chip-opt` (`optionParts`), món không có tùy chọn thì không có chip
 - Ghi chú nổi bật (`pos-kcard__note`)
 - Nút hành động lớn 56px; busy = `disabled={busy === name}`
 

@@ -1,4 +1,5 @@
 import type {
+	CartOption,
 	CreatedOrder,
 	CustomerOption,
 	OrderDetail,
@@ -111,7 +112,7 @@ export const api = {
 	getMenuItems: () => call<unknown[]>("get_menu_items"),
 	getBuzzers: (branch_name?: string) => call<BuzzerOption[]>("get_buzzers", { branch_name }),
 	createDraftOrder: (p: {
-		items: Array<{ item_code: string; qty: number; uom?: string; warehouse?: string; sugar?: number; ice?: number }>;
+		items: Array<{ item_code: string; qty: number; uom?: string; warehouse?: string; options?: CartOption[] }>;
 		order_type: string;
 		customer_name?: string;
 		mode_of_payment?: string;
@@ -122,7 +123,7 @@ export const api = {
 		redeem_points?: number;
 	}) => call<CreatedOrder>("create_draft_order", p),
 	previewPricing: (p: {
-		items: Array<{ item_code: string; qty: number }>;
+		items: Array<{ item_code: string; qty: number; options?: CartOption[] }>;
 		customer?: string;
 		price_list: string;
 		redeem_points?: number;

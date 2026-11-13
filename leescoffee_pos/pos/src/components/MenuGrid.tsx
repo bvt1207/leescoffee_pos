@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { defaultOptions } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { useCart } from "../store/cart";
 import type { MenuItem, MenuSize } from "../types";
@@ -20,12 +21,16 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 	const addSize = (size: MenuSize) => {
 		if (size.rate == null) return; // chưa có giá: không chọn được
+		// Tùy chọn: dùng option_groups của món (variant kế thừa template), chọn sẵn giá trị mặc định.
+		const groups = item.option_groups || [];
 		add({
 			item_code: size.item_code,
 			item_name: item.name,
 			item_type: "",
 			price: size.rate,
 			size: size.label || null,
+			option_groups: groups,
+			options: defaultOptions(groups),
 		});
 	};
 

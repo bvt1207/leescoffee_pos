@@ -72,6 +72,38 @@ export interface MenuItem {
 	name?: string;
 	image?: string | null;
 	sizes?: MenuSize[];
+	/** Nhóm tùy chọn (MYPOS Option Group) server đã giải quyết cho món; variant dùng chung của template. */
+	option_groups?: OptionGroup[];
+}
+
+// ---- Tùy chọn món động (MYPOS Option) — không hardcode tên nhóm/giá trị ----
+export type SelectionType = "Chọn 1" | "Chọn nhiều";
+
+export interface OptionValue {
+	label: string;
+	is_default: number;
+}
+
+export interface OptionGroup {
+	name: string;
+	title: string;
+	selection_type: SelectionType;
+	required: number;
+	values: OptionValue[];
+}
+
+/** Lựa chọn gửi lên server: group = name của nhóm, value = label. */
+export interface CartOption {
+	group: string;
+	value: string;
+}
+
+/** Tùy chọn server trả về trên dòng đơn (đơn cũ: dựng từ cột sugar_level/ice_level). */
+export interface LineOption {
+	group: string | null;
+	group_title: string;
+	value: string;
+	price: number;
 }
 
 export interface MenuGroup {
@@ -184,14 +216,13 @@ export interface CartLine {
 	item_type: string;
 	price: number;
 	qty: number;
-	// Đường / Đá: 50 | 70 | 100 (%), default 100.
-	ice?: number;
-	sugar?: number;
+	// Tùy chọn đã chọn (chuẩn hóa theo thứ tự cấu hình) + nhóm áp dụng cho món (để vẽ chip).
+	options: CartOption[];
+	option_groups: OptionGroup[];
 	// Size đã chọn (label + item_code variant).
 	size?: string | null;
 	// Price List của menu đang dùng (khi tạo đơn).
 	price_list?: string;
-	// TODO: backend custom field — ice/sugar/note chưa gửi server, chỉ giữ state.
 	note?: string;
 }
 
@@ -207,8 +238,10 @@ export interface OrderItem {
 	qty: number;
 	rate: number;
 	amount: number;
+	// Cột cũ (chỉ đọc, đơn cũ) — hiển thị dùng `options`.
 	sugar_level?: string;
 	ice_level?: string;
+	options?: LineOption[];
 	size?: string;
 	price_list_rate?: number;
 	discount_percentage?: number;
@@ -239,8 +272,9 @@ export interface KitchenItem {
 	item_code: string;
 	item_name: string;
 	qty: number;
-	sugar_level: string;
-	ice_level: string;
+	sugar_level?: string;
+	ice_level?: string;
+	options?: LineOption[];
 }
 
 export interface KitchenOrder {

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { formatOptions } from "../lib/options";
 import type { KitchenOrder, OrderDetail } from "../types";
 
 /** Một ly = một tem. i chạy 1..n trên toàn đơn. */
@@ -7,8 +8,8 @@ export interface Cup {
 	itemIndex: number;
 	name: string;
 	size: string;
-	sugar: string;
-	ice: string;
+	/** Chuỗi tùy chọn đã ghép ("Nhóm giá trị · ..."), rỗng nếu món không có tùy chọn. */
+	opts: string;
 	i: number;
 	n: number;
 }
@@ -44,8 +45,7 @@ export function buildCups(order: KitchenOrder, detail: OrderDetail | null): Cup[
 				itemIndex: idx,
 				name: it.item_name,
 				size,
-				sugar: it.sugar_level || "100",
-				ice: it.ice_level || "100",
+				opts: formatOptions(it.options),
 				i,
 				n,
 			});
@@ -68,9 +68,7 @@ export default function CupLabels({ job }: { job: LabelJob | null }) {
 						{c.name}
 						{c.size ? ` (${c.size})` : ""}
 					</div>
-					<div className="pos-label__opts">
-						Đường {c.sugar}% · Đá {c.ice}%
-					</div>
+					{c.opts ? <div className="pos-label__opts">{c.opts}</div> : null}
 					{order.order_note ? <div className="pos-label__note">{order.order_note}</div> : null}
 					<div className="pos-label__foot">
 						<span>{order.name}</span>

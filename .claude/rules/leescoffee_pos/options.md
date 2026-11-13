@@ -3,7 +3,7 @@
 > Paths: `leescoffee_pos/leescoffee_pos/doctype/mypos_option_group/` (DocType + `option_resolver.py`),
 > `mypos_option_value/`, `mypos_option_target/` (bảng con), `api/pos_api.py` (`_normalize_items`,
 > `get_order_detail`, `get_kitchen_orders`), `doctype/leescoffee_menu/leescoffee_menu.py`
-> (`get_menu_with_items` thêm `option_groups`). Giai đoạn 1+2 (backend) làm 2026-11-13; giai đoạn 3 (UI) chưa làm.
+> (`get_menu_with_items` thêm `option_groups`). Giai đoạn 1+2 (backend) làm 2026-11-13, đã test Pass; giai đoạn 3 (UI) làm 2026-11-13, chờ test.
 
 ## 1. Nguyên tắc
 
@@ -93,5 +93,20 @@ Desk → MYPOS Option Group → New:
   - Khi insert/save/submit, ERPNext chạy lại `set_missing_values(for_validate=True)`;
     dùng lại luật đã ghi trong `pricing_rules` — **đã test Pass trên bench (`5b17b6c`)**: tổng hóa đơn thật (sau tạo và sau `pay_cash`) khớp preview ở mọi ca.
 - Đóng ca: `options` nằm trên POS Invoice Item; Sales Invoice gộp không có field này (giống đường/đá cũ).
-- Frontend cũ không gửi `options` → đi đường cũ; UI chưa hiển thị `option_groups` (giai đoạn 3).
+- Frontend cũ (trước giai đoạn 3) không gửi `options` → đi đường cũ.
 - Phụ thu topping: xem `task_handoff.md` mục "Task sau: phụ thu topping".
+
+## 8. Frontend (giai đoạn 3, chỉ `pos/src`)
+
+- `lib/options.ts` (không hardcode tên nhóm/giá trị): `defaultOptions` (is_default; Chọn 1 lấy 1),
+  `normalizeOptions` (thứ tự cấu hình, bỏ trùng), `optionsKey`, `toggleOption`, `missingRequired`,
+  `formatOptions` / `optionParts` (gom theo `group_title`: "Đường 70% · Đá 50% · Topping Trân châu, Thạch"),
+  `formatCartOptions`.
+- `CartLine` lưu `options` + `option_groups` của món (variant dùng `option_groups` của template, vì server
+  tính ở cấp món). Khóa giỏ = `item_code` + options chuẩn hóa.
+- `MenuGrid.addSize`: khởi tạo options mặc định khi thêm món (1 size hoặc qua SizeModal).
+- `CartPanel`: chip theo nhóm, thu gọn/mở, trạng thái thiếu bắt buộc. `POS.tsx`: gửi `options` cho preview +
+  tạo đơn (luôn gửi khóa `options`, kể cả rỗng → server đi đường mới), chặn Tạo đơn khi thiếu nhóm bắt buộc.
+- Hiển thị: Orders (`pos-detail__opts`), Kitchen (chip `pos-chip-opt` mỗi nhóm), ReceiptModal (hóa đơn + phiếu
+  pha chế), CupLabels (tem ly, `Cup.opts`) — đều từ `options` server trả; món không có tùy chọn không in dòng.
+- Đã bỏ: `LEVELS`, `ICE_SUGAR`, `changeIceSugar`, `optsLabel`, CSS `.pos-segmented--sm`, `.pos-cart-line__option*`.

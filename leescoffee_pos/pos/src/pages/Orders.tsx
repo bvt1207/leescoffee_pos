@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { formatOptions } from "../lib/options";
 import { formatMoney } from "../store/cart";
 import { useSearch } from "../store/search";
 import type { OrderDetail, OrderSummary, QrInfo, StatusBoardRow } from "../types";
@@ -244,10 +245,8 @@ export default function Orders() {
 									<div key={`${it.item_code}-${i}`} className="pos-detail__row pos-detail__row--item">
 										<div className="pos-detail__item-main">
 											<span>{it.item_name}</span>
-											{it.sugar_level || it.ice_level ? (
-												<small className="pos-detail__opts">
-													Đường {it.sugar_level || 100}% · Đá {it.ice_level || 100}%
-												</small>
+											{formatOptions(it.options) ? (
+												<small className="pos-detail__opts">{formatOptions(it.options)}</small>
 											) : null}
 										</div>
 										<span>x{it.qty}</span>

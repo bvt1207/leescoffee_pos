@@ -15,8 +15,8 @@
 - **Luôn có trạng thái rỗng/tải/lỗi**: `.pos-empty` (chưa có menu, giỏ trống), loading (Đang tải menu…), `.pos-alert--error` (lỗi API, thiếu Price List).
 - **Không nhúng thư viện UI**: CSS thuần + biến `--pos-*`.
 - **Không hardcode thương hiệu**: tên/logo/banner lấy từ `usePos().config.brand`.
-- **Đường/Đá đã lưu server**: `POS Invoice Item.sugar_level/ice_level` (Custom Field). Ghi chú đơn: `POS Invoice.order_note` (Custom Field). Backend handler gửi `sugar/ice` + `order_note` từ frontend.
-- **`lib/api.ts` và `lib/pos-context.tsx` không được thay đổi** — giữ nguyên cách gọi API, CSRF.
+- **Tùy chọn món động (MYPOS Option)**: nhóm/giá trị lấy từ `option_groups` của món (`get_menu_items`), không hardcode tên nhóm. Gửi `options: [{group, value}]` mỗi dòng; server lưu `POS Invoice Item.options` (JSON). Hiển thị đơn dùng `options` server trả (đơn cũ dựng từ `sugar_level`/`ice_level`). Ghi chú đơn: `POS Invoice.order_note`.
+- **`lib/api.ts` và `lib/pos-context.tsx`**: chỉ được đổi kiểu/khóa dữ liệu — giữ nguyên cách gọi API, CSRF.
 - **Quy tắc khách hàng**: Always read from API (`search_customers`, `create_customer`), không hardcode tên khách; frontend `CustomerPicker` thay ô input cũ; checkout gửi `customer_name: customer?.name`; khi bấm tạo đơn → gửi `customer_name` là mã Customer hoặc để trống (backend tự dùng Walk-in Customer).
 
 ### 3.1 Xử lý thương hiệu whitelabel (KHÔNG hardcode!)
@@ -73,12 +73,14 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - `SizeModal`: `role="dialog"`, `aria-modal`, ảnh + tên ở đầu, lưới thẻ size lớn, tiền tệ từ `config.profile.currency`, Esc đóng.
 
 #### CartPanel.tsx (CartPanel)
-- Mỗi dòng: tên + size, giá, nút xóa, Đường/Đá 50/70/100%, nút +/− 44px.
-- Sửa lỗi đảo nhãn Đường/Đá: `changeIceSugar(key, ice, sugar)` đúng thứ tự.
+- Mỗi dòng: tên + size, giá, nút xóa, chip tùy chọn, nút +/− 44px.
+- **Chip tùy chọn** (`lib/options.ts`): "Chọn 1" = chip radio (`role=radio`; nhóm không bắt buộc bấm lại để bỏ chọn, nhóm bắt buộc không bỏ được), "Chọn nhiều" = chip bật/tắt (`role=checkbox`). `.pos-optchip` cao ≥ 44px, active = `--pos-primary`. Nhóm bắt buộc có dấu `*`.
+- **Thu gọn/mở**: mỗi lúc chỉ mở chip của 1 dòng (`expanded`); dòng vừa thêm (có nhóm) tự mở; dòng thu gọn hiện `.pos-cart-line__summary` (1 dòng "Đường 70% · Đá 50%", bấm để mở).
+- **Trạng thái thiếu bắt buộc**: dòng `.is-missing` (viền trái `--pos-warning`) + chữ "Chọn {nhóm}"; `POS.tsx` chặn Tạo đơn + nhắc nhẹ.
 - Ghi chú đơn ở footer (`pos-cart__note-label`, `pos-input pos-textarea`).
 - Trạng thái giỏ trống (`.pos-cart__empty`).
-- Đường/Đá 50/70/100% (gửi `sugar`/`ice`); ghi chú đơn: footer textarea (`orderNote`) → gửi `order_note`. Backend thực hiện.
-- Tương tác giỏ luôn qua `cartLineKey` (`${item_code}|${ice}|${sugar}`) cho `increment/decrement/remove` — cùng món khác đường/đá = dòng khác nhau. Thay đổi ice/sugar = đổi key dòng (merge hoặc replace).
+- Gửi `options` mỗi dòng ở cả `preview_pricing` (khóa debounce gồm options) và `create_draft_order`; ghi chú đơn: footer textarea (`orderNote`) → gửi `order_note`.
+- Tương tác giỏ luôn qua `cartLineKey` (`${item_code}|${group=value;...}`, options chuẩn hóa theo thứ tự cấu hình) cho `increment/decrement/remove` — cùng món khác tổ hợp tùy chọn = dòng khác nhau. `setLineOptions(key, options)` đổi key dòng (trùng dòng khác thì gộp qty) và trả key mới.
 - Ghi chú món per-line: `setNote(key, note)` cho từng dòng (`pos-cart-line__note`). Ghi chú đơn: `setOrderNote(note)` (textarea footer) — backend lưu `order_note`.
 
 #### POS.tsx (Order Setup)
@@ -134,26 +136,22 @@ export const useCartStore = create<CartState>((set, get) => ({
   changeQty: (code, qty) => set((s) => ({
     lines: s.lines.map(l => l.code === code ? { ...l, qty } : l)
   })),
-  changeIceSugar: (code, ice, sugar) => set((s) => ({
-    lines: s.lines.map(l => l.code === code ? { ...l, ice, sugar } : l)
-  })),
+  setLineOptions: (key, options) => /* đổi key dòng, gộp nếu trùng — xem 3.4 */ key,
   setOrderNote: (note) => set({ orderNote: note }),
   clear: () => set({ lines: [], orderNote: '' }),
   total: () => get().lines.reduce((sum, l) => sum + l.price * l.qty, 0),
 }));
 ```
 
-> `CartLine` cần có thêm trường `ice` (50/70/100), `sugar` (50/70/100), `size` (được chọn trong SizeModal), `orderNote` (ghi chú đơn hàng).
+> `CartLine` có `options` (`[{group, value}]` đã chuẩn hóa) + `option_groups` (nhóm áp dụng cho món, từ `get_menu_items`), `size` (chọn trong SizeModal); ghi chú đơn ở `orderNote` của store.
 
 ### 3.4 Zustand store hiện tại (thực tế)
 
 ```typescript
 // store/cart.ts — zustand, chỉ memory (không localStorage)
-const ICE_SUGAR = [50, 70, 100] as const;
-
-// Dòng giỏ phân biệt theo item_code + ice + sugar
-export function cartLineKey(line: CartLine): string {
-  return `${line.item_code}|${line.ice ?? 100}|${line.sugar ?? 100}`;
+// Dòng giỏ phân biệt theo item_code + tổ hợp tùy chọn đã chuẩn hóa (lib/options.ts)
+export function cartLineKey(line: Pick<CartLine, "item_code" | "options">): string {
+  return `${line.item_code}|${optionsKey(line.options || [])}`;
 }
 
 interface CartState {
@@ -164,7 +162,7 @@ interface CartState {
   decrement: (item_code: string) => void;
   remove: (item_code: string) => void;
   removeLine: (key: string) => void;
-  changeIceSugar: (key: string, ice: number, sugar: number) => void;
+  setLineOptions: (key: string, options: CartOption[]) => string; // trả key mới
   setNote: (key: string, note: string) => void;
   setOrderNote: (note: string) => void;
   clear: () => void;
@@ -240,7 +238,7 @@ export const api = {
 - [ ] Destructive actions (hủy đơn) **có hộp xác nhận**, không tự bay
 - [ ] TypeScript types khớp với API response (`types.ts`)
 - [ ] Thẻ món không hiển thị giá (giá chỉ sau chọn size + trong giỏ)
-- [ ] Mỗi dòng giỏ có chọn Đường/Đá 50/70/100, mặc định 100
+- [ ] Tùy chọn món lấy từ `option_groups` (không hardcode nhóm/giá trị); mặc định chọn sẵn; nhóm bắt buộc chưa chọn chặn Tạo đơn; món không có nhóm không hiện chip
 - [ ] Có ô ghi chú đơn hàng (footer × `orderNote` → lưu `order_note`; đã triển khai backend)
 - [ ] Phương thức thanh toán lấy từ API, không hardcode tên ngân hàng/MoP
 
