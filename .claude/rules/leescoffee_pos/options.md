@@ -90,8 +90,8 @@ Desk → MYPOS Option Group → New:
     cũng được giảm 10%). **Không dùng `mixed_conditions`**: cộng chéo giữa các mã trong cùng luật. Không sửa Pricing Rule.
   - Luật tặng sản phẩm (`price_or_product_discount = Product`) **không gộp**: giữ theo từng dòng, ghi Error Log.
   - Giá mỗi đơn vị sau giảm giống nhau trên mọi dòng cùng mã → tổng không lệch so với 1 dòng qty tổng.
-  - [Chưa xác minh] Khi insert/save/submit, ERPNext chạy lại `set_missing_values(for_validate=True)`;
-    kỳ vọng dùng lại luật đã ghi trong `pricing_rules`. Script `check_ctkm_qty_gop` so tổng hóa đơn thật với preview.
+  - Khi insert/save/submit, ERPNext chạy lại `set_missing_values(for_validate=True)`;
+    dùng lại luật đã ghi trong `pricing_rules` — **đã test Pass trên bench (`5b17b6c`)**: tổng hóa đơn thật (sau tạo và sau `pay_cash`) khớp preview ở mọi ca.
 - Đóng ca: `options` nằm trên POS Invoice Item; Sales Invoice gộp không có field này (giống đường/đá cũ).
 - Frontend cũ không gửi `options` → đi đường cũ; UI chưa hiển thị `option_groups` (giai đoạn 3).
 - Phụ thu topping: xem `task_handoff.md` mục "Task sau: phụ thu topping".

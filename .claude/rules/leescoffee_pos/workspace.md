@@ -101,8 +101,8 @@ File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.jso
 
 - **Quy tắc module:** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
 
-- 1 card "Lee's Coffee Setup" (`link_count: 6`), thứ tự link: Branch, POS Profile,
-  POS Opening Entry, POS Closing Entry, Leescoffee Menu, Leescoffee Buzzer.
+- 1 card "Lee's Coffee Setup" (`link_count: 7`), thứ tự link: Branch, POS Profile,
+  POS Opening Entry, POS Closing Entry, Leescoffee Menu, Leescoffee Buzzer, MYPOS Option Group.
 - 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
 
 Quy tắc khi sửa JSON workspace:
