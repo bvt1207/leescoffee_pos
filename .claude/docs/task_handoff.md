@@ -32,6 +32,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | POS MANAGER thêm quyền Branch (S R W C); chạy lại patch bằng nhãn `#` trong `patches.txt` | Đã test (`2caf0df`) |
 | Phân quyền màn POS theo role: `get_pos_config` trả `roles`/`nav`/`kitchen_tabs`/`kitchen_transitions`; `get_kitchen_orders`, `set_kitchen_status` chặn theo role; "Đã hoàn thành" chỉ hôm nay (backend); frontend ẩn menu/tab/nút, KITCHEN tự về `/pos/kitchen` (rule `roles.md` §7) | Đã test (`2be2ae8`) |
 | Tùy chọn món động giai đoạn 1+2 (backend): DocType `MYPOS Option Group`/`Value`/`Target`, Custom Field `POS Invoice Item.options`, quyền; `get_menu_items` trả `option_groups`, `_normalize_items` kiểm tra `options`, `get_order_detail`/`get_kitchen_orders` trả `options` (rule `options.md`). Giai đoạn 3 (UI) chưa làm | Chờ Van test |
+| CTKM tính theo tổng qty mỗi mã trong hóa đơn (`_apply_rules_on_total_qty`: hóa đơn tạm 1 dòng/mã rồi chép luật sang các dòng thật); không dùng `is_cumulative`/`mixed_conditions`; luật tặng sản phẩm chưa gộp | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 

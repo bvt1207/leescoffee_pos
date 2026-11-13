@@ -138,6 +138,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Tùy chọn món động** (`MYPOS Option Group`, thay đường/đá cứng, KHÔNG phụ thu): cấu hình do admin
   tạo trên Desk, không có dữ liệu mẫu trong code; lưu JSON `POS Invoice Item.options`. Quy tắc áp dụng,
   hướng dẫn admin: `.claude/rules/leescoffee_pos/options.md`.
+- **CTKM (Pricing Rule) tính theo tổng qty mỗi mã trong hóa đơn** (`_apply_rules_on_total_qty`), không cộng
+  chéo giữa các mã. Không dùng `is_cumulative` (cộng qty qua các hóa đơn trước) hay `mixed_conditions`
+  (cộng chéo các mã); không sửa Pricing Rule. Chi tiết: `options.md` §7.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

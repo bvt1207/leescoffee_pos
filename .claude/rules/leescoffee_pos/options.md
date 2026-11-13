@@ -80,9 +80,18 @@ Desk → MYPOS Option Group → New:
 ## 7. Rủi ro / tồn đọng
 
 - `get_menu_items` thêm ~3 truy vấn mỗi lần gọi (+ 3 khi cache trống).
-- **CTKM theo số lượng**: cùng món khác tùy chọn tách dòng → Pricing Rule có thể xét qty từng dòng
-  (2 + 2 ≠ 4). Script test có 2 ca; nếu mất ưu đãi: bật **Mixed Conditions** hoặc **Is Cumulative** trên
-  Pricing Rule (cấu hình admin), hoặc task sau gộp qty theo item khi tính luật.
+- **CTKM theo số lượng — ĐÃ XỬ LÝ (2026-11-13):** ERPNext xét qty của Pricing Rule theo từng dòng, nên
+  2 + 2 ly cùng mã (khác tùy chọn) chỉ được mức qty 2. `pos_api._apply_rules_on_total_qty` (gọi trong
+  `_build_invoice`, dùng chung cho `preview_pricing` và `create_draft_order`): mã có ≥ 2 dòng → dựng hóa đơn
+  tạm trong bộ nhớ, mỗi mã 1 dòng qty = tổng, để ERPNext chọn luật, rồi chép `pricing_rules`,
+  `discount_percentage`, `discount_amount`, `rate` (+ margin) sang mọi dòng thật cùng mã.
+  - Quy tắc: **CTKM tính theo tổng qty mỗi mã trong hóa đơn**; hai mã khác nhau không cộng chéo.
+  - **Không dùng `is_cumulative`**: ERPNext cộng dồn qty qua các hóa đơn trước (đã thử trên bench: qty 1
+    cũng được giảm 10%). **Không dùng `mixed_conditions`**: cộng chéo giữa các mã trong cùng luật. Không sửa Pricing Rule.
+  - Luật tặng sản phẩm (`price_or_product_discount = Product`) **không gộp**: giữ theo từng dòng, ghi Error Log.
+  - Giá mỗi đơn vị sau giảm giống nhau trên mọi dòng cùng mã → tổng không lệch so với 1 dòng qty tổng.
+  - [Chưa xác minh] Khi insert/save/submit, ERPNext chạy lại `set_missing_values(for_validate=True)`;
+    kỳ vọng dùng lại luật đã ghi trong `pricing_rules`. Script `check_ctkm_qty_gop` so tổng hóa đơn thật với preview.
 - Đóng ca: `options` nằm trên POS Invoice Item; Sales Invoice gộp không có field này (giống đường/đá cũ).
 - Frontend cũ không gửi `options` → đi đường cũ; UI chưa hiển thị `option_groups` (giai đoạn 3).
 - Phụ thu topping: xem `task_handoff.md` mục "Task sau: phụ thu topping".

@@ -792,34 +792,7 @@ def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_
 	"""
 	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
 
-	invoice = frappe.new_doc("POS Invoice")
-	invoice.is_pos = 1
-	invoice.pos_profile = profile.name
-	invoice.customer = customer
-	invoice.company = profile.company
-	invoice.currency = profile.currency or frappe.db.get_value(
-		"Company", profile.company, "default_currency"
-	)
-	invoice.transaction_date = nowdate()
-	invoice.posting_date = nowdate()
-	invoice.set_warehouse = profile.warehouse or ""
-	invoice.order_type = order_type
-	invoice.order_channel = ORDER_CHANNEL
-
-	invoice.order_note = str(order_note or "").strip()[:500]
-
-	# Phương thức thanh toán do nhân viên chọn — set sẵn để ERPNext không
-	# ghi đè bằng danh sách MoP của POS Profile.
-	invoice.set("payments", [])
-	invoice.append(
-		"payments",
-		{
-			"mode_of_payment": mode["name"],
-			"amount": 0,
-			"account": mode["account"],
-			"type": mode["type"],
-		},
-	)
+	invoice = _new_invoice_header(profile, order_type, customer, price_list, mode, order_note)
 
 	for row in rows:
 		row = dict(row)
@@ -871,13 +844,116 @@ def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_
 		# Không gán rate/price_list_rate — ERPNext lấy giá theo Price List và áp CTKM.
 		invoice.append("items", row)
 
+	invoice.set_missing_values()
+	# CTKM theo TỔNG qty mỗi mã trong hóa đơn (cùng món tách dòng vì khác tùy chọn).
+	_apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list, mode)
+	invoice.calculate_taxes_and_totals()
+	return invoice
+
+
+def _new_invoice_header(profile, order_type, customer, price_list, mode, order_note=""):
+	"""POS Invoice mới (chưa có dòng) với header + thanh toán + Price List, bật Pricing Rule."""
+	invoice = frappe.new_doc("POS Invoice")
+	invoice.is_pos = 1
+	invoice.pos_profile = profile.name
+	invoice.customer = customer
+	invoice.company = profile.company
+	invoice.currency = profile.currency or frappe.db.get_value(
+		"Company", profile.company, "default_currency"
+	)
+	invoice.transaction_date = nowdate()
+	invoice.posting_date = nowdate()
+	invoice.set_warehouse = profile.warehouse or ""
+	invoice.order_type = order_type
+	invoice.order_channel = ORDER_CHANNEL
+
+	invoice.order_note = str(order_note or "").strip()[:500]
+
+	# Phương thức thanh toán do nhân viên chọn — set sẵn để ERPNext không
+	# ghi đè bằng danh sách MoP của POS Profile.
+	invoice.set("payments", [])
+	invoice.append(
+		"payments",
+		{
+			"mode_of_payment": mode["name"],
+			"amount": 0,
+			"account": mode["account"],
+			"type": mode["type"],
+		},
+	)
+
 	# Giá theo đúng Price List của menu; bật Pricing Rule (CTKM).
 	invoice.selling_price_list = price_list
 	invoice.ignore_pricing_rule = 0
-
-	invoice.set_missing_values()
-	invoice.calculate_taxes_and_totals()
 	return invoice
+
+
+# Field giá/luật chép từ dòng tạm (qty tổng) sang các dòng thật cùng mã.
+_RULE_FIELDS = (
+	"pricing_rules", "discount_percentage", "discount_amount", "rate",
+	"margin_type", "margin_rate_or_amount", "rate_with_margin",
+)
+
+
+def _apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list, mode):
+	"""Áp Pricing Rule theo TỔNG qty của mỗi item_code trong hóa đơn.
+
+	ERPNext xét qty của luật theo TỪNG DÒNG; cùng món tách dòng (khác tùy chọn) như 2+2 ly
+	sẽ chỉ được mức giảm của qty 2. Cách làm: với mã có >= 2 dòng (không tính dòng tặng),
+	dựng hóa đơn tạm trong bộ nhớ, mỗi mã một dòng qty = tổng, để ERPNext tự chọn luật,
+	rồi chép kết quả sang mọi dòng thật cùng mã. Luật vẫn tính theo từng mã (không cộng chéo).
+
+	KHÔNG dùng Pricing Rule.is_cumulative (cộng qty qua các hóa đơn trước) hay mixed_conditions
+	(cộng chéo giữa các mã). Luật tặng sản phẩm (Product) không gộp: giữ theo từng dòng.
+	"""
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+
+	by_code = {}
+	for row in invoice.items:
+		if not cint(row.get("is_free_item")):
+			by_code.setdefault(row.item_code, []).append(row)
+	multi = {code: rows for code, rows in by_code.items() if len(rows) > 1}
+	if not multi:
+		return
+
+	temp = _new_invoice_header(profile, order_type, customer, price_list, mode)
+	for code, rows in multi.items():
+		first = rows[0]
+		temp.append(
+			"items",
+			{
+				"item_code": code,
+				"item_name": first.item_name,
+				"qty": sum(flt(r.qty) for r in rows),
+				"uom": first.uom,
+				"stock_uom": first.stock_uom,
+				"conversion_factor": first.conversion_factor or 1,
+			},
+		)
+	temp.set_missing_values()
+
+	for t in temp.items:
+		if cint(t.get("is_free_item")) or t.item_code not in multi:
+			continue
+		rules = get_applied_pricing_rules(t.get("pricing_rules"))
+		kinds = {
+			frappe.db.get_value("Pricing Rule", r, "price_or_product_discount") for r in rules
+		}
+		if "Product" in kinds:
+			frappe.log_error(
+				title="Leescoffee POS: CTKM tặng sản phẩm không gộp qty",
+				message=f"{t.item_code}: luật {rules} là tặng sản phẩm, giữ áp theo từng dòng.",
+			)
+			continue
+		for row in multi[t.item_code]:
+			if rules:
+				for field in _RULE_FIELDS:
+					row.set(field, t.get(field))
+			else:
+				row.pricing_rules = ""
+				row.discount_percentage = 0
+				row.discount_amount = 0
+				row.rate = flt(row.price_list_rate)
 
 
 @frappe.whitelist()
