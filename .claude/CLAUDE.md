@@ -135,6 +135,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Phân quyền màn POS theo role** (MANAGER / CASHIER / KITCHEN: menu, tab Pha chế, bước chuyển):
   cấu hình duy nhất ở hằng `*_BY_ROLE` trong `api/pos_api.py`, chặn ở backend. Bảng quyền + tồn đọng:
   `.claude/rules/leescoffee_pos/roles.md` §7.
+- **Tùy chọn món động** (`MYPOS Option Group`, thay đường/đá cứng, KHÔNG phụ thu): cấu hình do admin
+  tạo trên Desk, không có dữ liệu mẫu trong code; lưu JSON `POS Invoice Item.options`. Quy tắc áp dụng,
+  hướng dẫn admin: `.claude/rules/leescoffee_pos/options.md`.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

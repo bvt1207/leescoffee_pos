@@ -31,6 +31,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | 3 role `POS CASHIER`/`POS KITCHEN`/`POS MANAGER`: fixture `role.json`, quyền qua patch `v1_create_pos_roles` + `after_install` (không fixture Custom DocPerm); bảng quyền + role ERPNext đi kèm MANAGER ở `rules/leescoffee_pos/roles.md` | Đã test (`b4fa3f4`) |
 | POS MANAGER thêm quyền Branch (S R W C); chạy lại patch bằng nhãn `#` trong `patches.txt` | Đã test (`2caf0df`) |
 | Phân quyền màn POS theo role: `get_pos_config` trả `roles`/`nav`/`kitchen_tabs`/`kitchen_transitions`; `get_kitchen_orders`, `set_kitchen_status` chặn theo role; "Đã hoàn thành" chỉ hôm nay (backend); frontend ẩn menu/tab/nút, KITCHEN tự về `/pos/kitchen` (rule `roles.md` §7) | Đã test (`2be2ae8`) |
+| Tùy chọn món động giai đoạn 1+2 (backend): DocType `MYPOS Option Group`/`Value`/`Target`, Custom Field `POS Invoice Item.options`, quyền; `get_menu_items` trả `option_groups`, `_normalize_items` kiểm tra `options`, `get_order_detail`/`get_kitchen_orders` trả `options` (rule `options.md`). Giai đoạn 3 (UI) chưa làm | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
@@ -143,6 +144,15 @@ Kiểm tra type: trong `pos/` chạy `../../node_modules/.bin/tsc --noEmit -p . 
 Quyết định đang chờ cho refactor: (1) bỏ `board` + `getStatusBoard` trong Orders; (2) bỏ alert lỗi
 hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhất Esc/khóa cuộn/focus;
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
+
+## 3b. Task sau: phụ thu topping (CHƯA làm)
+- Việc cần làm: (1) sửa logic "giá phải khớp Price List" trong `_build_invoice` / `get_price_for_item` để cho phép
+  cộng phụ thu; (2) chốt cộng phụ thu **trước hay sau** CTKM (Pricing Rule); (3) tương tác với đổi điểm loyalty
+  (điểm tối đa tính trên tổng có phụ thu?); (4) test topping có giá (preview, tạo đơn, hóa đơn in, đóng ca).
+- Câu hỏi chưa chốt: (a) topping là `MYPOS Option Value` (`extra_price`) hay **Item riêng** (tồn kho, giá,
+  báo cáo); (b) vị trí hiển thị UI (chip trong giỏ hay bước chọn riêng); (c) topping có tính vào luật số lượng
+  của CTKM không.
+- Field `MYPOS Option Value.extra_price` đã có (ẩn, mặc định 0), backend đang bỏ qua.
 
 ## 4. Quyết định đang chờ Van
 - Phân quyền các API `pos_api` còn lại theo role (`frappe.only_for`) — đề xuất từng hàm ở `rules/leescoffee_pos/roles.md` §8, chưa làm.

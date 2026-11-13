@@ -46,10 +46,12 @@ PERMS = {
 		"Sales Invoice": _INVOICE,
 		"Address": ["read"],
 		"Contact": ["read"],
+		"MYPOS Option Group": ["read"],
 	},
 	KITCHEN: {
 		"Leescoffee Menu": ["read"],
 		"Leescoffee Buzzer": ["read"],
+		"MYPOS Option Group": ["read"],
 	},
 	MANAGER: {
 		"POS Opening Entry": _SHIFT,
@@ -66,6 +68,7 @@ PERMS = {
 		"Address": ["read", "write", "create"],
 		"Contact": ["read", "write", "create"],
 		"Branch": _MASTER_RW,
+		"MYPOS Option Group": ["read", "write", "create"],
 	},
 }
 

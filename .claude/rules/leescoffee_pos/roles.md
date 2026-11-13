@@ -34,6 +34,7 @@ Không cấp Cancel / Delete / Amend.
 | Address | R | — | R W C |
 | Contact | R | — | R W C |
 | Branch | — | — | S R W C |
+| MYPOS Option Group | R | R | R W C |
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
 

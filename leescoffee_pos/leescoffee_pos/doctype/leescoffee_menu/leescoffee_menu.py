@@ -208,6 +208,8 @@ class LeescoffeeMenu(Document):
         )
 
         result = []
+        # (payload, item_code của dòng menu) để gắn option_groups một lần cho mọi menu
+        option_targets = []
 
         for menu in menus:
             menu_items = frappe.get_all(
@@ -290,6 +292,7 @@ class LeescoffeeMenu(Document):
                 )
                 if payload:
                     items_payload.append(payload)
+                    option_targets.append((payload, row_dict["item_code"]))
 
             result.append(
                 {
@@ -299,6 +302,14 @@ class LeescoffeeMenu(Document):
                     "items": items_payload,
                 }
             )
+
+        # Tùy chọn món (MYPOS Option Group): thêm khóa option_groups, không đổi khóa cũ.
+        # Template: tính theo chính template (variant kế thừa template).
+        from ..mypos_option_group.option_resolver import public_groups, resolve_option_groups
+
+        groups_by_code = resolve_option_groups([code for _p, code in option_targets])
+        for payload, code in option_targets:
+            payload["option_groups"] = public_groups(groups_by_code.get(code, []))
 
         return result
 

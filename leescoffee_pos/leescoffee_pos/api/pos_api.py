@@ -213,9 +213,28 @@ def _level(value):
 		v = 100
 	return str(v if v in LEVELS else 100)
 
+def _legacy_input(item, short, field):
+	"""Giá trị đường/đá kiểu cũ nếu request gửi (khóa 'sugar'/'ice' hoặc 'sugar_level'/'ice_level')."""
+	for key in (short, field):
+		if item.get(key) not in (None, ""):
+			return _level(item.get(key))
+	return None
+
+
 def _normalize_items(items):
-	"""Chuẩn hóa danh sách món gửi từ giao diện."""
-	normalized = []
+	"""Chuẩn hóa danh sách món gửi từ giao diện.
+
+	- Dòng KHÔNG có khóa "options" (frontend cũ): giữ nguyên hành vi cũ, đường/đá mặc định 100.
+	- Dòng CÓ khóa "options" (kể cả rỗng): kiểm tra theo MYPOS Option Group áp dụng cho món,
+	  lưu JSON vào POS Invoice Item.options; cột cũ chỉ ghi khi nhóm có legacy_field
+	  (hoặc request gửi rõ sugar/ice). Không đổi giá (không phụ thu).
+	"""
+	from ..doctype.mypos_option_group.option_resolver import resolve_option_groups, validate_line_options
+
+	if isinstance(items, str):
+		items = frappe.parse_json(items)
+
+	normalized, pending = [], []
 
 	for item in items or []:
 		if not isinstance(item, dict):
@@ -234,13 +253,36 @@ def _normalize_items(items):
 			"qty": qty,
 			"uom": item.get("uom") or "",
 		}
-		row["sugar_level"] = _level(item.get("sugar"))
-		row["ice_level"] = _level(item.get("ice"))
+
+		if "options" in item:
+			for short, field in (("sugar", "sugar_level"), ("ice", "ice_level")):
+				value = _legacy_input(item, short, field)
+				if value is not None:
+					row[field] = value
+			pending.append((row, item.get("options")))
+		else:
+			row["sugar_level"] = _level(item.get("sugar"))
+			row["ice_level"] = _level(item.get("ice"))
 
 		if item.get("warehouse"):
 			row["warehouse"] = item.get("warehouse")
 
 		normalized.append(row)
+
+	if pending:
+		# Một lần giải quyết nhóm cho mọi dòng có options (không query trong vòng lặp).
+		import json
+
+		from ..doctype.mypos_option_group.option_resolver import item_names
+
+		codes = [r["item_code"] for r, _raw in pending]
+		groups_by_code = resolve_option_groups(codes)
+		names = item_names(codes)
+		for row, raw in pending:
+			code = row["item_code"]
+			options, legacy = validate_line_options(raw, groups_by_code.get(code, []), names.get(code) or code)
+			row["options"] = json.dumps(options, ensure_ascii=False, separators=(",", ":"))
+			row.update(legacy)
 
 	return normalized
 
@@ -885,6 +927,8 @@ def get_order_detail(invoice_name):
 	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ rung, CTKM)."""
 	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
+	from ..doctype.mypos_option_group.option_resolver import read_line_options
+
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 	sizes = _size_labels([row.item_code for row in invoice.items])
 
@@ -897,6 +941,7 @@ def get_order_detail(invoice_name):
 			"amount": flt(row.amount),
 			"sugar_level": row.get("sugar_level") or "",
 			"ice_level": row.get("ice_level") or "",
+			"options": read_line_options(row.get("options"), row.get("sugar_level"), row.get("ice_level")),
 			"size": sizes.get(row.item_code, ""),
 			"price_list_rate": flt(row.price_list_rate),
 			"discount_percentage": flt(row.discount_percentage),
@@ -1088,9 +1133,11 @@ def get_kitchen_orders(status=None, limit=100):
 		"POS Invoice Item",
 		filters={"parent": ["in", names], "parenttype": "POS Invoice"},
 		fields=["parent", "idx", "item_code", "item_name", "qty",
-			"sugar_level", "ice_level"],
+			"sugar_level", "ice_level", "options"],
 		order_by="parent asc, idx asc",
 	)
+	from ..doctype.mypos_option_group.option_resolver import read_line_options
+
 	by_parent = {}
 	for r in rows:
 		by_parent.setdefault(r.parent, []).append({
@@ -1099,6 +1146,7 @@ def get_kitchen_orders(status=None, limit=100):
 			"qty": flt(r.qty),
 			"sugar_level": r.sugar_level or "",
 			"ice_level": r.ice_level or "",
+			"options": read_line_options(r.get("options"), r.sugar_level, r.ice_level),
 		})
 
 	for o in orders:

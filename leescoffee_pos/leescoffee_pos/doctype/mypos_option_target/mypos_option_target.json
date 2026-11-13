@@ -1,0 +1,54 @@
+{
+  "doctype": "DocType",
+  "name": "MYPOS Option Target",
+  "module": "Leescoffee POS",
+  "modified": "2026-11-13 09:00:00.000000",
+  "istable": 1,
+  "issingle": 0,
+  "fields": [
+    {
+      "fieldname": "target_type",
+      "label": "Loại",
+      "fieldtype": "Select",
+      "options": "Item Group\nItem",
+      "default": "Item Group",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "item_group",
+      "label": "Nhóm hàng",
+      "fieldtype": "Link",
+      "options": "Item Group",
+      "depends_on": "eval:doc.target_type=='Item Group'",
+      "mandatory_depends_on": "eval:doc.target_type=='Item Group'",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "item",
+      "label": "Mặt hàng",
+      "fieldtype": "Link",
+      "options": "Item",
+      "depends_on": "eval:doc.target_type=='Item'",
+      "mandatory_depends_on": "eval:doc.target_type=='Item'",
+      "in_list_view": 1,
+      "description": "Variant tính theo template: hãy chọn mã template, không chọn mã variant."
+    },
+    {
+      "fieldname": "include_children",
+      "label": "Gồm nhóm con",
+      "fieldtype": "Check",
+      "default": "1",
+      "depends_on": "eval:doc.target_type=='Item Group'",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "exclude",
+      "label": "Loại trừ",
+      "fieldtype": "Check",
+      "default": "0",
+      "in_list_view": 1
+    }
+  ],
+  "permissions": []
+}

@@ -19,6 +19,7 @@
 │   └── leescoffee_pos/        # Logic per module
 │       ├── branch.md
 │       ├── menu.md
+│       ├── options.md
 │       ├── pos_invoice_hooks.md
 │       ├── roles.md
 │       ├── sepay.md
@@ -50,6 +51,9 @@ leescoffee_pos/
         ├── leescoffee_buzzer/         # __init__.py, .json, .py
         ├── leescoffee_menu/           # __init__.py, .json, .py
         ├── leescoffee_menu_item/      # __init__.py, .json, .py
+        ├── mypos_option_group/        # __init__.py, .json, .py, option_resolver.py
+        ├── mypos_option_value/        # bảng con
+        ├── mypos_option_target/       # bảng con
         ├── pos_invoice_hooks/         # __init__.py, .py
         ├── sepay/                     # __init__.py, .py
         └── branch_config/             # __init__.py, .py
