@@ -252,6 +252,8 @@ def run_order_qr_selftest(branch=None):
 		row = frappe.db.get_value("POS Invoice", ta["invoice_name"], ["docstatus", "status", "custom_kitchen_status"], as_dict=True)
 		check("8f Webhook đúng key (Guest) -> Paid + Chưa làm", res.get("success") and row.docstatus == 1 and row.status == "Paid"
 			and row.custom_kitchen_status == "Chưa làm", str(row))
+		check("8f1 [HỒI QUY] Webhook LẦN ĐẦU cho đơn Draft không trả already_processed",
+			"already_processed" not in res and res.get("docstatus") == 1, str(res)[:150])
 		check("8f2 Sau webhook user trở lại Guest (quyền cao chỉ trong phạm vi save/submit)", user_after == "Guest", user_after)
 		fake_request(payload, api_key)
 		r8g = guest(S.sepay_webhook)
@@ -261,13 +263,14 @@ def run_order_qr_selftest(branch=None):
 		r8g1 = guest(S.sepay_webhook)
 		check("8g1 Retry với nội dung bị bỏ '-' / chữ thường (tra dự phòng) -> already_processed",
 			r8g1.get("already_processed") is True, str(r8g1))
-		logs_before = frappe.db.count("Error Log", {"method": "SePay: giao dịch thứ hai cho mã đã thanh toán"})
+		review_title = "SePay: giao dịch cho đơn đã submit, cần đối soát"
+		logs_before = frappe.db.count("Error Log", {"method": review_title})
 		ref_before = frappe.db.get_value("POS Invoice", ta["invoice_name"], "transaction_ref")
 		fake_request(dict(payload, id="SELFTEST-2ND-" + frappe.generate_hash(length=6)), api_key)
 		r8g2 = guest(S.sepay_webhook)
-		logs_after = frappe.db.count("Error Log", {"method": "SePay: giao dịch thứ hai cho mã đã thanh toán"})
-		check("8g2 Giao dịch thứ hai cùng mã -> không xác nhận lại, không lộ đơn, có Error Log",
-			r8g2.get("needs_review") is True and "invoice_name" not in r8g2
+		logs_after = frappe.db.count("Error Log", {"method": review_title})
+		check("8g2 Giao dịch thứ hai cùng mã -> needs_review (không already_processed), không lộ đơn, có Error Log",
+			r8g2.get("needs_review") is True and "invoice_name" not in r8g2 and "already_processed" not in r8g2
 			and frappe.db.get_value("POS Invoice", ta["invoice_name"], "transaction_ref") == ref_before
 			and logs_after == logs_before + 1, str(r8g2))
 		fake_request(dict(payload, id="SELFTEST-X-" + frappe.generate_hash(length=6)), "sai-key")
@@ -275,7 +278,9 @@ def run_order_qr_selftest(branch=None):
 			S.sepay_webhook, exc=frappe.PermissionError)
 		frappe.local.request = old_request
 
-		# 8k-8m: luồng máy POS cũ — đơn thu ngân tạo tại quầy, thu bằng QR SePay, webhook xác nhận.
+		# 8k-8n: luồng máy POS cũ — đơn thu ngân tạo tại quầy, thu bằng QR SePay, webhook xác nhận.
+		# [HỒI QUY] dùng LẠI id giao dịch của đơn TA (đã Paid) cho đơn Draft này: trước bản sửa,
+		# nhánh 3c trả already_processed và KHÔNG thanh toán (lỗi LCNH-00279).
 		try:
 			frappe.set_user(shift.user)  # dùng ca đang mở của thu ngân, không mở ca mới
 			try:
@@ -290,22 +295,42 @@ def run_order_qr_selftest(branch=None):
 				frappe.db.get_value("POS Invoice", staff["invoice_name"], "order_channel") == "POS")
 			s_amount = flt(staff["amount"])
 			s_payload = {"content": sq["payment_code"], "transferAmount": s_amount,
-				"id": "SELFTEST-" + frappe.generate_hash(length=8), "transferType": "in", "gateway": "TEST"}
+				"id": payload["id"], "transferType": "in", "gateway": "TEST"}
 			fake_request(s_payload, "sai-key")
 			expect_error("8l Đơn quầy: webhook sai key -> 403", S.sepay_webhook, exc=frappe.PermissionError)
 			fake_request(s_payload, api_key)
 			s_res, s_user = guest(webhook_and_user)
 			srow = frappe.db.get_value("POS Invoice", staff["invoice_name"],
 				["docstatus", "status", "custom_kitchen_status", "payment_status"], as_dict=True)
-			check("8m Đơn quầy: webhook đúng key -> Paid + Chưa làm + Đã thanh toán",
-				s_res.get("success") and srow.docstatus == 1 and srow.status == "Paid"
-				and srow.custom_kitchen_status == "Chưa làm" and srow.payment_status == "Đã thanh toán"
-				and s_user == "Guest", str(srow))
+			check("8m [HỒI QUY] Đơn quầy Draft + id từng dùng cho đơn khác -> vẫn Paid + Chưa làm + Đã thanh toán",
+				s_res.get("success") and "already_processed" not in s_res and srow.docstatus == 1
+				and srow.status == "Paid" and srow.custom_kitchen_status == "Chưa làm"
+				and srow.payment_status == "Đã thanh toán" and s_user == "Guest", str(srow))
 			fake_request(s_payload, api_key)
 			check("8n Đơn quầy: SePay retry -> already_processed",
 				guest(S.sepay_webhook).get("already_processed") is True)
+
+			# 8o: đơn đã thu TIỀN MẶT (docstatus 1, payment_status khác "Đã thanh toán") rồi khách vẫn
+			# chuyển khoản -> needs_review, không already_processed, không đổi đơn.
+			frappe.set_user(shift.user)
+			try:
+				cash = P.create_draft_order(cart, "Take Away", customer_name=cust_a,
+					mode_of_payment=C._transfer_mode(profile)["name"], branch_name=branch,
+					price_list=profile.selling_price_list)
+				made["invoices"].append(cash["invoice_name"])
+				cq = P.generate_qr(cash["invoice_name"])
+				P.pay_cash(cash["invoice_name"])
+			finally:
+				frappe.set_user(admin)
+			fake_request({"content": cq["payment_code"], "transferAmount": flt(cash["amount"]),
+				"id": "SELFTEST-CASH-" + frappe.generate_hash(length=6), "transferType": "in", "gateway": "TEST"}, api_key)
+			r8o = guest(S.sepay_webhook)
+			crow = frappe.db.get_value("POS Invoice", cash["invoice_name"], ["docstatus", "transaction_ref"], as_dict=True)
+			check("8o Đơn đã thu tiền mặt + chuyển khoản -> needs_review, không already_processed, đơn không đổi",
+				r8o.get("needs_review") is True and "already_processed" not in r8o
+				and crow.docstatus == 1 and not crow.transaction_ref, str(r8o)[:150])
 		except Exception:
-			check("8k-8m Lỗi ngoài dự kiến ở luồng POS cũ", False)
+			check("8k-8o Lỗi ngoài dự kiến ở luồng POS cũ", False)
 			traceback.print_exc()
 		frappe.local.request = old_request
 

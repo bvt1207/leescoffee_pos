@@ -55,12 +55,15 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
    (cột có `search_index`, fixture 2026-11-14); (b) dự phòng: so mã chuẩn hóa bằng SQL (bỏ `- . / _` và
    khoảng trắng, viết hoa) chỉ trong đơn tạo 30 ngày gần nhất, `LIMIT 2`; khớp ≥ 2 đơn → log, coi như không thấy.
 4. Không khớp → `log_error` + ném lỗi. Khớp → **xác thực API key** (`_verify_sepay_key`) TRƯỚC mọi nhánh sau.
-4b. Đơn đã submit: `transaction_ref == id` → `{success: True, already_processed: True, invoice_name}`;
-   `id` khác (giao dịch thứ hai cùng mã) → Error Log "SePay: giao dịch thứ hai cho mã đã thanh toán",
-   trả `{success: True, already_processed: True, needs_review: True, message}` (không có invoice_name/dữ liệu khách,
-   success để SePay không retry mãi; đối soát/hoàn tiền thủ công). Không bao giờ submit lại.
-5. **Idempotent**: `payment_status == "Đã thanh toán"` → trả
-   `{success: True, already_processed: True}`. `payment_status == "Hủy"` → ném lỗi.
+4b. Đơn đã submit (docstatus 1): **không bao giờ xác nhận lại.** `already_processed` CHỈ khi
+   `payment_status = "Đã thanh toán"` VÀ `transaction_ref == id` (id khác rỗng) → `{success, already_processed, invoice_name}`.
+   Còn lại (giao dịch thứ hai cùng mã, đơn đã thu tiền mặt) → Error Log "SePay: giao dịch cho đơn đã submit, cần đối soát",
+   trả `{success: True, needs_review: True, message}` (không `already_processed`, không invoice_name/dữ liệu khách).
+5. Đơn Draft: **luôn đi tiếp** (khớp số tiền → ghi payments → submit). Không có nhánh trả sớm nào cho Draft.
+   `id` đã nằm ở `transaction_ref` của đơn khác chỉ ghi Error Log "SePay: transaction_id đã có trên đơn khác".
+   (Lỗi 2026-11-14, LCNH-00279: nhánh cũ "id đã dùng ở đơn khác → already_processed" làm đơn Draft không được
+   thanh toán; nhánh "payment_status = Đã thanh toán → already_processed" cũng đã bỏ cho Draft.)
+   `payment_status == "Hủy"` → ném lỗi.
 6. Kiểm tra số tiền: `|transferAmount − (rounded_total or grand_total)| ≤ 0.01`, lệch → log + ném lỗi.
 7. Lấy `mode_of_payment` từ `invoice.payments` (dòng khớp số tiền, không có thì dòng đầu
    tiên có mode). Xóa hết `payments`, append 1 dòng `{mode_of_payment, amount}`.

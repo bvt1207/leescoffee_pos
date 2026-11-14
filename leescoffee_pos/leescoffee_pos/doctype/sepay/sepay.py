@@ -185,22 +185,29 @@ def sepay_webhook():
         #     Mọi nhánh bên dưới (kể cả phản hồi idempotent) chỉ chạy SAU bước này.
         _verify_sepay_key(invoice)
 
-        # 3b'. Đơn đã submit: không bao giờ xác nhận lại.
+        # 3b'. Đơn đã submit: KHÔNG BAO GIỜ xác nhận lại.
+        #      already_processed CHỈ khi: docstatus = 1 VÀ payment_status = "Đã thanh toán"
+        #      VÀ transaction_ref = transaction_id của webhook (SePay gửi lại đúng giao dịch).
         if invoice.docstatus == 1:
-            if (invoice.transaction_ref or "") == transaction_id:
-                # SePay retry đúng giao dịch đã xử lý -> thành công idempotent.
+            if (
+                invoice.payment_status == "Đã thanh toán"
+                and transaction_id
+                and (invoice.transaction_ref or "") == transaction_id
+            ):
                 return {
                     "success": True,
                     "message": "Giao dịch đã được xử lý trước đó",
                     "invoice_name": invoice.name,
                     "already_processed": True,
                 }
-            # Giao dịch THỨ HAI cho cùng mã (khách chuyển 2 lần...): ghi log để đối soát/hoàn
-            # tiền thủ công. Trả success để SePay không retry mãi; không trả dữ liệu đơn/khách.
+            # Đơn đã submit nhưng giao dịch khác (khách chuyển 2 lần, hoặc đơn đã thu tiền mặt):
+            # ghi log để đối soát/hoàn tiền thủ công. Trả success để SePay không retry mãi;
+            # không trả dữ liệu đơn/khách, không xác nhận lại.
             frappe.log_error(
-                title="SePay: giao dịch thứ hai cho mã đã thanh toán",
+                title="SePay: giao dịch cho đơn đã submit, cần đối soát",
                 message=(
                     f"invoice={invoice.name}\n"
+                    f"payment_status={invoice.payment_status}\n"
                     f"transaction_ref_da_luu={invoice.transaction_ref}\n"
                     f"transaction_id_moi={transaction_id}\n"
                     f"amount={amount}\ncontent={content}\n"
@@ -210,31 +217,21 @@ def sepay_webhook():
             )
             return {
                 "success": True,
-                "already_processed": True,
                 "needs_review": True,
                 "message": "Mã thanh toán đã được sử dụng; giao dịch được ghi nhận để đối soát.",
             }
 
-        # 3c. Cùng mã giao dịch SePay đã submit một đơn khác -> không xử lý lại.
+        # 3c. Đơn Draft: LUÔN đi tiếp (khớp số tiền, ghi thanh toán, submit). Không có nhánh
+        #     already_processed nào cho Draft. transaction_id đã có trên đơn khác chỉ ghi cảnh báo
+        #     (id do SePay cấp; trùng thường do test thủ công dùng lại id) — không chặn thanh toán.
         if transaction_id and frappe.db.exists(
             "POS Invoice",
             {"transaction_ref": transaction_id, "docstatus": 1, "name": ["!=", invoice.name]},
         ):
-            return {
-                "success": True,
-                "message": "Giao dịch đã được xử lý trước đó",
-                "invoice_name": invoice.name,
-                "already_processed": True,
-            }
-
-        # 4. Chống xử lý lại giao dịch
-        if invoice.payment_status == "Đã thanh toán":
-            return {
-                "success": True,
-                "message": "Giao dịch đã được xử lý trước đó",
-                "invoice_name": invoice.name,
-                "already_processed": True,
-            }
+            frappe.log_error(
+                title="SePay: transaction_id đã có trên đơn khác",
+                message=f"invoice={invoice.name}\ntransaction_id={transaction_id}\ncontent={content}",
+            )
 
         if invoice.payment_status == "Hủy":
             frappe.throw(_("Giao dịch thuộc POS Invoice đã bị hủy"))
