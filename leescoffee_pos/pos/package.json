@@ -6,7 +6,10 @@
   "description": "Giao diện POS (React + TypeScript) cho app leescoffee_pos",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "dev:order": "vite -c vite.order.config.ts",
+    "build": "vite build && vite build -c vite.order.config.ts",
+    "build:pos": "vite build",
+    "build:order": "vite build -c vite.order.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {

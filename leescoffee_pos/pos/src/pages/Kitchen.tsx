@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
-import OrderTypeChip, { typeModifier } from "../components/OrderTypeChip";
+import OrderTypeChip, { ChannelChip, typeModifier } from "../components/OrderTypeChip";
 import type { LabelJob } from "../components/CupLabels";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
@@ -227,6 +227,7 @@ export default function Kitchen() {
 									</div>
 									<div className="pos-kcard__tags">
 										<OrderTypeChip type={o.order_type} />
+										<ChannelChip channel={o.order_channel} />
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 									</div>
 								</header>

@@ -74,6 +74,15 @@ Chuyển từ màu viết cứng sang token ở bước refactor d1, giữ nguy�
 - **Màu loại đơn khác màu trạng thái**: không dùng đỏ (thương hiệu/lỗi), vàng (cảnh báo) hay
   `--pos-success` cho loại đơn. Thẻ Pha chế: viền **trên** = thời gian chờ (ok/warn/late), viền **trái** = loại đơn.
 
+### 1.5d Kênh đặt QR + file token dùng chung
+```css
+--pos-qr-bg: #F1EBFA;      /* chip "QR" (khách tự đặt qua web) — tím, khác loại đơn/trạng thái */
+--pos-qr-fg: #5B2A86;      /* 8.5:1 trên nền */
+--pos-qr-border: #D6C6EE;
+```
+- Từ 2026-11-14 mọi token `:root` nằm ở `src/styles/tokens.css`; `global.css` (nhân viên) và
+  `src/order/order.css` (web đặt món của khách) cùng `@import` file này. Thêm/sửa token chỉ sửa `tokens.css`.
+
 ### 1.6 Kiểm tra tương đối (WCAG AA)
 - `rgba(255,255,255)` trên `#C8102E` → **5.81:1** ✓ đạt AA cho chữ thường (≥4.5:1)
 - `#2A2520` trên `#FFFFFF` → **15.08:1** ✓

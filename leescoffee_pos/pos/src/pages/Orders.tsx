@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import OrderTypeChip from "../components/OrderTypeChip";
+import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeChip";
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
@@ -209,6 +209,7 @@ export default function Orders() {
 									<div className="pos-order-card__meta">
 										<span>{o.name}</span>
 										<OrderTypeChip type={o.order_type} />
+										<ChannelChip channel={o.order_channel} />
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 										{o.payment_status === "Đang chờ" ? <span className="pos-tag pos-tag--warn">Chờ QR</span> : null}
 										{o.custom_kitchen_status ? <span className="pos-status__badge">{o.custom_kitchen_status}</span> : null}
@@ -231,8 +232,10 @@ export default function Orders() {
 								<div>
 									<div className="pos-order-detail__name">{detail.customer_name}</div>
 									<div className="pos-order-detail__sub">
-										{detail.name} · <OrderTypeChip type={detail.order_type} />
-										{detail.order_type === "Dine In" ? ` · Thẻ #${detail.buzzer_number || "—"}` : ""}
+										{detail.name} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
+										{detail.order_type === "Dine In" && !isQrOrder(detail.order_channel)
+											? ` · Thẻ #${detail.buzzer_number || "—"}`
+											: ""}
 									</div>
 								</div>
 								<span className={isDraft ? "pos-pending" : "pos-ok"}>

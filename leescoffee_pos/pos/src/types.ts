@@ -118,6 +118,8 @@ export interface OrderSummary {
 	customer: string;
 	customer_name: string;
 	order_type: OrderType;
+	/** "POS" (tại quầy) | "QR" (khách tự đặt qua web) */
+	order_channel?: string;
 	status: string;
 	docstatus: number;
 	grand_total: number;
@@ -281,6 +283,7 @@ export interface KitchenOrder {
 	name: string;
 	customer_name: string;
 	order_type: OrderType;
+	order_channel?: string;
 	kitchen_status: KitchenStep;
 	buzzer_number: string | null;
 	order_note: string | null;

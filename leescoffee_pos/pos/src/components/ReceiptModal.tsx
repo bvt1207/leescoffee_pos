@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { typeLabel } from "./OrderTypeChip";
+import { isQrOrder, typeLabel } from "./OrderTypeChip";
 import { formatOptions } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { printWithPage } from "../lib/print";
@@ -193,7 +193,12 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 							<span>Loại đơn</span>
 							<strong>{typeLabel(order.order_type)}</strong>
 						</div>
-						{order.order_type === "Dine In" ? (
+						{isQrOrder(order.order_channel) ? (
+							<div className="pos-receipt__row">
+								<span>Kênh</span>
+								<strong>QR · {order.customer_name}</strong>
+							</div>
+						) : order.order_type === "Dine In" ? (
 							isKitchen ? (
 								<div className="pos-receipt__buzzer">Thẻ #{order.buzzer_number || "—"}</div>
 							) : (

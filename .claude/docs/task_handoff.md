@@ -8,9 +8,8 @@
   Self-test: `.claude/docs/order_qr_selftest.py` (`run_order_qr_selftest()`).
   Gồm cả mục A (webhook xác thực API key) — sau khi deploy phải điền `sepay_api_key` ở Branch và
   cấu hình bên SePay khớp key, nếu không mọi webhook bị 403.
-- **Giai đoạn 2 (frontend `/order`) — CHƯA làm**, chờ Van test backend rồi giao: route `/order/<path>`
-  (`website_route_rules` + `www/order.html`), đăng nhập, loại đơn, menu + chip option, giỏ + preview,
-  QR thanh toán (poll), "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen, theme trắng-đỏ mobile-first.
+- **Giai đoạn 2 (frontend `/order`) — code xong 2026-11-14, CHỜ VAN TEST.** Chi tiết: `order-qr.md` §8.
+  Trang shell tên `mypos_order` (không phải `order` — trùng trang của ERPNext). Build: `npm run build` (cả POS + order).
 - Tồn đọng: OTP → đổi điểm; Web Push; xem `order-qr.md` §7.
 
 ## 1. Mục tiêu hiện tại

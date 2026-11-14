@@ -1,0 +1,58 @@
+/* ------------------------------------------------------------------
+   Design tokens --pos-* dùng chung cho màn nhân viên (global.css) và web đặt món
+   của khách (order/order.css). Không chứa tên/màu riêng của một thương hiệu cụ thể:
+   đổi --pos-primary là toàn bộ giao diện đổi theo.
+   ------------------------------------------------------------------ */
+
+:root {
+	/* Màu chủ đạo: đỏ thương hiệu — token dùng duy nhất cho app, không dùng brand cụ */
+	--pos-primary: #C8102E;
+	--pos-primary-contrast: #FFFFFF;
+	--pos-primary-hover: #A80D26;
+	--pos-primary-active: #8B0A1F;
+	--pos-primary-disabled: #F1C2C9;
+
+	/* Layout & trắng */
+	--pos-bg: #FFFFFF;
+	--pos-surface: #F5F5F7;
+	--pos-surface-alt: #ECECEF;
+	--pos-text: #2A2520;
+	--pos-text-muted: #6B6560;
+	--pos-border: #E3E1E0;
+	--pos-success: #2E7D4F;
+	--pos-warning: #C88A2E;
+	--pos-error: #C8102E;
+	--pos-radius: 12px;
+	--pos-shadow: 0 2px 10px rgba(40, 30, 20, 0.08);
+
+	/* Màu phụ dẫn xuất (giữ nguyên giá trị cũ, chuyển từ màu viết cứng) */
+	--pos-error-soft: #fbe6e3;
+	--pos-error-border: #f0c4be;
+	--pos-warning-soft: #f3e6cf;
+	--pos-note-bg: #fff4d6;
+	--pos-success-soft: #e8f4ec;
+	--pos-on-solid: #fff;
+	--pos-overlay: rgba(35, 27, 20, 0.55);
+	--pos-chip-on-media: rgba(255,255,255,.92);
+	--pos-shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.25);
+	--pos-shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.25);
+
+	/* Loại đơn — KHÔNG dùng đỏ (thương hiệu/cảnh báo); Tại quán khác tông --pos-success (viền chờ ở Pha chế).
+	   Tương phản chữ/nền: Mang đi 7.09:1, Tại quán 5.66:1. */
+	--pos-takeaway-bg: #E8F0FB;
+	--pos-takeaway-fg: #1D4F91;
+	--pos-takeaway-border: #B7CDEE;
+	--pos-dinein-bg: #E3F4EE;
+	--pos-dinein-fg: #0F6B57;
+	--pos-dinein-border: #A8D9C8;
+
+	/* Kênh đặt "QR" (khách tự đặt qua web) — tông tím, khác màu loại đơn / trạng thái / thương hiệu.
+	   Chữ #5B2A86 trên nền #F1EBFA ≈ 8.5:1. */
+	--pos-qr-bg: #F1EBFA;
+	--pos-qr-fg: #5B2A86;
+	--pos-qr-border: #D6C6EE;
+
+	/* Khổ tem dán ly (màn Pha chế) — đổi theo loại giấy của máy in tem */
+	--pos-label-width: 50mm;
+	--pos-label-height: 30mm;
+}

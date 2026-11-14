@@ -157,6 +157,9 @@ doc_events = {
 # "/pos" (không có hậu tố) đã được Frappe resolve mặc định tới www/pos.html.
 website_route_rules = [
 	{"from_route": "/pos/<path:app_path>", "to_route": "pos"},
+	# Web đặt món QR cho khách: /order/<token> -> www/mypos_order.html (React app riêng, không cần
+	# đăng nhập). KHÔNG đặt tên trang "order": ERPNext đã có templates/pages/order (/orders/<name>).
+	{"from_route": "/order/<path:app_path>", "to_route": "mypos_order"},
 ]
 
 # Scheduled Tasks

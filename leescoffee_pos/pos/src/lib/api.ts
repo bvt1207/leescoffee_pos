@@ -27,7 +27,7 @@ function csrfToken(): string {
 	);
 }
 
-function extractError(data: unknown, status: number): string {
+export function extractError(data: unknown, status: number): string {
 	if (!data || typeof data !== "object") return `Lỗi ${status}`;
 	const raw = (data as Record<string, unknown>)._server_messages;
 	if (typeof raw === "string") {

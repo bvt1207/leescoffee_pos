@@ -27,6 +27,7 @@ build/
 
 # Output của Vite build cho màn hình POS (dựng lại bằng `npm run build`)
 leescoffee_pos/public/pos/
+leescoffee_pos/public/order/
 
 # IDE
 .vscode/

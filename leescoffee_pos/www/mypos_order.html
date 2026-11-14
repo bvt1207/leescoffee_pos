@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="vi">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!-- Token mã QR nằm trên URL: không gửi Referer cho ảnh/tài nguyên bên ngoài (ảnh VietQR). -->
+		<meta name="referrer" content="no-referrer" />
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="theme-color" content="#ffffff" />
+		<title>{{ title }}</title>
+		<meta name="csrf-token" content="{{ csrf_token }}" />
+		<link rel="stylesheet" href="/assets/leescoffee_pos/order/order.css" />
+	</head>
+	<body>
+		<div id="root"></div>
+		<script>
+			window.ORDER_CONFIG = {
+				apiBase: "/api/method/leescoffee_pos.leescoffee_pos.api.customer_order_api",
+			};
+		</script>
+		<script type="module" src="/assets/leescoffee_pos/order/order.js"></script>
+	</body>
+</html>

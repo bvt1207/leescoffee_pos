@@ -4,7 +4,7 @@
 > `doctype/mypos_order_qr/` (mã QR), `doctype/sepay/sepay.py` (`_verify_sepay_key`),
 > `api/pos_api.py` (`_pricing_preview` dùng chung), `hooks.py` (`scheduler_events`),
 > `fixtures/custom_field.json` (`order_channel` thêm `QR`, `qr_source`, `guest_session`).
-> Giai đoạn 1 (backend) làm 2026-11-14, **đã test Pass** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Giai đoạn 2 (frontend `/order`) chưa làm.
+> Giai đoạn 1 (backend) làm 2026-11-14, **đã test Pass** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Giai đoạn 2 (frontend `/order`) làm 2026-11-14, **chưa test trên bench** (§8).
 > Self-test bench console: `.claude/docs/order_qr_selftest.py`.
 
 ## 1. Luồng
@@ -81,3 +81,36 @@ commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng 
   có chặn submit khi ca của owner đã đóng hay không — cần test trên bench).
 - Hai lần đăng nhập cùng SĐT mới đồng thời có thể tạo 2 Customer (không khóa); tần suất đã giới hạn.
 - QR SePay dựng theo `grand_total`, webhook so `rounded_total or grand_total` (lệch có sẵn, task_handoff §2).
+
+## 8. Frontend `/order/<token>` (giai đoạn 2)
+
+- **Route**: `hooks.website_route_rules` `/order/<path:app_path>` → trang `mypos_order`
+  (`www/mypos_order.html` + `.py`). **Không đặt tên trang `order`**: ERPNext đã có `templates/pages/order`
+  (dùng cho `/orders/<name>`). Shell có `<meta name="referrer" content="no-referrer">` (token QR nằm trên URL,
+  không lộ qua Referer khi tải ảnh VietQR bên ngoài) và `noindex`. CSRF token chỉ in khi trình duyệt đang đăng nhập Desk.
+- **Build riêng**: `pos/vite.order.config.ts` → `public/order/order.js` + `order.css` (1 file js + 1 css cố định,
+  `inlineDynamicImports`, `cssCodeSplit: false`, `publicDir: false`). `npm run build` build cả POS lẫn order;
+  `build:order` / `dev:order` chỉ app khách. `public/order/` không commit (giống `public/pos/`).
+- **Mã nguồn** `pos/src/order/`: `OrderApp.tsx` (điều phối), `api.ts` (client `customer_order_api`, lỗi
+  `PermissionError` = phiên hết hạn → về đăng nhập), `session.ts` (localStorage `mypos_order_session:<qrToken>`),
+  `cart.ts` (zustand, khóa dòng = item_code + options chuẩn hóa, qty ≤ 20), `alert.ts` (rung + bíp Web Audio,
+  mở khóa ở lần chạm đầu), `format.ts`, `types.ts`, `order.css` (`.qo-*`, `@import ../styles/tokens.css`),
+  `components/`: `LoginView`, `OrderTypePicker`, `MenuView`, `ItemSheet`, `CartSheet`, `PaymentView`,
+  `MyOrdersPanel`, `ReadyBanner`, `Sheet`, `BrandHeader`.
+- **Dùng lại**: `lib/options.ts` (defaultOptions, toggleOption, missingRequired, normalizeOptions,
+  formatOptions/formatCartOptions), `lib/api.ts::extractError`, token `--pos-*` (tách ra `styles/tokens.css`,
+  `global.css` `@import` lại). Không import component nhân viên (MenuGrid/CartPanel gắn store + API nhân viên).
+- **Luồng**: get_shop → LoginView → chọn Mang đi/Tại quán (lưu trong phiên, đổi được ở giỏ) → MenuView (tab nhóm,
+  tìm kiếm) → ItemSheet (size, chip option, số lượng) → CartSheet (preview trễ 400ms, CTKM, điểm/hạng, ghi chú)
+  → create_order → PaymentView (create_payment_qr, đếm ngược theo `expires_in` của server, poll get_order 3 giây)
+  → Paid → mở "Đơn của tôi".
+- **Theo dõi**: OrderApp poll `get_my_orders` 5 giây khi tab hiển thị (+ khi quay lại tab). Đơn chuyển sang
+  `ready` (pha chế bấm "Đã làm") → `ReadyBanner` + rung/bíp; "Đã hiểu" lưu mã đơn vào
+  `mypos_order_ready_ack:<qrToken>` để không báo lại. Mở lại trang khi đơn đang `ready` chưa xác nhận → vẫn báo.
+- **Backend thêm**: `expires_in` (giây còn lại) trong `_orders_payload` và `create_payment_qr` — client không phụ
+  thuộc đồng hồ máy khách.
+- **Màn nhân viên**: `ChannelChip` (`components/OrderTypeChip.tsx`, `.pos-tag--qr`, token `--pos-qr-*`) ở Orders
+  (thẻ + chi tiết) và Kitchen; đơn QR không hiện "Thẻ #—" ở chi tiết Orders; hóa đơn / phiếu pha chế in
+  "Kênh: QR · tên khách" thay dòng thẻ rung.
+- **Tồn đọng**: chưa build/chạy thử trên máy dev (thư mục `pos/` chưa `npm install`, chỉ chạy `tsc` sạch);
+  ảnh món là file private thì khách (Guest) không xem được — dùng ảnh public; Web Push khi đóng tab.

@@ -382,6 +382,11 @@ def _expired(creation):
 	return now_datetime() >= _expires_at(creation)
 
 
+def _expires_in(creation):
+	"""Số giây còn lại để thanh toán (client đếm ngược, không phụ thuộc đồng hồ máy khách)."""
+	return max(0, int((_expires_at(creation) - now_datetime()).total_seconds()))
+
+
 _ORDER_FIELDS = [
 	"name", "order_type", "docstatus", "status", "custom_kitchen_status", "payment_code",
 	"grand_total", "rounded_total", "currency", "creation", "order_note",
@@ -448,6 +453,7 @@ def _orders_payload(s, rows):
 				"currency": r.currency,
 				"creation": str(r.creation),
 				"expires_at": str(_expires_at(r.creation)) if r.docstatus == 0 else None,
+				"expires_in": _expires_in(r.creation) if r.docstatus == 0 else None,
 				"has_payment_qr": bool(r.payment_code) and stage == "awaiting_payment",
 				"order_note": r.order_note or "",
 				"items": by_parent.get(r.name, []),
@@ -636,6 +642,7 @@ def create_payment_qr(session_token, invoice_name):
 		"payment_code": res.get("payment_code") or "",
 		"amount": flt(res.get("amount")),
 		"expires_at": str(_expires_at(row.creation)),
+		"expires_in": _expires_in(row.creation),
 	}
 
 
