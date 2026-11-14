@@ -61,7 +61,12 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
    tiên có mode). Xóa hết `payments`, append 1 dòng `{mode_of_payment, amount}`.
 8. Set `payment_status = "Đã thanh toán"`, `transaction_ref = id/referenceCode`,
    append log vào `sepay_payment_log` (JSON, giữ 50 entry cuối).
-9. `save()` → `submit()` → ERPNext tự set `status = "Paid"`, `docstatus = 1`
+9. `save()` → `submit()` **trong `_as_system_user()`** (Administrator, try/finally trả lại user cũ = Guest).
+   Lý do: webhook chạy bằng Guest, `set_missing_values` → `get_party_account` → `account_perm_check`
+   không bị `ignore_permissions` bỏ qua (lỗi thật 2026-11-14). Chỉ bước này chạy quyền cao, SAU xác thực
+   key + khớp đơn + khớp số tiền; hook `on_submit` (kitchen status, buzzer, Loyalty Point Entry, đổi điểm)
+   nằm trong cùng phạm vi. Không cấp quyền Account cho Guest/role nào.
+   → ERPNext tự set `status = "Paid"`, `docstatus = 1`
    (kéo theo `on_submit` hook: kitchen status `Chưa làm`, buzzer `Đang dùng`).
 10. Trả `{success, message, invoice_name, payment_code, transaction_id, amount,
     mode_of_payment, invoice_status, docstatus, payment_status}`.

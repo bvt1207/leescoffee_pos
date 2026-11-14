@@ -3,6 +3,7 @@ from frappe import _
 import secrets
 from datetime import datetime
 import json as _json
+from contextlib import contextmanager
 from frappe.utils import flt
 
 # Import helper functions from branch_config module
@@ -328,9 +329,15 @@ def sepay_webhook():
             ensure_ascii=False,
         )
 
-        # 8. Lưu và submit POS Invoice
-        invoice.save(ignore_permissions=True)
-        invoice.submit()
+        # 8. Lưu và submit POS Invoice.
+        # Webhook là allow_guest (user Guest). save/submit của ERPNext gọi
+        # get_party_account -> account_perm_check, không bị ignore_permissions bỏ qua.
+        # Vì vậy CHỈ bước này (đã qua xác thực API key, khớp đơn, khớp số tiền) chạy dưới
+        # user hệ thống; hook on_submit (kitchen status, buzzer, Loyalty Point Entry,
+        # đổi điểm) chạy trong cùng phạm vi. Không cấp quyền Account cho Guest/role nào.
+        with _as_system_user():
+            invoice.save(ignore_permissions=True)
+            invoice.submit()
         invoice.reload()
 
         return {
@@ -358,6 +365,20 @@ def sepay_webhook():
         frappe.throw(
             _("Lỗi xử lý webhook SePay: {0}").format(str(e))
         )
+
+
+@contextmanager
+def _as_system_user():
+    """Tạm chạy dưới Administrator trong phạm vi hẹp, luôn trả lại user cũ (Guest với webhook).
+
+    Chỉ dùng SAU khi webhook đã được xác thực (_verify_sepay_key) và đã khớp đơn + số tiền.
+    """
+    prev = frappe.session.user
+    frappe.set_user("Administrator")
+    try:
+        yield
+    finally:
+        frappe.set_user(prev)
 
 
 def _received_sepay_key():
