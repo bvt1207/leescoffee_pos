@@ -313,7 +313,7 @@ Claude Code tự bảo trì file này. Van không chỉnh tay. Mỗi task đi th
    lệnh Van cần chạy thủ công, và mục **Test case** (quy ước bên dưới).
 2. **Van tự test** trên bench thật rồi phản hồi.
 3. **Van duyệt** (nói "duyệt", "ok" hoặc tương đương) → Claude Code mới cập nhật
-   CLAUDE.md: mục 10 (cấu trúc thư mục), tick checklist mục 7, ghi quyết định mới nếu
+   CLAUDE.md: tick checklist mục 7, `rules/project-structure.md` (cấu trúc thư mục, mục 10), ghi quyết định mới nếu
    có. Commit riêng, message bắt đầu bằng `docs:`.
 4. **Van báo lỗi** → sửa code, báo cáo lại; không đụng CLAUDE.md cho tới khi duyệt.
 
@@ -330,7 +330,7 @@ Quy ước mục **Test case** trong mỗi báo cáo:
 Các quy tắc bảo trì khác:
 
 - Khi cấu trúc thư mục code thay đổi (thêm DocType, file mới, tổ chức lại), cập nhật
-  mục 10 cho khớp thực tế — nhưng chỉ sau khi Van duyệt task (bước 3).
+  `rules/project-structure.md` (mục 10) cho khớp thực tế — nhưng chỉ sau khi Van duyệt task (bước 3).
 - Khi CLAUDE.md vượt khoảng 300–400 dòng, hoặc 1 mục quá dài/chi tiết, tự đề xuất
   tách mục đó ra file riêng trong `rules/` (`workflow.md`, `design.md`,
   `tech-defaults.md`...), chỉ giữ 1–2 dòng tham chiếu trong CLAUDE.md — không xóa
@@ -343,76 +343,8 @@ Các quy tắc bảo trì khác:
 
 ## 10. Cấu trúc thư mục
 
-> Đã đối chiếu với đĩa ngày 2026-11-14. Chỉ cập nhật sau khi Van duyệt task (mục 9, bước 3).
-> Lưu ý: `PROJECTPOS/leescoffee_pos/` chính là **package Python** của app (chứa
-> `hooks.py`, `modules.txt`); repo này không có `pyproject.toml`. Trên bench thật nó
-> tương ứng `frappe-benchver16/apps/leescoffee_pos/leescoffee_pos/`.
-
-```text
-PROJECTPOS/                        # git repo
-├── .claude/
-│   ├── CLAUDE.md                  # file này — bộ não dự án
-│   ├── CLAUDE.local.md            # ghi chú riêng
-│   ├── memory.md                  # index memory (trỏ tới PROJECTPOS/memory/)
-│   ├── settings.json, settings.local.json
-│   ├── agents/                    # chưa dùng
-│   ├── docs/
-│   │   ├── task_handoff.md        # bàn giao giữa các phiên
-│   │   ├── order_qr_selftest.py   # script bench console tự kiểm tra web đặt món QR
-│   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
-│   ├── rules/
-│   │   ├── code-standards.md, project-structure.md, session-management.md
-│   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
-│   │                              # roles.md, sepay.md, workspace.md
-│   └── skills/
-│       ├── frontend-design/
-│       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
-├── memory/
-│   └── memory_note_branding_fallback.md
-├── package.json, package-lock.json   # node_modules/ không commit
-└── leescoffee_pos/                # package Python của app
-    ├── __init__.py
-    ├── hooks.py                   # doc_events, website_route_rules (/pos/*), scheduler_events, fixtures
-    ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
-    ├── patches.txt, patches/      # v1_remove_pos_settings.py, v1_create_pos_roles.py (post_model_sync)
-    ├── config/, templates/
-    ├── desktop_icon/leescoffee_pos.json
-    ├── workspace_sidebar/leescoffee_pos.json
-    ├── fixtures/custom_field.json, role.json
-    ├── public/
-    │   ├── images/logo.svg
-    │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
-    ├── www/
-    │   ├── pos.html               # trang /pos, nạp /assets/leescoffee_pos/pos/pos.js
-    │   └── pos.py
-    ├── pos/                       # frontend React + Vite (TSX)
-    │   ├── package.json, tsconfig.json, vite.config.ts, pos.html, README.md
-    │   └── src/
-    │       ├── main.tsx, App.tsx, types.ts
-    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub)
-    │       ├── components/        # AppHeader, MenuGrid, SizeModal, CartPanel,
-    │       │                      # CustomerPicker, BuzzerPicker, QrModal,
-    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly)
-    │       ├── store/             # cart.ts, search.ts (zustand)
-    │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm)
-    │       └── styles/global.css
-    └── leescoffee_pos/            # module "Leescoffee POS"
-        ├── api/
-        │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
-        │   └── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
-        ├── workspace/leescoffee_pos/leescoffee_pos.json
-        └── doctype/
-            ├── leescoffee_buzzer/         # thẻ rung
-            ├── leescoffee_menu/           # menu theo Price List
-            ├── leescoffee_menu_item/      # child table của Menu
-            ├── mypos_option_group/        # nhóm tùy chọn món + option_resolver.py
-            ├── mypos_option_value/        # bảng con: giá trị tùy chọn
-            ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
-            ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
-            ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
-            ├── sepay/                     # sinh VietQR + webhook SePay
-            └── branch_config/             # helper cấu hình Branch (SePay, branding, company)
-```
+Cây thư mục đầy đủ (đã đối chiếu đĩa) nằm ở `.claude/rules/project-structure.md`. Mỗi khi thêm/đổi
+DocType, file hay thư mục, cập nhật file đó (sau khi Van duyệt task, mục 9).
 
 ## 11. Ghi chú SePay
 

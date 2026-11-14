@@ -1,6 +1,6 @@
 # Session Management — Leescoffee POS
 
-> Tự động tải bởi Claude Code mỗi phiên làm việc. Tham chiếu từ CLAUDE.md mục 10.
+> Tự động tải bởi Claude Code mỗi phiên làm việc. Tham chiếu từ CLAUDE.md mục 12.
 
 ## Nguyên tắc
 
@@ -33,6 +33,6 @@ Tóm tắt trong 3-4 câu:
 ## Việc làm khi Van duyệt
 
 Sau khi Van nói "duyệt"/"ok":
-1. Cập nhật CLAUDE.md: tick checklist mục 7, cập nhật mục 10 nếu có thay đổi cấu trúc
+1. Cập nhật CLAUDE.md: tick checklist mục 7; cập nhật `rules/project-structure.md` nếu có thay đổi cấu trúc
 2. Commit riêng với message bắt đầu bằng `docs:`
 3. Báo cho Van mở phiên mới nếu đây là task cuối cùng hoặc token đang cao
