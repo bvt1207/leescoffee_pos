@@ -30,7 +30,8 @@ from ..doctype.branch_config.branch_config import get_brand_info
 from . import pos_api as P
 
 CHANNEL_QR = "QR"
-SESSION_TTL_SECONDS = 12 * 3600
+DEFAULT_SESSION_TTL_SECONDS = 12 * 3600
+SESSION_TTL_SECONDS = DEFAULT_SESSION_TTL_SECONDS
 # Sau PAY_WINDOW_MINUTES: khách không thấy/không sinh QR nữa (đơn "Hết hạn").
 PAY_WINDOW_MINUTES = 15
 # Sau DRAFT_DELETE_MINUTES: job xóa đơn Draft (để webhook chuyển khoản trễ vẫn khớp đơn).
@@ -129,11 +130,19 @@ def _sid_key(sid):
 
 
 def _issue_session(customer, qr_name, branch, display_name):
+	ttl = cint(SESSION_TTL_SECONDS)
+	if ttl <= 0:
+		# Redis không nhận expire <= 0 -> dùng mặc định, ghi log để phát hiện cấu hình sai.
+		frappe.log_error(
+			title="Order QR: SESSION_TTL_SECONDS không hợp lệ",
+			message=f"SESSION_TTL_SECONDS={SESSION_TTL_SECONDS!r}, dùng mặc định {DEFAULT_SESSION_TTL_SECONDS}.",
+		)
+		ttl = DEFAULT_SESSION_TTL_SECONDS
 	sid = secrets.token_urlsafe(16)
-	exp = int(time.time()) + SESSION_TTL_SECONDS
+	exp = int(time.time()) + ttl
 	payload = {"sid": sid, "c": customer, "q": qr_name, "b": branch, "n": display_name, "exp": exp}
 	body = _b64(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode())
-	frappe.cache.set_value(_sid_key(sid), customer, expires_in_sec=SESSION_TTL_SECONDS)
+	frappe.cache.set_value(_sid_key(sid), customer, expires_in_sec=ttl)
 	return f"{body}.{_signature(body)}", exp
 
 

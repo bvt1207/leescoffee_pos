@@ -13,7 +13,9 @@
 
 
 def run_order_qr_selftest(branch=None):
+	import json
 	import random
+	import time
 	import traceback
 
 	import frappe
@@ -127,24 +129,47 @@ def run_order_qr_selftest(branch=None):
 		expect_error("2f Đăng nhập bằng mã QR đã tắt bị chặn", C.login, qr_off.token, mob_a, "X Y", contains="Mã QR")
 
 		# ---------------- 3. Token sai / hết hạn / thu hồi ----------------
-		bad = tok_a[:-2] + ("AA" if not tok_a.endswith("AA") else "BB")
-		expect_error("3a Token bị sửa chữ ký -> chặn", C.get_me, bad, exc=frappe.PermissionError)
-		expect_error("3b Token rác -> chặn", C.get_me, "abc", exc=frappe.PermissionError)
-		ttl = C.SESSION_TTL_SECONDS
-		C.SESSION_TTL_SECONDS = -5
+		# Bọc riêng: lỗi ở đây được ghi FAIL, các mục sau vẫn chạy.
 		try:
-			tok_exp, _exp = C._issue_session(cust_a, qr.name, branch, "Het Han")
-		finally:
-			C.SESSION_TTL_SECONDS = ttl
-		expect_error("3c Token hết hạn -> chặn", C.get_me, tok_exp, exc=frappe.PermissionError)
-		tmp = guest(C.login, qr.token, mob_a, "Khach Thu A")["session_token"]
-		guest(C.logout, tmp)
-		expect_error("3d Token đã logout -> chặn", C.get_me, tmp, exc=frappe.PermissionError)
-		frappe.db.set_value("MYPOS Order QR", qr.name, "enabled", 0)
-		expect_error("3e Tắt mã QR -> phiên đang mở bị chặn", C.get_me, tok_a, exc=frappe.PermissionError)
-		frappe.db.set_value("MYPOS Order QR", qr.name, "enabled", 1)
-		me = guest(C.get_me, tok_a)
-		check("3f get_me: điểm/hạng, redeem_enabled = False", me["loyalty"].get("redeem_enabled") is False, str(me["loyalty"]))
+			bad = tok_a[:-2] + ("AA" if not tok_a.endswith("AA") else "BB")
+			expect_error("3a Token bị sửa chữ ký -> chặn", C.get_me, bad, exc=frappe.PermissionError)
+			expect_error("3b Token rác -> chặn", C.get_me, "abc", exc=frappe.PermissionError)
+
+			# 3c: ký payload có exp trong quá khứ (không đi qua TTL cache). sid vẫn còn trong
+			# cache (TTL dương) để chắc chắn bị chặn vì exp, không phải vì thu hồi.
+			sid_exp = frappe.generate_hash(length=20)
+			payload_exp = {"sid": sid_exp, "c": cust_a, "q": qr.name, "b": branch, "n": "Het Han",
+				"exp": int(time.time()) - 60}
+			body = C._b64(json.dumps(payload_exp, separators=(",", ":")).encode())
+			tok_exp = f"{body}.{C._signature(body)}"
+			frappe.cache.set_value(C._sid_key(sid_exp), cust_a, expires_in_sec=60)
+			expect_error("3c Token hết hạn (exp quá khứ) -> chặn", C.get_me, tok_exp, exc=frappe.PermissionError)
+			frappe.cache.delete_value(C._sid_key(sid_exp))
+
+			# 3c2: TTL cấu hình sai (<= 0) -> _issue_session dùng mặc định, token vẫn dùng được.
+			ttl_saved = C.SESSION_TTL_SECONDS
+			C.SESSION_TTL_SECONDS = 0
+			try:
+				tok_ttl, exp_ttl = C._issue_session(cust_a, qr.name, branch, "TTL Mac Dinh")
+			finally:
+				C.SESSION_TTL_SECONDS = ttl_saved
+			check("3c2 TTL <= 0 -> dùng mặc định, không lỗi Redis",
+				exp_ttl > time.time() + 3600 and guest(C.get_me, tok_ttl)["customer_name"] == "TTL Mac Dinh")
+			guest(C.logout, tok_ttl)
+
+			tmp = guest(C.login, qr.token, mob_a, "Khach Thu A")["session_token"]
+			guest(C.logout, tmp)
+			expect_error("3d Token đã logout -> chặn", C.get_me, tmp, exc=frappe.PermissionError)
+			frappe.db.set_value("MYPOS Order QR", qr.name, "enabled", 0)
+			try:
+				expect_error("3e Tắt mã QR -> phiên đang mở bị chặn", C.get_me, tok_a, exc=frappe.PermissionError)
+			finally:
+				frappe.db.set_value("MYPOS Order QR", qr.name, "enabled", 1)
+			me = guest(C.get_me, tok_a)
+			check("3f get_me: điểm/hạng, redeem_enabled = False", me["loyalty"].get("redeem_enabled") is False, str(me["loyalty"]))
+		except Exception:
+			check("3 Lỗi ngoài dự kiến ở mục token", False)
+			traceback.print_exc()
 
 		# ---------------- 4. Menu đúng branch + option_groups ----------------
 		menu = guest(C.get_menu, tok_a)["menus"]
