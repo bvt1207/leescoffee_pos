@@ -107,7 +107,7 @@ def run_order_qr_selftest(branch=None):
 		check("1a Mã QR có token >= 24 ký tự", len(qr.token or "") >= 24, qr.token)
 		check("1b order_url kết thúc bằng /order/<token>", (qr.order_url or "").endswith("/order/" + qr.token), qr.order_url)
 		img = get_qr_image(qr.name)
-		check("1c get_qr_image trả SVG (pyqrcode có sẵn)", bool(img.get("svg")), "svg None -> chỉ có URL")
+		check("1c get_qr_image trả SVG (pyqrcode có sẵn)", bool(img.get("svg")), "có SVG" if img.get("svg") else "svg None -> chỉ có URL")
 		qr_off = frappe.get_doc({"doctype": "MYPOS Order QR", "branch": branch, "enabled": 0}).insert()
 		made["qr"].append(qr_off.name)
 		check("1d get_shop với token hợp lệ", guest(C.get_shop, qr.token)["is_open"] is True)
@@ -323,18 +323,28 @@ def run_order_qr_selftest(branch=None):
 			check("8j confirm_pickup không lỗi khi không có thẻ rung", False, str(e))
 
 		# ---------------- 9. Đóng ca: đơn QR thuộc ca đang mở ----------------
+		# ERPNext mới: get_invoices(start, end, pos_profile, user) -> {"invoices": [...]}, lọc owner == user,
+		# và chỉ gom POS Invoice khi POS Settings.invoice_type == "POS Invoice". Bản cũ: get_pos_invoices -> list.
 		try:
-			from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import get_pos_invoices
+			from erpnext.accounts.doctype.pos_closing_entry import pos_closing_entry as PCE
+
+			inv_type = frappe.db.get_single_value("POS Settings", "invoice_type") if frappe.db.exists(
+				"DocType", "POS Settings") else None
+			check("9a POS Settings.invoice_type cho phép gom POS Invoice khi đóng ca",
+				inv_type in (None, "", "POS Invoice"), f"invoice_type={inv_type!r}")
 
 			opening = frappe.get_doc("POS Opening Entry", shift.name)
-			try:
-				got = get_pos_invoices(opening.period_start_date, now_datetime(), profile.name, shift.user)
-			except TypeError:
-				got = get_pos_invoices(opening.period_start_date, now_datetime(), profile.name)
-			names = {(g.get("pos_invoice") or g.get("name")) for g in got}
-			check("9a get_pos_invoices của ca đang mở có đơn QR đã thanh toán", ta["invoice_name"] in names, f"{len(names)} đơn")
-		except ImportError:
-			check("9a get_pos_invoices không có (ERPNext đổi API) -> kiểm tra tay khi đóng ca", False)
+			fetch = getattr(PCE, "get_invoices", None) or getattr(PCE, "get_pos_invoices", None)
+			if not fetch:
+				check("9b Có hàm lấy đơn của ca (get_invoices/get_pos_invoices)", False, "ERPNext đổi API")
+			else:
+				got = fetch(opening.period_start_date, now_datetime(), profile.name, shift.user)
+				rows = got.get("invoices", []) if isinstance(got, dict) else (got or [])
+				names = {(r.get("pos_invoice") or r.get("name")) for r in rows}
+				check(f"9b {fetch.__name__} của ca đang mở có đơn QR đã thanh toán", ta["invoice_name"] in names,
+					f"{len(names)} đơn")
+		except Exception as e:
+			check("9b Lỗi khi kiểm tra đơn của ca", False, repr(e)[:150])
 
 		# ---------------- 10. Hết hạn + dọn đơn ----------------
 		frappe.db.set_value("POS Invoice", di["invoice_name"], "creation", add_to_date(now_datetime(), minutes=-20),

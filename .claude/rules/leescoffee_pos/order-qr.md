@@ -26,7 +26,7 @@
 | Chi nhánh | Branch của mã QR → `pos_api._get_pos_profile(branch)` (không dùng user đăng nhập) |
 | Menu | `Leescoffee Menu` có `price_list = POS Profile.selling_price_list` (Menu không có field branch). POS Profile thiếu Price List → không đặt được |
 | Ca POS | Cần POS Opening Entry `Open` của POS Profile (bất kỳ thu ngân). Không có → "Quán chưa mở bán". Không tự mở ca |
-| Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (ERPNext lọc theo owner — [Unverified] cho v16, test 9a kiểm tra) |
+| Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (`pos_closing_entry.get_invoices` lọc `owner == user` — đã đọc mã ERPNext 17-dev; chỉ gom POS Invoice khi `POS Settings.invoice_type = "POS Invoice"`; self-test 9a/9b) |
 | Thẻ rung | Đơn QR Dine In **không** có buzzer. Hook/`confirm_pickup` đã bỏ qua khi `buzzer` rỗng |
 | Thanh toán | Chỉ chuyển khoản: Mode of Payment `type = Bank` có tài khoản (ưu tiên mode trong POS Profile). Branch phải bật SePay + VA + mã NH + **API key** |
 | Hết hạn | Sau `PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Job xóa sau `DRAFT_DELETE_MINUTES = 60` (webhook chuyển khoản trễ vẫn khớp) |
