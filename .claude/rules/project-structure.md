@@ -20,6 +20,7 @@
 │       ├── branch.md
 │       ├── menu.md
 │       ├── options.md
+│       ├── order-qr.md
 │       ├── pos_invoice_hooks.md
 │       ├── roles.md
 │       ├── sepay.md
@@ -29,6 +30,7 @@
 │   └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
 └── docs/
     ├── task_handoff.md        # Bàn giao giữa các phiên
+    ├── order_qr_selftest.py   # Self-test bench console cho web đặt món QR
     └── reference/             # Ảnh tham khảo UI
 ```
 
@@ -46,6 +48,7 @@ leescoffee_pos/
 ├── pos/                       # React + Vite + TSX (src/pages, components, store, lib, styles)
 └── leescoffee_pos/            # module "Leescoffee POS"
     ├── api/pos_api.py         # whitelisted API cho frontend POS
+    ├── api/customer_order_api.py  # API khách web đặt món QR (allow_guest + token phiên) + job dọn đơn
     ├── workspace/leescoffee_pos/leescoffee_pos.json
     └── doctype/
         ├── leescoffee_buzzer/         # __init__.py, .json, .py
@@ -54,6 +57,7 @@ leescoffee_pos/
         ├── mypos_option_group/        # __init__.py, .json, .py, option_resolver.py
         ├── mypos_option_value/        # bảng con
         ├── mypos_option_target/       # bảng con
+        ├── mypos_order_qr/            # __init__.py, .json, .py, .js (mã QR đặt món theo Branch)
         ├── pos_invoice_hooks/         # __init__.py, .py
         ├── sepay/                     # __init__.py, .py
         └── branch_config/             # __init__.py, .py

@@ -93,8 +93,8 @@ pha chế, thẻ rung...), thứ tự ưu tiên:
 Hai field độc lập — cả hai là **Custom Field trên `POS Invoice`**:
 
 - `order_type`: `Take Away` | `Dine In`
-- `order_channel`: hiện tại chỉ có `POS` (nhân viên nhập tại quầy). Giá trị `QR Web`
-  đã tính trước trong thiết kế nhưng **chưa xây ở giai đoạn này** — xem mục 3b.
+- `order_channel`: `POS` (nhân viên nhập tại quầy) | `QR` (khách tự đặt qua web `/order/<token>`,
+  backend đã test Pass 2026-11-14, frontend chưa làm) — xem `.claude/rules/leescoffee_pos/order-qr.md`.
 
 Hai kịch bản vận hành của giai đoạn hiện tại:
 
@@ -149,6 +149,10 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 
 Đây là 1 **app Frappe riêng, kết nối với app lõi này**, không gộp chung vào giai
 đoạn hiện tại. Ghi lại đây để không quên thiết kế, nhưng **chưa triển khai ngay**.
+
+> **Cập nhật 2026-11-14 (quyết định Van):** Takeaway QR + Dine In QR bản cơ bản làm NGAY trong app lõi
+> (`api/customer_order_api.py`, mã `MYPOS Order QR` theo Branch, `order_channel = "QR"`), không tách app riêng.
+> Bản này không có số bàn, không VIP, không OTP (không đổi điểm). Các phần đó vẫn để sau. Chi tiết: `order-qr.md`.
 
 - **Takeaway QR**: khách tự đặt món mang đi qua QR → thanh toán trên điện thoại →
   hệ thống tạo đơn thật sau khi thanh toán thành công → khách nhận thông báo khi
@@ -269,6 +273,12 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [ ] Frontend React/TSX cho POS: chọn món, chọn loại đơn, thanh toán — giao diện
       phong cách quán cà phê tổng quát, không hardcode branding Lee's Coffee
 - [ ] Màn hình pha chế (barista screen)
+- [x] Web đặt món QR giai đoạn 1 (backend): DocType `MYPOS Order QR`, `customer_order_api.py` (token
+      phiên HMAC, rate limit, cô lập đơn theo phiên, không đổi điểm), job dọn đơn Draft QR, webhook SePay
+      xác thực API key + idempotent + save/submit dưới Administrator. **Đã test Pass** (self-test 65/65;
+      `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Rule: `.claude/rules/leescoffee_pos/order-qr.md`
+- [ ] Web đặt món QR giai đoạn 2 (frontend `/order`): đăng nhập, menu + option, giỏ + preview, QR thanh toán,
+      "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
@@ -281,14 +291,17 @@ Chi tiết thiết kế: `.claude/docs/qr-channel-design.md` (chưa implement)
 - [ ] Dine In QR: QR gắn số bàn → mặc định thông báo khách tự xuống quầy lấy
 - [ ] Cơ chế khách VIP cho Dine In QR: đánh dấu VIP → nhân viên chủ động giao tận
       bàn thay vì khách tự lấy
-- [ ] Định danh khách qua SĐT (tìm-hoặc-tạo Customer) cho các kênh QR
+- [x] Định danh khách qua SĐT (tìm-hoặc-tạo Customer) cho các kênh QR — làm trong app lõi (mục 7), không OTP
+- [ ] OTP cho đăng nhập QR → mở đổi điểm Loyalty cho kênh QR
+- [ ] Web Push báo đơn sẵn sàng khi khách đóng tab
 
 ## 8. Việc KHÔNG làm ở bản đầu (out of scope)
 
 - Không xây dựng lại POS Invoice/Sales Invoice/kế toán từ đầu.
 - Không làm app di động riêng cho khách hàng (dùng web mobile-friendly là đủ).
 - Không làm tách bill nhóm nhiều người trong 1 phiên QR (pre-pay đơn giản trước).
-- Không làm kênh QR (Takeaway QR, Dine In QR) ở giai đoạn này — xem mục 3b/7b.
+- Kênh QR: chỉ làm bản cơ bản trong app lõi (2026-11-14, `order-qr.md`); không làm số bàn, VIP, OTP,
+  đổi điểm qua QR ở bản đầu — xem mục 3b/7b.
 - Không tự nghiên cứu thuật toán AI mới — nếu có tầng giám sát/dự đoán vận hành,
   chỉ tích hợp phương pháp có sẵn phù hợp với bài toán thực tế.
 
@@ -330,7 +343,7 @@ Các quy tắc bảo trì khác:
 
 ## 10. Cấu trúc thư mục
 
-> Đã đối chiếu với đĩa ngày 2026-10-27. Chỉ cập nhật sau khi Van duyệt task (mục 9, bước 3).
+> Đã đối chiếu với đĩa ngày 2026-11-14. Chỉ cập nhật sau khi Van duyệt task (mục 9, bước 3).
 > Lưu ý: `PROJECTPOS/leescoffee_pos/` chính là **package Python** của app (chứa
 > `hooks.py`, `modules.txt`); repo này không có `pyproject.toml`. Trên bench thật nó
 > tương ứng `frappe-benchver16/apps/leescoffee_pos/leescoffee_pos/`.
@@ -345,10 +358,12 @@ PROJECTPOS/                        # git repo
 │   ├── agents/                    # chưa dùng
 │   ├── docs/
 │   │   ├── task_handoff.md        # bàn giao giữa các phiên
+│   │   ├── order_qr_selftest.py   # script bench console tự kiểm tra web đặt món QR
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
-│   │   └── leescoffee_pos/        # branch.md, menu.md, pos_invoice_hooks.md, roles.md, sepay.md, workspace.md
+│   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
+│   │                              # roles.md, sepay.md, workspace.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -357,7 +372,7 @@ PROJECTPOS/                        # git repo
 ├── package.json, package-lock.json   # node_modules/ không commit
 └── leescoffee_pos/                # package Python của app
     ├── __init__.py
-    ├── hooks.py                   # doc_events, website_route_rules (/pos/*), fixtures
+    ├── hooks.py                   # doc_events, website_route_rules (/pos/*), scheduler_events, fixtures
     ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
     ├── patches.txt, patches/      # v1_remove_pos_settings.py, v1_create_pos_roles.py (post_model_sync)
     ├── config/, templates/
@@ -383,12 +398,17 @@ PROJECTPOS/                        # git repo
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
-        │   └── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
+        │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
+        │   └── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
         ├── workspace/leescoffee_pos/leescoffee_pos.json
         └── doctype/
             ├── leescoffee_buzzer/         # thẻ rung
             ├── leescoffee_menu/           # menu theo Price List
             ├── leescoffee_menu_item/      # child table của Menu
+            ├── mypos_option_group/        # nhóm tùy chọn món + option_resolver.py
+            ├── mypos_option_value/        # bảng con: giá trị tùy chọn
+            ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
+            ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
             ├── sepay/                     # sinh VietQR + webhook SePay
             └── branch_config/             # helper cấu hình Branch (SePay, branding, company)

@@ -4,7 +4,7 @@
 > Đọc file này đầu phiên mới.
 
 ## 0. Đang làm: web đặt món QR cho khách (2026-11-14)
-- **Giai đoạn 1 (backend) — code xong, CHỜ VAN TEST.** Rule: `rules/leescoffee_pos/order-qr.md`.
+- **Giai đoạn 1 (backend) — ĐÃ TEST PASS 2026-11-14** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Rule: `rules/leescoffee_pos/order-qr.md`.
   Self-test: `.claude/docs/order_qr_selftest.py` (`run_order_qr_selftest()`).
   Gồm cả mục A (webhook xác thực API key) — sau khi deploy phải điền `sepay_api_key` ở Branch và
   cấu hình bên SePay khớp key, nếu không mọi webhook bị 403.
@@ -63,7 +63,7 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 
 ## 3. Việc cần xem và chỉnh sửa (theo ưu tiên — CHỈ LÀ KẾ HOẠCH, chờ Van duyệt rồi mới sửa code)
 
-### A. (CAO, bảo mật) `sepay_webhook` chưa xác thực `sepay_api_key` — ĐÃ CODE 2026-11-14 (cùng web đặt món QR), chờ test
+### A. (CAO, bảo mật) `sepay_webhook` chưa xác thực `sepay_api_key` — ĐÃ XỬ LÝ 2026-11-14, đã test Pass (self-test 8c–8n: sai/thiếu key 403, idempotent, save/submit dưới Administrator; `99fdf30`, `17b5d85`)
 - **File/hàm:** `leescoffee_pos/leescoffee_pos/doctype/sepay/sepay.py::sepay_webhook()` (`allow_guest=True`);
   helper mới `_verify_sepay_key(invoice)` (đặt trong `sepay.py`); có thể dùng lại logic lấy branch
   trong `branch_config.py::get_va_bank_config()`.
