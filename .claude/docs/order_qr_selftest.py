@@ -254,7 +254,25 @@ def run_order_qr_selftest(branch=None):
 			and row.custom_kitchen_status == "Chưa làm", str(row))
 		check("8f2 Sau webhook user trở lại Guest (quyền cao chỉ trong phạm vi save/submit)", user_after == "Guest", user_after)
 		fake_request(payload, api_key)
-		check("8g Gửi lại webhook -> already_processed", guest(S.sepay_webhook).get("already_processed") is True)
+		r8g = guest(S.sepay_webhook)
+		check("8g Gửi lại webhook cùng giao dịch -> already_processed + invoice_name",
+			r8g.get("already_processed") is True and r8g.get("invoice_name") == ta["invoice_name"], str(r8g))
+		fake_request(dict(payload, content=pay["payment_code"].replace("-", "").lower()), api_key)
+		r8g1 = guest(S.sepay_webhook)
+		check("8g1 Retry với nội dung bị bỏ '-' / chữ thường (tra dự phòng) -> already_processed",
+			r8g1.get("already_processed") is True, str(r8g1))
+		logs_before = frappe.db.count("Error Log", {"method": "SePay: giao dịch thứ hai cho mã đã thanh toán"})
+		ref_before = frappe.db.get_value("POS Invoice", ta["invoice_name"], "transaction_ref")
+		fake_request(dict(payload, id="SELFTEST-2ND-" + frappe.generate_hash(length=6)), api_key)
+		r8g2 = guest(S.sepay_webhook)
+		logs_after = frappe.db.count("Error Log", {"method": "SePay: giao dịch thứ hai cho mã đã thanh toán"})
+		check("8g2 Giao dịch thứ hai cùng mã -> không xác nhận lại, không lộ đơn, có Error Log",
+			r8g2.get("needs_review") is True and "invoice_name" not in r8g2
+			and frappe.db.get_value("POS Invoice", ta["invoice_name"], "transaction_ref") == ref_before
+			and logs_after == logs_before + 1, str(r8g2))
+		fake_request(dict(payload, id="SELFTEST-X-" + frappe.generate_hash(length=6)), "sai-key")
+		expect_error("8g3 Đơn đã thanh toán + sai key -> vẫn 403 (xác thực trước nhánh idempotent)",
+			S.sepay_webhook, exc=frappe.PermissionError)
 		frappe.local.request = old_request
 
 		# 8k-8m: luồng máy POS cũ — đơn thu ngân tạo tại quầy, thu bằng QR SePay, webhook xác nhận.
@@ -283,6 +301,9 @@ def run_order_qr_selftest(branch=None):
 				s_res.get("success") and srow.docstatus == 1 and srow.status == "Paid"
 				and srow.custom_kitchen_status == "Chưa làm" and srow.payment_status == "Đã thanh toán"
 				and s_user == "Guest", str(srow))
+			fake_request(s_payload, api_key)
+			check("8n Đơn quầy: SePay retry -> already_processed",
+				guest(S.sepay_webhook).get("already_processed") is True)
 		except Exception:
 			check("8k-8m Lỗi ngoài dự kiến ở luồng POS cũ", False)
 			traceback.print_exc()

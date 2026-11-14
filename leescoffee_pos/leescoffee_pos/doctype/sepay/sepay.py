@@ -161,31 +161,9 @@ def sepay_webhook():
 
         normalized_content = normalize_code(content)
 
-        # 3. Tìm POS Invoice Draft theo payment_code
-        invoices = frappe.get_all(
-            "POS Invoice",
-            filters={
-                "payment_code": ["is", "set"],
-                "docstatus": 0,
-            },
-            fields=[
-                "name",
-                "payment_code",
-                "grand_total",
-                "rounded_total",
-                "status",
-                "docstatus",
-                "payment_status",
-            ],
-            order_by="creation desc",
-        )
-
-        matched_invoice = None
-
-        for row in invoices:
-            if normalize_code(row.payment_code) == normalized_content:
-                matched_invoice = row
-                break
+        # 3. Tìm POS Invoice theo payment_code (Draft HOẶC đã submit, để retry của SePay
+        #    nhận được phản hồi idempotent). Không quét toàn bảng: xem _find_invoice_by_code.
+        matched_invoice = _find_invoice_by_code(content, normalized_content)
 
         if not matched_invoice:
             frappe.log_error(
@@ -204,7 +182,38 @@ def sepay_webhook():
         )
 
         # 3b. Xác thực webhook đến từ SePay (API key của Branch của đơn).
+        #     Mọi nhánh bên dưới (kể cả phản hồi idempotent) chỉ chạy SAU bước này.
         _verify_sepay_key(invoice)
+
+        # 3b'. Đơn đã submit: không bao giờ xác nhận lại.
+        if invoice.docstatus == 1:
+            if (invoice.transaction_ref or "") == transaction_id:
+                # SePay retry đúng giao dịch đã xử lý -> thành công idempotent.
+                return {
+                    "success": True,
+                    "message": "Giao dịch đã được xử lý trước đó",
+                    "invoice_name": invoice.name,
+                    "already_processed": True,
+                }
+            # Giao dịch THỨ HAI cho cùng mã (khách chuyển 2 lần...): ghi log để đối soát/hoàn
+            # tiền thủ công. Trả success để SePay không retry mãi; không trả dữ liệu đơn/khách.
+            frappe.log_error(
+                title="SePay: giao dịch thứ hai cho mã đã thanh toán",
+                message=(
+                    f"invoice={invoice.name}\n"
+                    f"transaction_ref_da_luu={invoice.transaction_ref}\n"
+                    f"transaction_id_moi={transaction_id}\n"
+                    f"amount={amount}\ncontent={content}\n"
+                    f"gateway={payload.get('gateway')}\n"
+                    f"transactionDate={payload.get('transactionDate')}"
+                ),
+            )
+            return {
+                "success": True,
+                "already_processed": True,
+                "needs_review": True,
+                "message": "Mã thanh toán đã được sử dụng; giao dịch được ghi nhận để đối soát.",
+            }
 
         # 3c. Cùng mã giao dịch SePay đã submit một đơn khác -> không xử lý lại.
         if transaction_id and frappe.db.exists(
@@ -365,6 +374,61 @@ def sepay_webhook():
         frappe.throw(
             _("Lỗi xử lý webhook SePay: {0}").format(str(e))
         )
+
+
+# Ký tự bỏ đi khi chuẩn hóa payment_code ở SQL (mã sinh ra chỉ gồm chữ, số, "-").
+_CODE_STRIP_CHARS = ("-", " ", ".", "/", "_")
+# Giới hạn quét của đường dự phòng (nội dung chuyển khoản bị ngân hàng bỏ dấu "-").
+_FALLBACK_LOOKUP_DAYS = 30
+_LOOKUP_FIELDS = ["name", "docstatus", "creation"]
+
+
+def _find_invoice_by_code(content, normalized_content):
+    """POS Invoice (docstatus 0 hoặc 1) có payment_code khớp nội dung chuyển khoản.
+
+    1. Khớp chính xác `payment_code = content` -> dùng index của cột payment_code.
+    2. Dự phòng (ngân hàng bỏ "-", đổi hoa/thường): so mã đã chuẩn hóa bằng SQL, chỉ
+       trong các đơn tạo trong _FALLBACK_LOOKUP_DAYS ngày gần nhất, LIMIT 2.
+    Có >= 2 đơn khớp ở bước 2 -> log, không đoán (trả None).
+    """
+    if not normalized_content:
+        return None
+
+    exact = frappe.get_all(
+        "POS Invoice",
+        filters={"payment_code": content.strip(), "docstatus": ["in", [0, 1]]},
+        fields=_LOOKUP_FIELDS,
+        order_by="creation desc",
+        limit=1,
+    )
+    if exact:
+        return exact[0]
+
+    expr = "UPPER(`payment_code`)"
+    for ch in _CODE_STRIP_CHARS:
+        expr = f"REPLACE({expr}, '{ch}', '')"
+    since = frappe.utils.add_days(frappe.utils.now_datetime(), -_FALLBACK_LOOKUP_DAYS)
+    rows = frappe.db.sql(
+        f"""
+        SELECT `name`, `docstatus`, `creation`
+        FROM `tabPOS Invoice`
+        WHERE `docstatus` IN (0, 1)
+          AND `creation` >= %(since)s
+          AND IFNULL(`payment_code`, '') != ''
+          AND {expr} = %(code)s
+        ORDER BY `creation` DESC
+        LIMIT 2
+        """,
+        {"since": since, "code": normalized_content},
+        as_dict=True,
+    )
+    if len(rows) > 1:
+        frappe.log_error(
+            title="SePay: nhiều POS Invoice khớp cùng mã",
+            message=f"normalized_content={normalized_content}\ninvoices={[r.name for r in rows]}",
+        )
+        return None
+    return rows[0] if rows else None
 
 
 @contextmanager

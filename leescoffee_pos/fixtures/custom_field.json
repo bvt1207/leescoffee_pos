@@ -74,6 +74,7 @@
     "fieldname": "payment_code",
     "label": "Mã thanh toán",
     "fieldtype": "Data",
+    "search_index": 1,
     "insert_after": "buzzer",
     "hidden": 1,
     "reqd": 0,

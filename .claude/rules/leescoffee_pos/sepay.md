@@ -51,9 +51,14 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
 
 1. Thiếu JSON / thiếu `content` / `transferAmount <= 0` → ném lỗi.
 2. `transferType` có giá trị khác `"in"` → trả `{success: False}` (bỏ qua giao dịch tiền ra).
-3. Chuẩn hóa mã (chỉ giữ chữ + số, viết hoa) rồi so `payment_code` của các POS Invoice
-   **Draft** (`docstatus = 0`, có `payment_code`) với `content`.
-4. Không khớp → `log_error` + ném lỗi.
+3. Tìm đơn `docstatus` 0 **hoặc 1** (`_find_invoice_by_code`): (a) `payment_code = content` khớp chính xác
+   (cột có `search_index`, fixture 2026-11-14); (b) dự phòng: so mã chuẩn hóa bằng SQL (bỏ `- . / _` và
+   khoảng trắng, viết hoa) chỉ trong đơn tạo 30 ngày gần nhất, `LIMIT 2`; khớp ≥ 2 đơn → log, coi như không thấy.
+4. Không khớp → `log_error` + ném lỗi. Khớp → **xác thực API key** (`_verify_sepay_key`) TRƯỚC mọi nhánh sau.
+4b. Đơn đã submit: `transaction_ref == id` → `{success: True, already_processed: True, invoice_name}`;
+   `id` khác (giao dịch thứ hai cùng mã) → Error Log "SePay: giao dịch thứ hai cho mã đã thanh toán",
+   trả `{success: True, already_processed: True, needs_review: True, message}` (không có invoice_name/dữ liệu khách,
+   success để SePay không retry mãi; đối soát/hoàn tiền thủ công). Không bao giờ submit lại.
 5. **Idempotent**: `payment_status == "Đã thanh toán"` → trả
    `{success: True, already_processed: True}`. `payment_status == "Hủy"` → ném lỗi.
 6. Kiểm tra số tiền: `|transferAmount − (rounded_total or grand_total)| ≤ 0.01`, lệch → log + ném lỗi.
