@@ -1,7 +1,17 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-01 (chức năng in). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0. Đang làm: web đặt món QR cho khách (2026-11-14)
+- **Giai đoạn 1 (backend) — code xong, CHỜ VAN TEST.** Rule: `rules/leescoffee_pos/order-qr.md`.
+  Self-test: `.claude/docs/order_qr_selftest.py` (`run_order_qr_selftest()`).
+  Gồm cả mục A (webhook xác thực API key) — sau khi deploy phải điền `sepay_api_key` ở Branch và
+  cấu hình bên SePay khớp key, nếu không mọi webhook bị 403.
+- **Giai đoạn 2 (frontend `/order`) — CHƯA làm**, chờ Van test backend rồi giao: route `/order/<path>`
+  (`website_route_rules` + `www/order.html`), đăng nhập, loại đơn, menu + chip option, giỏ + preview,
+  QR thanh toán (poll), "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen, theme trắng-đỏ mobile-first.
+- Tồn đọng: OTP → đổi điểm; Web Push; xem `order-qr.md` §7.
 
 ## 1. Mục tiêu hiện tại
 Hoàn thiện frontend POS (React/TSX, CSS thuần + biến `--pos-*`, không MUI/Tailwind,
@@ -53,7 +63,7 @@ Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos
 
 ## 3. Việc cần xem và chỉnh sửa (theo ưu tiên — CHỈ LÀ KẾ HOẠCH, chờ Van duyệt rồi mới sửa code)
 
-### A. (CAO, bảo mật) `sepay_webhook` chưa xác thực `sepay_api_key`
+### A. (CAO, bảo mật) `sepay_webhook` chưa xác thực `sepay_api_key` — ĐÃ CODE 2026-11-14 (cùng web đặt món QR), chờ test
 - **File/hàm:** `leescoffee_pos/leescoffee_pos/doctype/sepay/sepay.py::sepay_webhook()` (`allow_guest=True`);
   helper mới `_verify_sepay_key(invoice)` (đặt trong `sepay.py`); có thể dùng lại logic lấy branch
   trong `branch_config.py::get_va_bank_config()`.

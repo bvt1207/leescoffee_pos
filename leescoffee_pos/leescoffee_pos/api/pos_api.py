@@ -720,8 +720,6 @@ def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
 	Trả về từng dòng (giá gốc, giá sau luật, % giảm, số tiền tiết kiệm, luật áp dụng,
 	cờ quà tặng) cùng các tổng và mức đổi điểm tối đa theo tổng sau luật.
 	"""
-	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
-
 	rows = _normalize_items(items)
 	if not rows:
 		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
@@ -730,6 +728,13 @@ def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
 	mode = _resolve_mode_of_payment(profile.company, None)
 	effective_price_list = _require_price_list(price_list)
 	cust = _resolve_customer(customer)
+
+	return _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points)
+
+
+def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points=0):
+	"""Lõi của preview_pricing (dùng chung cho POS và web đặt món QR). Không ghi DB."""
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 	invoice = _build_invoice(profile, rows, "Take Away", cust, effective_price_list, mode)
 	after_rules = flt(invoice.grand_total)
@@ -976,6 +981,7 @@ def get_orders(status="all", limit=50):
 			"customer",
 			"customer_name",
 			"order_type",
+			"order_channel",
 			"status",
 			"docstatus",
 			"grand_total",
@@ -1177,7 +1183,7 @@ def get_kitchen_orders(status=None, limit=100):
 	if not statuses:
 		return []
 
-	fields = ["name", "customer", "customer_name", "order_type",
+	fields = ["name", "customer", "customer_name", "order_type", "order_channel",
 		"custom_kitchen_status", "buzzer", "order_note", "creation", "modified"]
 	base = {"docstatus": 1, "status": "Paid"}
 	cap = min(int(limit), 200)

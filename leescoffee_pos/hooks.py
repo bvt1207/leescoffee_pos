@@ -161,6 +161,14 @@ website_route_rules = [
 
 # Scheduled Tasks
 # ---------------
+# Web đặt món QR: xóa đơn QR Draft chưa thanh toán quá hạn (customer_order_api.DRAFT_DELETE_MINUTES).
+scheduler_events = {
+	"cron": {
+		"*/5 * * * *": [
+			"leescoffee_pos.leescoffee_pos.api.customer_order_api.cleanup_expired_qr_orders",
+		],
+	},
+}
 
 # scheduler_events = {
 # 	"all": [

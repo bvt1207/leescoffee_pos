@@ -35,6 +35,7 @@ Không cấp Cancel / Delete / Amend.
 | Contact | R | — | R W C |
 | Branch | — | — | S R W C |
 | MYPOS Option Group | R | R | R W C |
+| MYPOS Order QR | R | — | S R W C |
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
 
@@ -123,6 +124,7 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `pos_api.set_kitchen_status` | ĐÃ LÀM (§7) — theo `KITCHEN_TRANSITIONS_BY_ROLE` |
 | `pos_invoice_hooks.get_status_board_orders` | KITCHEN, CASHIER, MANAGER |
 | `sepay.generate_qr_for_invoice` | CASHIER, MANAGER |
-| `sepay.sepay_webhook` | Guest (giữ) — cần xác thực API key (task_handoff mục A) |
+| `sepay.sepay_webhook` | Guest (giữ) — đã xác thực API key Branch (2026-11-14, `order-qr.md` §3) |
+| `customer_order_api.*` | Guest — kiểm tra token phiên khách, không dùng role (`order-qr.md`) |
 
 `get_pos_config` được gọi lúc tải mọi màn /pos kể cả Kitchen, nên phải cho KITCHEN.

@@ -47,6 +47,7 @@ PERMS = {
 		"Address": ["read"],
 		"Contact": ["read"],
 		"MYPOS Option Group": ["read"],
+		"MYPOS Order QR": ["read"],
 	},
 	KITCHEN: {
 		"Leescoffee Menu": ["read"],
@@ -69,6 +70,7 @@ PERMS = {
 		"Contact": ["read", "write", "create"],
 		"Branch": _MASTER_RW,
 		"MYPOS Option Group": ["read", "write", "create"],
+		"MYPOS Order QR": _MASTER_RW,
 	},
 }
 

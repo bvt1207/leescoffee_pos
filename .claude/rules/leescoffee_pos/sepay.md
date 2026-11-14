@@ -18,7 +18,10 @@
 - SePay gửi header `Authorization: Apikey <key>`; ERPNext so với `sepay_api_key` của Branch
   của invoice (đọc bằng `get_decrypted_password` vì field kiểu Password).
 - Key ở Branch **phải trùng** key cấu hình webhook bên SePay.
-- **Hiện trạng: code CHƯA kiểm tra key** — xem §5 và `.claude/docs/task_handoff.md` mục A.
+- **Đã kiểm tra key (2026-11-14, chưa test bench)**: `_verify_sepay_key(invoice)` gọi ngay sau khi khớp
+  `payment_code`; nhận header `Authorization: Apikey <key>` hoặc `?key=<key>` trên URL webhook; sai/thiếu → 403
+  (`PermissionError` không bị bọc) + Error Log. Branch chưa có key → mọi webhook bị từ chối.
+  Chống xử lý lặp theo `transaction_ref`. Chi tiết + lưu ý 401 của Frappe: `order-qr.md` §3.
 - **Chỉ đọc Branch** cho SePay config (branding cũng chỉ đọc Branch — xem `branch.md`).
 - **Không dùng** `merchant_code`, `secret_key`, `env`, `callback_url` (đã loại bỏ).
 
@@ -76,8 +79,7 @@ Lỗi bất kỳ được bọc lại thành `"Lỗi xử lý webhook SePay: ...
 
 ## 5. Điểm code chưa khớp tài liệu / chờ quyết định (chưa sửa code)
 
-- **Webhook chưa xác thực API key** (mức CAO): `sepay_webhook()` không đọc header
-  `Authorization`, không so `sepay_api_key`. Kế hoạch sửa: `task_handoff.md` mục A.
+- ~~Webhook chưa xác thực API key~~ — đã sửa 2026-11-14 (§1), chờ test bench.
 - **`payment_status` lệch giá trị**: `generate_qr_for_invoice` ghi `"Chưa thanh toán"`,
   trong khi `pos_api.cancel_draft_order` và `Orders.tsx` (tag "Chờ QR", chặn hủy khi
   chưa `force`) kiểm tra `"Đang chờ"`. Options của Custom Field có cả hai giá trị.

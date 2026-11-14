@@ -202,6 +202,21 @@ def sepay_webhook():
             "POS Invoice", matched_invoice.name
         )
 
+        # 3b. Xác thực webhook đến từ SePay (API key của Branch của đơn).
+        _verify_sepay_key(invoice)
+
+        # 3c. Cùng mã giao dịch SePay đã submit một đơn khác -> không xử lý lại.
+        if transaction_id and frappe.db.exists(
+            "POS Invoice",
+            {"transaction_ref": transaction_id, "docstatus": 1, "name": ["!=", invoice.name]},
+        ):
+            return {
+                "success": True,
+                "message": "Giao dịch đã được xử lý trước đó",
+                "invoice_name": invoice.name,
+                "already_processed": True,
+            }
+
         # 4. Chống xử lý lại giao dịch
         if invoice.payment_status == "Đã thanh toán":
             return {
@@ -331,6 +346,10 @@ def sepay_webhook():
             "payment_status": invoice.payment_status,
         }
 
+    except frappe.PermissionError:
+        # Sai/thiếu API key: trả 403 nguyên trạng, không bọc thành lỗi chung.
+        raise
+
     except Exception as e:
         frappe.log_error(
             title="SePay POS Webhook Error",
@@ -339,6 +358,54 @@ def sepay_webhook():
         frappe.throw(
             _("Lỗi xử lý webhook SePay: {0}").format(str(e))
         )
+
+
+def _received_sepay_key():
+    """API key SePay gửi kèm webhook.
+
+    Nhận 1 trong 2 cách (cấu hình bên SePay):
+    - Header `Authorization: Apikey <key>` (kiểu chứng thực "API Key" của SePay).
+    - Tham số `?key=<key>` trên URL webhook (dùng khi Frappe chặn header Authorization
+      có scheme lạ trước khi vào hàm — xem rules/leescoffee_pos/sepay.md).
+    """
+    header = str(frappe.get_request_header("Authorization") or "").strip()
+    parts = header.split(None, 1)
+    if len(parts) == 2 and parts[0].lower() == "apikey":
+        return parts[1].strip()
+
+    args = getattr(frappe.request, "args", None) or {}
+    return str(args.get("key") or "").strip()
+
+
+def verify_sepay_key_for_branch(branch_name, received):
+    """True nếu `received` khớp Branch.sepay_api_key (so sánh thời gian hằng)."""
+    import hmac
+
+    from frappe.utils.password import get_decrypted_password
+
+    if not branch_name or not received:
+        return False
+    expected = get_decrypted_password(
+        "Branch", branch_name, "sepay_api_key", raise_exception=False
+    ) or ""
+    if not expected:
+        return False
+    return hmac.compare_digest(received.encode(), str(expected).encode())
+
+
+def _verify_sepay_key(invoice):
+    """Chặn webhook giả: key gửi kèm phải khớp sepay_api_key của Branch của đơn."""
+    branch_name = (
+        frappe.db.get_value("POS Profile", invoice.pos_profile, "branch")
+        if invoice.pos_profile
+        else None
+    )
+    if not verify_sepay_key_for_branch(branch_name, _received_sepay_key()):
+        frappe.log_error(
+            title="SePay webhook: sai hoặc thiếu API key",
+            message=f"invoice={invoice.name}\nbranch={branch_name}\nip={getattr(frappe.local, 'request_ip', None)}",
+        )
+        raise frappe.PermissionError(_("Webhook SePay không hợp lệ."))
 
 
 def update_sepay_payment_log(invoice_name, log_entry):

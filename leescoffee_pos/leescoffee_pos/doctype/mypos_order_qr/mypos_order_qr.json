@@ -1,0 +1,83 @@
+{
+  "doctype": "DocType",
+  "name": "MYPOS Order QR",
+  "module": "Leescoffee POS",
+  "modified": "2026-11-14 09:00:00.000000",
+  "istable": 0,
+  "issingle": 0,
+  "autoname": "MYPOS-QR-.####",
+  "title_field": "branch",
+  "search_fields": "branch,enabled",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "branch",
+      "label": "Chi nhánh",
+      "fieldtype": "Link",
+      "options": "Branch",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Đang dùng",
+      "fieldtype": "Check",
+      "default": "1",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "Bỏ chọn để thu hồi mã: khách quét mã này sẽ không đặt được món, phiên đặt món đang mở cũng bị chặn."
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "note",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text",
+      "description": "Vd. vị trí dán mã (quầy, bàn 5, cửa ra vào)."
+    },
+    {
+      "fieldname": "section_link",
+      "label": "Đường dẫn đặt món",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "token",
+      "label": "Mã bí mật",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "unique": 1,
+      "no_copy": 1,
+      "description": "Sinh tự động, không đoán được. Muốn đổi mã: tắt mã này và tạo mã mới."
+    },
+    {
+      "fieldname": "order_url",
+      "label": "URL đặt món",
+      "fieldtype": "Data",
+      "options": "URL",
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "qr_preview",
+      "label": "Ảnh QR",
+      "fieldtype": "HTML"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "select": 1,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    }
+  ]
+}
