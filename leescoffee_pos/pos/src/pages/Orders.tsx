@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import OrderTypeChip from "../components/OrderTypeChip";
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
@@ -10,7 +11,6 @@ import type { OrderDetail, OrderSummary, QrInfo, StatusBoardRow } from "../types
 
 type Tab = "draft" | "paid" | "kitchen";
 
-const typeLabel = (t: string) => (t === "Take Away" ? "Mang đi" : "Tại quán");
 
 // Món có CTKM: giá gốc (price_list_rate) cao hơn giá bán (rate) do server trả.
 const itemPromo = (it: OrderDetail["items"][number]) =>
@@ -208,7 +208,7 @@ export default function Orders() {
 									</div>
 									<div className="pos-order-card__meta">
 										<span>{o.name}</span>
-										<span className="pos-tag">{typeLabel(o.order_type)}</span>
+										<OrderTypeChip type={o.order_type} />
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 										{o.payment_status === "Đang chờ" ? <span className="pos-tag pos-tag--warn">Chờ QR</span> : null}
 										{o.custom_kitchen_status ? <span className="pos-status__badge">{o.custom_kitchen_status}</span> : null}
@@ -231,7 +231,7 @@ export default function Orders() {
 								<div>
 									<div className="pos-order-detail__name">{detail.customer_name}</div>
 									<div className="pos-order-detail__sub">
-										{detail.name} · {typeLabel(detail.order_type)}
+										{detail.name} · <OrderTypeChip type={detail.order_type} />
 										{detail.order_type === "Dine In" ? ` · Thẻ #${detail.buzzer_number || "—"}` : ""}
 									</div>
 								</div>

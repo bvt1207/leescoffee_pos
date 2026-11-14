@@ -19,6 +19,11 @@
 - **`lib/api.ts` và `lib/pos-context.tsx`**: chỉ được đổi kiểu/khóa dữ liệu — giữ nguyên cách gọi API, CSRF.
 - **Quy tắc khách hàng**: Always read from API (`search_customers`, `create_customer`), không hardcode tên khách; frontend `CustomerPicker` thay ô input cũ; checkout gửi `customer_name: customer?.name`; khi bấm tạo đơn → gửi `customer_name` là mã Customer hoặc để trống (backend tự dùng Walk-in Customer).
 
+- **Màu loại đơn ≠ màu trạng thái**: Mang đi / Tại quán luôn hiển thị qua `OrderTypeChip`
+  (`typeLabel`, `typeModifier` dùng chung, không viết lại); màu lấy từ `--pos-takeaway-*` / `--pos-dinein-*`
+  (tokens.md §1.5c). Không dùng đỏ/vàng/`--pos-success` cho loại đơn. Thẻ Pha chế: viền trên = thời gian chờ,
+  viền trái = loại đơn.
+
 ### 3.1 Xử lý thương hiệu whitelabel (KHÔNG hardcode!)
 
 ```tsx

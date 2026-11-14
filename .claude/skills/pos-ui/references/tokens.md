@@ -60,6 +60,20 @@ Chuyển từ màu viết cứng sang token ở bước refactor d1, giữ nguy�
 > Các token ở mục 2–4 bên dưới (`--pos-spacing-*`, `--pos-radius-*`, `--pos-shadow-sm/md/lg`)
 > là thiết kế dự kiến, **chưa có** trong `global.css` (hiện chỉ có `--pos-radius`, `--pos-shadow`).
 
+### 1.5c Màu loại đơn (Mang đi / Tại quán)
+```css
+--pos-takeaway-bg: #E8F0FB;     /* Mang đi (Take Away) - xanh dương nhạt */
+--pos-takeaway-fg: #1D4F91;     /* chữ + viền trái thẻ Pha chế; 7.09:1 trên nền */
+--pos-takeaway-border: #B7CDEE; /* viền chip */
+--pos-dinein-bg: #E3F4EE;       /* Tại quán (Dine In) - xanh lá ngả ngọc nhạt */
+--pos-dinein-fg: #0F6B57;       /* chữ + viền trái thẻ Pha chế; 5.66:1 trên nền */
+--pos-dinein-border: #A8D9C8;   /* viền chip */
+```
+- Dùng qua `components/OrderTypeChip.tsx` (`.pos-tag--takeaway` / `.pos-tag--dinein`) và
+  `.pos-kcard--takeaway` / `.pos-kcard--dinein` (viền **trái** 4px).
+- **Màu loại đơn khác màu trạng thái**: không dùng đỏ (thương hiệu/lỗi), vàng (cảnh báo) hay
+  `--pos-success` cho loại đơn. Thẻ Pha chế: viền **trên** = thời gian chờ (ok/warn/late), viền **trái** = loại đơn.
+
 ### 1.6 Kiểm tra tương đối (WCAG AA)
 - `rgba(255,255,255)` trên `#C8102E` → **5.81:1** ✓ đạt AA cho chữ thường (≥4.5:1)
 - `#2A2520` trên `#FFFFFF` → **15.08:1** ✓

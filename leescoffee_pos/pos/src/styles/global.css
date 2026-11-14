@@ -40,6 +40,15 @@
 	--pos-shadow-modal: 0 12px 40px rgba(0, 0, 0, 0.25);
 	--pos-shadow-toast: 0 8px 28px rgba(0, 0, 0, 0.25);
 
+	/* Loại đơn — KHÔNG dùng đỏ (thương hiệu/cảnh báo); Tại quán khác tông --pos-success (viền chờ ở Pha chế).
+	   Tương phản chữ/nền: Mang đi 7.09:1, Tại quán 5.66:1. */
+	--pos-takeaway-bg: #E8F0FB;
+	--pos-takeaway-fg: #1D4F91;
+	--pos-takeaway-border: #B7CDEE;
+	--pos-dinein-bg: #E3F4EE;
+	--pos-dinein-fg: #0F6B57;
+	--pos-dinein-border: #A8D9C8;
+
 	/* Khổ tem dán ly (màn Pha chế) — đổi theo loại giấy của máy in tem */
 	--pos-label-width: 50mm;
 	--pos-label-height: 30mm;
@@ -212,6 +221,24 @@ body {
 .pos-tag--warn {
 	background: var(--pos-warning-soft);
 	color: var(--pos-warning);
+}
+
+/* Chip loại đơn (OrderTypeChip) */
+.pos-tag--takeaway,
+.pos-tag--dinein {
+	border: 1px solid transparent;
+}
+
+.pos-tag--takeaway {
+	background: var(--pos-takeaway-bg);
+	color: var(--pos-takeaway-fg);
+	border-color: var(--pos-takeaway-border);
+}
+
+.pos-tag--dinein {
+	background: var(--pos-dinein-bg);
+	color: var(--pos-dinein-fg);
+	border-color: var(--pos-dinein-border);
 }
 
 .pos-btn--danger {
@@ -1438,6 +1465,15 @@ body {
 
 .pos-kcard--late {
 	border-top-color: var(--pos-error);
+}
+
+/* Loại đơn ở viền TRÁI — viền TRÊN vẫn là màu thời gian chờ (ok/warn/late), không đè nhau. */
+.pos-kcard--takeaway {
+	border-left: 4px solid var(--pos-takeaway-fg);
+}
+
+.pos-kcard--dinein {
+	border-left: 4px solid var(--pos-dinein-fg);
 }
 
 .pos-kcard__head {

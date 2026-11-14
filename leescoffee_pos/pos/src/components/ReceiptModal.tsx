@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { typeLabel } from "./OrderTypeChip";
 import { formatOptions } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { printWithPage } from "../lib/print";
@@ -22,7 +23,6 @@ interface Props {
 const RECEIPT_PAGE = "80mm auto";
 const DONE_MS = 2000;
 
-const typeLabel = (t: string) => (t === "Take Away" ? "Mang đi" : "Tại quán");
 
 // "2026-10-31 14:05:12.123" -> "14:05 31/10/2026"
 function formatStamp(iso: string): string {

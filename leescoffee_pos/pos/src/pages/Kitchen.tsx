@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import CupLabels, { buildCups, cupIndexes } from "../components/CupLabels";
+import OrderTypeChip, { typeModifier } from "../components/OrderTypeChip";
 import type { LabelJob } from "../components/CupLabels";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
@@ -11,7 +12,6 @@ import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
 type Step = KitchenStep;
 
-const typeLabel = (t: string) => (t === "Take Away" ? "Mang đi" : "Tại quán");
 
 function parseTime(s: string): number {
 	return new Date(s.replace(" ", "T")).getTime();
@@ -217,13 +217,16 @@ export default function Kitchen() {
 						const cupsOf = canPrint ? cupIndexes(o) : null;
 						const loadingPrint = printBusy === o.name;
 						return (
-							<article key={o.name} className={`pos-kcard pos-kcard--${w.level}`}>
+							<article
+								key={o.name}
+								className={`pos-kcard pos-kcard--${w.level} pos-kcard--${typeModifier(o.order_type)}`}
+							>
 								<header className="pos-kcard__head">
 									<div className="pos-kcard__id">
 										<strong>{o.name}</strong>
 									</div>
 									<div className="pos-kcard__tags">
-										<span className="pos-tag">{typeLabel(o.order_type)}</span>
+										<OrderTypeChip type={o.order_type} />
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 									</div>
 								</header>
