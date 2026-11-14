@@ -12,6 +12,7 @@ import OrderTypePicker from "./components/OrderTypePicker";
 import PaymentView from "./components/PaymentView";
 import ReadyBanner from "./components/ReadyBanner";
 import { isActiveStage, money, orderTypeLabel } from "./format";
+import { usePolling } from "./poll";
 import { clearSession, loadSession, readQrToken, saveSession, type StoredSession } from "./session";
 import type { CustomerOrder, Me, Menu, MenuItem, OrderTypeValue, Shop } from "./types";
 
@@ -51,7 +52,11 @@ export default function OrderApp() {
 	const [ready, setReady] = useState<CustomerOrder | null>(null);
 	const [toast, setToast] = useState("");
 	const stages = useRef<Record<string, string>>({});
-	const cart = useOrderCart();
+	const ordersSig = useRef("");
+	// Chỉ đăng ký `lines` (+ hàm, ổn định): gõ ghi chú KHÔNG render lại cả app/menu. Ghi chú đọc lúc đặt đơn.
+	const lines = useOrderCart((s) => s.lines);
+	const addToCart = useOrderCart((s) => s.add);
+	const clearCart = useOrderCart((s) => s.clear);
 
 	const token = session?.token || "";
 	const isOpen = (me?.shop || shop)?.is_open ?? false;
@@ -86,6 +91,7 @@ export default function OrderApp() {
 		setSession(null);
 		setMe(null);
 		setOrders([]);
+		ordersSig.current = "";
 		setPaying(null);
 		setPanel("none");
 		setLoginNotice("Phiên đặt món đã hết hạn. Vui lòng đăng nhập lại.");
@@ -134,41 +140,53 @@ export default function OrderApp() {
 			.catch(handleError);
 	}, [panel, token, handleError]);
 
-	// Đơn của tôi: làm mới 5 giây khi tab đang mở; phát hiện chuyển sang "Đã làm" để báo.
-	const refreshOrders = useCallback(async () => {
-		if (!token) return;
-		try {
-			const list = await orderApi.getMyOrders(token);
-			const ack = loadAck(qrToken);
-			let fresh: CustomerOrder | null = null;
-			for (const o of list) {
-				const before = stages.current[o.invoice_name];
-				if (o.stage === "ready" && before !== "ready" && !ack.includes(o.invoice_name)) fresh = o;
-				stages.current[o.invoice_name] = o.stage;
+	// Đơn của tôi. Gọi 1 lần khi đăng nhập / sau đặt đơn / sau thanh toán; poll 5 giây chỉ khi còn đơn
+	// đang xử lý (chờ thanh toán / chưa làm / đã làm), tab đang hiện và không ở màn thanh toán
+	// (PaymentView đã tự poll get_order). Phát hiện chuyển sang "Đã làm" để báo.
+	const refreshOrders = useCallback(
+		async (signal?: AbortSignal) => {
+			if (!token) return;
+			try {
+				const list = await orderApi.getMyOrders(token, signal);
+				if (signal?.aborted) return;
+				const ack = loadAck(qrToken);
+				let fresh: CustomerOrder | null = null;
+				for (const o of list) {
+					const before = stages.current[o.invoice_name];
+					if (o.stage === "ready" && before !== "ready" && !ack.includes(o.invoice_name)) fresh = o;
+					stages.current[o.invoice_name] = o.stage;
+				}
+				// Không đổi gì -> không setState (tránh render lại menu mỗi 5 giây).
+				const sig = JSON.stringify(list);
+				if (sig !== ordersSig.current) {
+					ordersSig.current = sig;
+					setOrders(list);
+				}
+				if (fresh) {
+					setReady(fresh);
+					notifyReady();
+				}
+			} catch (err) {
+				if (signal?.aborted || (err instanceof OrderApiError && err.aborted)) return;
+				if (err instanceof OrderApiError && err.sessionExpired) {
+					expireSession();
+					return;
+				}
+				throw err; // để usePolling giãn nhịp
 			}
-			setOrders(list);
-			if (fresh) {
-				setReady(fresh);
-				notifyReady();
-			}
-		} catch (err) {
-			if (err instanceof OrderApiError && err.sessionExpired) expireSession();
-		}
-	}, [token, qrToken, expireSession]);
+		},
+		[token, qrToken, expireSession]
+	);
 
 	useEffect(() => {
 		if (!token) return;
-		void refreshOrders();
-		const t = window.setInterval(() => {
-			if (document.visibilityState === "visible") void refreshOrders();
-		}, POLL_MS);
-		const onVisible = () => document.visibilityState === "visible" && void refreshOrders();
-		document.addEventListener("visibilitychange", onVisible);
-		return () => {
-			window.clearInterval(t);
-			document.removeEventListener("visibilitychange", onVisible);
-		};
+		const ctrl = new AbortController();
+		refreshOrders(ctrl.signal).catch(() => undefined);
+		return () => ctrl.abort();
 	}, [token, refreshOrders]);
+
+	const hasActive = orders.some((o) => isActiveStage(o.stage));
+	usePolling(refreshOrders, !!token && !paying && hasActive, POLL_MS, { immediate: false });
 
 	const setOrderType = (v: OrderTypeValue) => {
 		if (!session) return;
@@ -180,20 +198,22 @@ export default function OrderApp() {
 	const logout = async () => {
 		if (token) await orderApi.logout(token).catch(() => undefined);
 		clearSession(qrToken);
-		cart.clear();
+		clearCart();
 		setSession(null);
 		setMe(null);
 		setOrders([]);
+		ordersSig.current = "";
 		setLoginNotice("");
 	};
 
 	const checkout = async () => {
 		if (!session?.orderType) throw new Error("Vui lòng chọn Mang đi hoặc Tại quán.");
-		const created = await orderApi.createOrder(token, cartPayload(cart.lines), session.orderType, cart.note);
-		cart.clear();
+		const { lines: current, note } = useOrderCart.getState();
+		const created = await orderApi.createOrder(token, cartPayload(current), session.orderType, note);
+		clearCart();
 		setPanel("none");
 		setPaying(created.invoice_name);
-		void refreshOrders();
+		refreshOrders().catch(() => undefined);
 	};
 
 	const onPaid = useCallback(
@@ -201,7 +221,7 @@ export default function OrderApp() {
 			setPaying(null);
 			setToast(`Đã nhận thanh toán đơn ${o.invoice_name}. Quán đang chuẩn bị món.`);
 			setPanel("orders");
-			void refreshOrders();
+			refreshOrders().catch(() => undefined);
 		},
 		[refreshOrders]
 	);
@@ -247,8 +267,8 @@ export default function OrderApp() {
 	}
 
 	const brand = (me?.shop || shop).brand;
-	const count = cart.lines.reduce((n, l) => n + l.qty, 0);
-	const subtotal = cart.lines.reduce((n, l) => n + l.qty * l.rate, 0);
+	const count = lines.reduce((n, l) => n + l.qty, 0);
+	const subtotal = lines.reduce((n, l) => n + l.qty * l.rate, 0);
 	const active = orders.filter((o) => isActiveStage(o.stage)).length;
 	const loyalty = me?.loyalty || null;
 
@@ -331,7 +351,7 @@ export default function OrderApp() {
 					currency={currency}
 					onClose={() => setPicking(null)}
 					onAdd={(i, opts, qty) => {
-						cart.add(picking, picking.sizes[i], opts, qty);
+						addToCart(picking, picking.sizes[i], opts, qty);
 						setPicking(null);
 						setToast(`Đã thêm ${qty} ${picking.name}`);
 					}}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCartOptions } from "../../lib/options";
 import { errorText, OrderApiError, orderApi } from "../api";
 import { cartPayload, MAX_LINE_QTY, useOrderCart } from "../cart";
@@ -6,6 +6,8 @@ import { money } from "../format";
 import type { Loyalty, OrderTypeValue, Preview } from "../types";
 import OrderTypePicker from "./OrderTypePicker";
 import Sheet from "./Sheet";
+
+const PREVIEW_DEBOUNCE_MS = 350;
 
 /**
  * Giỏ hàng + xem trước giá do SERVER tính (CTKM theo tổng qty mỗi mã, điểm/hạng).
@@ -39,35 +41,43 @@ export default function CartSheet({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
 
-	// Xem trước giá: trễ 400ms sau thay đổi giỏ, bỏ kết quả cũ nếu giỏ đã đổi tiếp.
+	// Khóa chuỗi ổn định của đúng dữ liệu gửi server (item_code, qty, options). Ghi chú, ảnh, tên món
+	// không nằm trong khóa -> gõ ghi chú hay mảng `lines` mới cùng nội dung KHÔNG gọi lại preview.
+	// Loại đơn không gửi cho `preview` (server không tính theo loại đơn) nên cũng không nằm trong khóa.
+	const itemsKey = useMemo(() => JSON.stringify(cartPayload(lines)), [lines]);
+	const expiredRef = useRef(onSessionExpired);
+	expiredRef.current = onSessionExpired;
+
+	// Xem trước giá: debounce 350ms theo itemsKey; abort request cũ + chỉ nhận kết quả của lần gọi mới nhất.
 	useEffect(() => {
-		if (!lines.length || !isOpen) {
+		if (itemsKey === "[]" || !isOpen) {
 			setPreview(null);
+			setPreviewError("");
+			setLoading(false);
 			return;
 		}
-		let stale = false;
+		const ctrl = new AbortController();
 		setLoading(true);
 		const t = window.setTimeout(async () => {
 			try {
-				const p = await orderApi.preview(token, cartPayload(lines));
-				if (!stale) {
-					setPreview(p);
-					setPreviewError("");
-				}
+				const p = await orderApi.preview(token, JSON.parse(itemsKey), ctrl.signal);
+				if (ctrl.signal.aborted) return;
+				setPreview(p);
+				setPreviewError("");
 			} catch (err) {
-				if (stale) return;
-				if (err instanceof OrderApiError && err.sessionExpired) return onSessionExpired();
+				if (ctrl.signal.aborted || (err instanceof OrderApiError && err.aborted)) return;
+				if (err instanceof OrderApiError && err.sessionExpired) return expiredRef.current();
 				setPreview(null);
 				setPreviewError(errorText(err));
 			} finally {
-				if (!stale) setLoading(false);
+				if (!ctrl.signal.aborted) setLoading(false);
 			}
-		}, 400);
+		}, PREVIEW_DEBOUNCE_MS);
 		return () => {
-			stale = true;
 			window.clearTimeout(t);
+			ctrl.abort();
 		};
-	}, [lines, token, isOpen, onSessionExpired]);
+	}, [itemsKey, token, isOpen]);
 
 	const paid = preview ? preview.items.filter((p) => !p.is_free_item) : [];
 	const gifts = preview ? preview.items.filter((p) => p.is_free_item) : [];

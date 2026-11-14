@@ -15,9 +15,13 @@ export default function Sheet({
 	labelledBy?: string;
 }) {
 	const panel = useRef<HTMLDivElement>(null);
+	// onClose thường là arrow function mới mỗi render: đọc qua ref để effect chỉ chạy lúc mở/đóng sheet.
+	// (Trước đây effect chạy lại mỗi render -> focus bị kéo khỏi ô ghi chú ở mỗi phím gõ / mỗi lần poll.)
+	const closeRef = useRef(onClose);
+	closeRef.current = onClose;
 
 	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+		const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
 		document.addEventListener("keydown", onKey);
 		document.body.classList.add("qo-no-scroll");
 		panel.current?.focus();
@@ -25,7 +29,7 @@ export default function Sheet({
 			document.removeEventListener("keydown", onKey);
 			document.body.classList.remove("qo-no-scroll");
 		};
-	}, [onClose]);
+	}, []);
 
 	return (
 		<div className="qo-overlay" onClick={onClose}>

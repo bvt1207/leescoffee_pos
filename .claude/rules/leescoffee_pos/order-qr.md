@@ -107,6 +107,12 @@ commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng 
 - **Theo dõi**: OrderApp poll `get_my_orders` 5 giây khi tab hiển thị (+ khi quay lại tab). Đơn chuyển sang
   `ready` (pha chế bấm "Đã làm") → `ReadyBanner` + rung/bíp; "Đã hiểu" lưu mã đơn vào
   `mypos_order_ready_ack:<qrToken>` để không báo lại. Mở lại trang khi đơn đang `ready` chưa xác nhận → vẫn báo.
+- **Nhịp gọi API (sửa hiệu năng 2026-11-14)**: mọi poll qua `order/poll.ts::usePolling` (1 chuỗi setTimeout, không
+  chồng request, dừng khi tab ẩn, backoff ×2 tới 30 giây khi lỗi, abort khi unmount). `get_my_orders` poll 5 giây
+  **chỉ khi** còn đơn `awaiting_payment`/`queued`/`ready` và không ở PaymentView; PaymentView poll `get_order` 3 giây,
+  dừng khi hết hạn/đã trả. Preview: debounce 350ms theo khóa chuỗi `JSON(item_code, qty, options)` — ghi chú và loại
+  đơn không gọi lại; AbortController bỏ kết quả cũ. `OrderApp` chỉ subscribe `lines` của giỏ (gõ ghi chú không render
+  lại menu); `Sheet` không chạy lại effect focus mỗi render. Mọi API đọc dùng chung `read_session` 120/phút/phiên.
 - **Backend thêm**: `expires_in` (giây còn lại) trong `_orders_payload` và `create_payment_qr` — client không phụ
   thuộc đồng hồ máy khách.
 - **Màn nhân viên**: `ChannelChip` (`components/OrderTypeChip.tsx`, `.pos-tag--qr`, token `--pos-qr-*`) ở Orders

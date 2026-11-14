@@ -29,13 +29,17 @@ export class OrderApiError extends Error {
 	get sessionExpired(): boolean {
 		return this.excType === "PermissionError";
 	}
+	/** Request bị hủy chủ động (AbortController) — bỏ qua, không báo lỗi. */
+	get aborted(): boolean {
+		return this.excType === "AbortError";
+	}
 }
 
 function csrfToken(): string {
 	return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 }
 
-async function call<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
+async function call<T>(method: string, args: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		Accept: "application/json",
@@ -51,12 +55,20 @@ async function call<T>(method: string, args: Record<string, unknown> = {}): Prom
 			credentials: "same-origin",
 			headers,
 			body: JSON.stringify(args),
+			signal,
 		});
 	} catch {
+		if (signal?.aborted) throw new OrderApiError("aborted", 0, "AbortError");
 		throw new OrderApiError("Không kết nối được. Vui lòng kiểm tra mạng và thử lại.", 0, "NetworkError");
 	}
 
-	const text = await response.text();
+	let text: string;
+	try {
+		text = await response.text();
+	} catch {
+		if (signal?.aborted) throw new OrderApiError("aborted", 0, "AbortError");
+		throw new OrderApiError("Không kết nối được. Vui lòng kiểm tra mạng và thử lại.", 0, "NetworkError");
+	}
 	let data: Record<string, unknown> | null = null;
 	try {
 		data = text ? JSON.parse(text) : null;
@@ -80,14 +92,16 @@ export const orderApi = {
 	logout: (session_token: string) => call<{ ok: boolean }>("logout", { session_token }),
 	getMe: (session_token: string) => call<Me>("get_me", { session_token }),
 	getMenu: (session_token: string) => call<{ menus: Menu[]; currency: string }>("get_menu", { session_token }),
-	preview: (session_token: string, items: CartItemInput[]) => call<Preview>("preview", { session_token, items }),
+	preview: (session_token: string, items: CartItemInput[], signal?: AbortSignal) =>
+		call<Preview>("preview", { session_token, items }, signal),
 	createOrder: (session_token: string, items: CartItemInput[], order_type: OrderTypeValue, order_note: string) =>
 		call<CustomerOrder>("create_order", { session_token, items, order_type, order_note }),
 	createPaymentQr: (session_token: string, invoice_name: string) =>
 		call<PaymentQr>("create_payment_qr", { session_token, invoice_name }),
-	getMyOrders: (session_token: string) => call<CustomerOrder[]>("get_my_orders", { session_token }),
-	getOrder: (session_token: string, invoice_name: string) =>
-		call<CustomerOrder>("get_order", { session_token, invoice_name }),
+	getMyOrders: (session_token: string, signal?: AbortSignal) =>
+		call<CustomerOrder[]>("get_my_orders", { session_token }, signal),
+	getOrder: (session_token: string, invoice_name: string, signal?: AbortSignal) =>
+		call<CustomerOrder>("get_order", { session_token, invoice_name }, signal),
 };
 
 export function errorText(err: unknown): string {

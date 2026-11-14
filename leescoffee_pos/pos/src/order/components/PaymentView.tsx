@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorText, OrderApiError, orderApi } from "../api";
 import { clock, money, orderTypeLabel } from "../format";
+import { usePolling } from "../poll";
 import type { CustomerOrder, PaymentQr } from "../types";
 
 const POLL_MS = 3000;
@@ -28,6 +29,7 @@ export default function PaymentView({
 	const [error, setError] = useState("");
 	const [copied, setCopied] = useState(false);
 	const deadline = useRef(0);
+	const paidRef = useRef(false);
 
 	const fail = useCallback(
 		(err: unknown) => {
@@ -37,58 +39,62 @@ export default function PaymentView({
 		[onSessionExpired]
 	);
 
-	// Sinh (hoặc lấy lại — idempotent) mã QR.
+	// Sinh (hoặc lấy lại — idempotent) mã QR. Unmount (về menu) -> abort.
 	useEffect(() => {
-		let off = false;
+		const ctrl = new AbortController();
 		(async () => {
 			try {
 				const [q, o] = await Promise.all([
 					orderApi.createPaymentQr(token, invoiceName),
-					orderApi.getOrder(token, invoiceName),
+					orderApi.getOrder(token, invoiceName, ctrl.signal),
 				]);
-				if (off) return;
+				if (ctrl.signal.aborted) return;
 				setQr(q);
 				setOrder(o);
 				deadline.current = Date.now() + q.expires_in * 1000;
 				setLeft(q.expires_in);
 			} catch (err) {
-				if (!off) fail(err);
+				if (!ctrl.signal.aborted) fail(err);
 			}
 		})();
-		return () => {
-			off = true;
-		};
+		return () => ctrl.abort();
 	}, [token, invoiceName, fail]);
 
-	// Đếm ngược (bắt đầu khi đã có mã QR; mốc = thời điểm nhận + expires_in của server).
+	const expired = order?.stage === "expired" || left === 0;
+	const waiting = !!qr && !expired && !paidRef.current;
+
+	// Đếm ngược (mốc = thời điểm nhận + expires_in của server). Dừng khi hết hạn.
 	useEffect(() => {
-		if (!qr) return;
+		if (!waiting) return;
 		const t = window.setInterval(() => {
 			setLeft(Math.max(0, Math.round((deadline.current - Date.now()) / 1000)));
 		}, 1000);
 		return () => window.clearInterval(t);
-	}, [qr]);
+	}, [waiting]);
 
-	// Kiểm tra đã thanh toán.
-	useEffect(() => {
-		if (!qr) return;
-		let off = false;
-		const t = window.setInterval(async () => {
-			if (document.visibilityState !== "visible") return;
+	// Kiểm tra đã thanh toán: 1 chuỗi poll (không chồng request), dừng khi tab ẩn / hết hạn / đã trả,
+	// giãn nhịp khi lỗi. Lỗi phiên -> về đăng nhập (throw để usePolling tính backoff cho lỗi khác).
+	usePolling(
+		async (signal) => {
 			try {
-				const o = await orderApi.getOrder(token, invoiceName);
-				if (off) return;
+				const o = await orderApi.getOrder(token, invoiceName, signal);
+				if (signal.aborted) return;
 				setOrder(o);
-				if (o.stage !== "awaiting_payment" && o.stage !== "expired") onPaid(o);
+				setError("");
+				if (o.stage !== "awaiting_payment" && o.stage !== "expired" && !paidRef.current) {
+					paidRef.current = true;
+					onPaid(o);
+				}
 			} catch (err) {
-				if (!off) fail(err);
+				if (signal.aborted || (err instanceof OrderApiError && err.aborted)) return;
+				fail(err);
+				throw err;
 			}
-		}, POLL_MS);
-		return () => {
-			off = true;
-			window.clearInterval(t);
-		};
-	}, [qr, token, invoiceName, onPaid, fail]);
+		},
+		waiting,
+		POLL_MS,
+		{ immediate: false }
+	);
 
 	const copy = async () => {
 		if (!qr) return;
@@ -100,8 +106,6 @@ export default function PaymentView({
 			/* trình duyệt chặn clipboard: khách tự chọn chữ */
 		}
 	};
-
-	const expired = order?.stage === "expired" || left === 0;
 
 	return (
 		<main className="qo-pay">
