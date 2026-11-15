@@ -4,7 +4,7 @@
 > `doctype/mypos_order_qr/` (mã QR), `doctype/sepay/sepay.py` (`_verify_sepay_key`),
 > `api/pos_api.py` (`_pricing_preview` dùng chung), `hooks.py` (`scheduler_events`),
 > `fixtures/custom_field.json` (`order_channel` thêm `QR`, `qr_source`, `guest_session`).
-> Giai đoạn 1 (backend) làm 2026-11-14, **đã test Pass** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Giai đoạn 2 (frontend `/order`) làm 2026-11-14, **chưa test trên bench** (§8).
+> Giai đoạn 1 (backend) làm 2026-11-14, **đã test Pass** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Giai đoạn 2 (frontend `/order`) làm 2026-11-14 (§8): "Đơn của tôi" theo khách + giỏ localStorage **đã test Pass** (`4e9629b`, `fbbc4ac`); phần còn lại chờ test.
 > Self-test bench console: `.claude/docs/order_qr_selftest.py`; lịch sử đơn theo khách + giỏ: `.claude/docs/order_history_selftest.py`
 > (`run_order_history_selftest()`, tự gọi lại bộ cũ).
 

@@ -94,7 +94,7 @@ Hai field độc lập — cả hai là **Custom Field trên `POS Invoice`**:
 
 - `order_type`: `Take Away` | `Dine In`
 - `order_channel`: `POS` (nhân viên nhập tại quầy) | `QR` (khách tự đặt qua web `/order/<token>`,
-  backend đã test Pass 2026-11-14, frontend chưa làm) — xem `.claude/rules/leescoffee_pos/order-qr.md`.
+  backend đã test Pass 2026-11-14, frontend đã code, đang test từng phần) — xem `.claude/rules/leescoffee_pos/order-qr.md`.
 
 Hai kịch bản vận hành của giai đoạn hiện tại:
 
@@ -278,7 +278,9 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       xác thực API key + idempotent + save/submit dưới Administrator. **Đã test Pass** (self-test 65/65;
       `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Rule: `.claude/rules/leescoffee_pos/order-qr.md`
 - [ ] Web đặt món QR giai đoạn 2 (frontend `/order`): đăng nhập, menu + option, giỏ + preview, QR thanh toán,
-      "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen
+      "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen. Đã test Pass từng phần: webhook Draft → Paid
+      (`d563ed8`); "Đơn của tôi" theo khách + giỏ localStorage + Thoát/F5 (self-test `run_order_history_selftest`,
+      `4e9629b`, `fbbc4ac`). Chờ test: giảm request (`a1d75c9`), chip QR màn nhân viên
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
