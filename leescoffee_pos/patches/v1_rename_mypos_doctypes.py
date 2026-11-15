@@ -30,7 +30,8 @@ def _exists(dt):
 
 
 def _count(dt):
-	if not frappe.db.table_exists(dt):
+	# cached=False: sau RENAME TABLE, danh sách bảng cache (client_cache "db_tables") có thể cũ.
+	if not frappe.db.table_exists(dt, cached=False):
 		return None
 	return frappe.db.sql(f"SELECT COUNT(*) FROM `tab{dt}`")[0][0]
 
@@ -112,7 +113,11 @@ def execute():
 		stats = []
 		if _exists(old):
 			before = _count(old)
-			frappe.rename_doc("DocType", old, new, force=True, ignore_permissions=True, show_alert=False)
+			# Chữ ký frappe.rename_doc v16 (frappe/__init__.py): doctype, old, new, force, merge, *,
+			# ignore_if_exists, show_alert, rebuild_search — KHÔNG có ignore_permissions. Migrate chạy dưới
+			# Administrator (DocType.before_rename yêu cầu Administrator; check_developer_mode bỏ qua khi in_patch,
+			# after_rename không dời thư mục khi in_patch). rebuild_search=False: không enqueue job khi migrate.
+			frappe.rename_doc("DocType", old, new, force=True, merge=False, show_alert=False, rebuild_search=False)
 			frappe.db.commit()
 			report.append(f"{old} -> {new}: đã đổi tên, bản ghi trước {before}, sau {_count(new)}")
 		else:
@@ -121,7 +126,7 @@ def execute():
 			_fix_leftovers(old, new, stats)
 		report.extend(stats)
 
-	if frappe.db.table_exists("MYPOS Menu Item"):
+	if frappe.db.table_exists("MYPOS Menu Item", cached=False):
 		stats = []
 		_sql(
 			stats,

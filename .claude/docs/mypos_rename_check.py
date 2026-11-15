@@ -25,7 +25,7 @@ def mypos_rename_count():
 
 	def cnt(old, new):
 		for dt in (old, new):
-			if frappe.db.exists("DocType", dt) and frappe.db.table_exists(dt):
+			if frappe.db.exists("DocType", dt) and frappe.db.table_exists(dt, cached=False):
 				return frappe.db.sql(f"SELECT COUNT(*) FROM `tab{dt}`")[0][0]
 		return None
 
@@ -108,7 +108,7 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 			meta = frappe.db.get_value("DocType", new, ["name", "module", "istable"], as_dict=True)
 			check(f"R2 DocType mới '{new}' có, module Leescoffee POS", bool(meta) and meta.module == "Leescoffee POS", str(meta))
 		check("R2b MYPOS Menu Item là bảng con", frappe.db.get_value("DocType", "MYPOS Menu Item", "istable") == 1)
-		check("R2c Bảng tab cũ không còn", not any(frappe.db.table_exists(o) for o in old_names))
+		check("R2c Bảng tab cũ không còn", not any(frappe.db.table_exists(o, cached=False) for o in old_names))
 
 		# ---------- 2. Số bản ghi trước/sau ----------
 		now = {
@@ -270,12 +270,17 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 			for dt in ("MYPOS Menu", "MYPOS Buzzer"):
 				check(f"R11a {u} ({role}) có quyền Read {dt}", frappe.has_permission(dt, "read", user=u))
 			try:
-				from frappe.desk.desktop import get_desktop_page, get_workspace_sidebar_items
+				# v16: frappe.desk.desktop không có get_workspace_sidebar_items. Workspace(...) ném PermissionError
+				# khi module "Leescoffee POS" không nằm trong allowed_modules của user (đúng lỗi cần bắt).
+				from frappe.desk.desktop import Workspace, get_desktop_page
 
-				pages = as_user(u, get_workspace_sidebar_items)
-				names = {p.get("name") for p in (pages.get("pages") if isinstance(pages, dict) else pages) or []}
-				check(f"R11b {u} thấy workspace leescoffee_pos", "leescoffee_pos" in names)
-				page = as_user(u, get_desktop_page, json.dumps({"name": "leescoffee_pos", "title": "leescoffee_pos"}))
+				pg = {"name": "leescoffee_pos", "title": "leescoffee_pos"}
+				try:
+					ws = as_user(u, Workspace, pg, True)
+					check(f"R11b {u} vào được workspace leescoffee_pos (module được phép, is_permitted)", as_user(u, ws.is_permitted))
+				except frappe.PermissionError:
+					check(f"R11b {u} vào được workspace leescoffee_pos", False, "PermissionError: module không được phép")
+				page = as_user(u, get_desktop_page, json.dumps(pg))
 				links = [l.get("link_to") for c in (page.get("cards") or {}).get("items", []) for l in c.get("links", [])]
 				check(f"R11c {u} thấy 2 link MYPOS Menu + MYPOS Buzzer trong workspace", {"MYPOS Menu", "MYPOS Buzzer"} <= set(links), str(links))
 			except (ImportError, AttributeError, TypeError) as e:
