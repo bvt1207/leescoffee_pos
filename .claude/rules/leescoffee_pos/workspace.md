@@ -101,7 +101,7 @@ File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.jso
 
 - **Quy tắc module:** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
 
-- 1 card "Lee's Coffee Setup" (`link_count: 8`, `modified` 2026-11-15 12:00), thứ tự link: Branch, POS Profile,
+- 1 card "MYPOS Setup" (đổi từ "Lee's Coffee Setup" 2026-11-15; `link_count: 8`, `modified` 2026-11-15 15:00), thứ tự link: Branch, POS Profile,
   POS Opening Entry, POS Closing Entry, MYPOS Menu, MYPOS Buzzer, MYPOS Option Group, MYPOS Order QR.
   Sau migrate: `Workspace Link` của `leescoffee_pos` = **9 dòng** (8 Link + 1 Card Break).
 - 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
