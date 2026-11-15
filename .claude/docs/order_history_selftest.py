@@ -69,6 +69,66 @@ def run_order_history_selftest(branch=None, run_old=True):
 	def names(lst):
 		return {o["invoice_name"]: o.get("group") for o in lst}
 
+	def find_leaks(obj, needles, path="$"):
+		"""Trả [(nhãn, đường dẫn, giá trị)] cho mọi chuỗi trong obj chứa một needle (nhãn -> chuỗi)."""
+		out = []
+		if isinstance(obj, dict):
+			for k, v in obj.items():
+				out += find_leaks(v, needles, f"{path}.{k}")
+		elif isinstance(obj, (list, tuple)):
+			for i, v in enumerate(obj):
+				out += find_leaks(v, needles, f"{path}[{i}]")
+		elif obj is not None:
+			text = str(obj)
+			for label, needle in needles.items():
+				if needle and needle in text:
+					out.append((label, path, text[:80]))
+		return out
+
+	def leak_check(label, data, needles):
+		leaks = find_leaks(data, needles)
+		for lb, pth, val in leaks:
+			print(f"     -> lộ {lb} tại {pth} = {val!r}")
+		check(label, not leaks, f"{len(leaks)} chỗ" if leaks else "")
+
+	def make_temp_branch(name):
+		"""Branch tạm: điền mọi field bắt buộc (custom field như `user`) bằng giá trị hợp lệ."""
+		doc = frappe.new_doc("Branch")
+		doc.branch = name
+		filled = []
+		for df in doc.meta.fields:
+			if not df.reqd or doc.get(df.fieldname) or df.fieldname == "branch":
+				continue
+			val = frappe.db.get_value("Branch", branch, df.fieldname)  # giá trị của Branch thật (hợp lệ sẵn)
+			if not val:
+				if df.fieldtype == "Link":
+					val = admin if df.options == "User" else frappe.db.get_value(df.options, {}, "name")
+				elif df.fieldtype == "Select":
+					val = next((o for o in (df.options or "").split(chr(10)) if o), None)
+				elif df.fieldtype in ("Int", "Float", "Currency", "Check", "Percent"):
+					val = 1
+				elif df.fieldtype == "Date":
+					val = frappe.utils.nowdate()
+				elif df.fieldtype == "Datetime":
+					val = frappe.utils.now_datetime()
+				else:
+					val = "SELFTEST"
+			doc.set(df.fieldname, val)
+			filled.append(f"{df.fieldname}={val}")
+		try:
+			doc.insert(ignore_permissions=True)
+		except Exception as e:
+			# Giá trị copy bị từ chối (vd. field `user` unique: 1 user / 1 branch) -> tạo lại, bỏ kiểm tra bắt buộc.
+			frappe.local.message_log = []
+			print(f"     Branch tạm: điền field bắt buộc bị từ chối ({e!r:.100}) -> ignore_mandatory")
+			doc = frappe.new_doc("Branch")
+			doc.branch = name
+			doc.flags.ignore_mandatory = True
+			doc.insert(ignore_permissions=True)
+			filled.append("ignore_mandatory")
+		print(f"     Branch tạm {name}: {', '.join(filled) or 'không có field bắt buộc thêm'}")
+		return doc.name
+
 	def set_inv(name, **values):
 		frappe.db.set_value("POS Invoice", name, values, update_modified=False)
 
@@ -156,13 +216,21 @@ def run_order_history_selftest(branch=None, run_old=True):
 
 		# ---------------- H2. Cùng phiên ----------------
 		g = names(guest(C.get_my_orders, tok_a))
+		needles_a = {"SĐT": mob_a, "SĐT (9 số cuối)": mob_a[1:], "payment_code đơn 1 (đã trả)": pay["payment_code"],
+			"payment_code đơn 2 (chờ trả)": o2_code}
+		leak_check("H4c get_order đơn đã thanh toán (đúng phiên): không SĐT, không payment_code",
+			guest(C.get_order, tok_a, o1), needles_a)
+		leak_check("H4d get_order đơn chờ thanh toán (đúng phiên): không SĐT, không payment_code (chỉ has_payment_qr)",
+			guest(C.get_order, tok_a, o2), needles_a)
 		check("H2a Cùng phiên: đơn đã trả (active) + đơn chờ thanh toán (active)",
 			g.get(o1) == "active" and g.get(o2) == "active", str(g))
 
 		# ---------------- H3. Đăng xuất + đăng nhập lại ----------------
 		guest(C.logout, tok_a)
 		expect_error("H3a Token cũ sau đăng xuất bị chặn", C.get_my_orders, tok_a, exc=frappe.PermissionError)
-		tok_a2 = guest(C.login, qr.token, mob_a, "Lich Su A")["session_token"]
+		# Tên hiển thị KHÁC tên lúc tạo khách: site đặt tên Customer theo customer_name thì mã Customer = "Lich Su A",
+		# trùng tên hiển thị của phiên đầu -> H4a cũ báo nhầm. Phiên mới dùng tên khác để phân biệt rò rỉ thật.
+		tok_a2 = guest(C.login, qr.token, mob_a, "Ten Hien Thi Moi")["session_token"]
 		lst = guest(C.get_my_orders, tok_a2)
 		g = names(lst)
 		check("H3b Đăng nhập lại: vẫn thấy đơn đã thanh toán", o1 in g, str(g))
@@ -171,10 +239,9 @@ def run_order_history_selftest(branch=None, run_old=True):
 			exc=frappe.DoesNotExistError)
 
 		# ---------------- H4. Dữ liệu tối thiểu ----------------
-		dump = json.dumps(lst, ensure_ascii=False, default=str)
-		check("H4a Không chứa SĐT, mã Customer, payment_code",
-			mob_a not in dump and mob_a[1:] not in dump and cust_a not in dump
-			and pay["payment_code"] not in dump and (o2_code or "§") not in dump)
+		print(f"     (mã Customer A = {cust_a!r}; tên hiển thị phiên mới = 'Ten Hien Thi Moi')")
+		leak_check("H4a get_my_orders phiên mới: không SĐT, mã Customer, payment_code",
+			lst, dict(needles_a, **{"mã Customer": cust_a}))
 		bad_keys = {"payment_code", "mobile", "mobile_number", "customer", "transaction_ref", "sepay_payment_log",
 			"loyalty", "loyalty_points"}
 		check("H4b Không có khóa nhạy cảm, ghi chú rỗng",
@@ -207,16 +274,19 @@ def run_order_history_selftest(branch=None, run_old=True):
 		# ---------------- H9. Mã QR chi nhánh khác ----------------
 		try:
 			other = "SELFTEST-BR-" + frappe.generate_hash(length=6)
-			frappe.get_doc({"doctype": "Branch", "branch": other}).insert(ignore_permissions=True)
+			other = make_temp_branch(other)
 			made["branches"].append(other)
 			qr2 = frappe.get_doc({"doctype": "MYPOS Order QR", "branch": other, "note": "selftest-history"}).insert()
 			made["qr"].append(qr2.name)
 			frappe.local.message_log = []
 			tok_other, _exp = C._issue_session(cust_a, qr2.name, other, "Lich Su A")
-			check("H9a Cùng khách A, mã QR chi nhánh khác -> không thấy đơn", guest(C.get_my_orders, tok_other) == [])
+			other_list = guest(C.get_my_orders, tok_other)
+			check("H9a Cùng khách A, mã QR chi nhánh khác -> không thấy đơn", other_list == [], str(names(other_list)))
+			check("H9b Cùng chi nhánh gốc vẫn thấy đơn 1 (đối chứng)", o1 in names(guest(C.get_my_orders, tok_a2)))
 		except Exception as e:
 			frappe.local.message_log = []
 			check("H9a Không tạo được Branch/mã QR tạm để thử", False, repr(e)[:150])
+			traceback.print_exc()
 
 		# ---------------- H10. Giới hạn tần suất ----------------
 		check("H10a Cấu hình orders_mobile 60/phút, orders_ip 300/phút",
@@ -277,6 +347,7 @@ def run_order_history_selftest(branch=None, run_old=True):
 		for name in made["branches"]:
 			try:
 				frappe.delete_doc("Branch", name, force=True, ignore_permissions=True)
+				print(f"Đã xóa Branch tạm {name}: {not frappe.db.exists('Branch', name)}")
 			except Exception as e:
 				print(f"Chưa dọn được Branch {name}: {e}")
 		frappe.cache.delete_keys("mypos_rl:")
