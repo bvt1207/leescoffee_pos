@@ -4,7 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate, nowdate
 
 
-class LeescoffeeMenu(Document):
+class MYPOSMenu(Document):
     """Quản lý menu và danh sách món dùng cho POS."""
 
     def validate(self):
@@ -202,7 +202,7 @@ class LeescoffeeMenu(Document):
             filters["price_list"] = price_list
 
         menus = frappe.get_all(
-            "Leescoffee Menu",
+            "MYPOS Menu",
             filters=filters,
             fields=["name", "menu_name", "price_list"],
         )
@@ -213,10 +213,10 @@ class LeescoffeeMenu(Document):
 
         for menu in menus:
             menu_items = frappe.get_all(
-                "Leescoffee Menu Item",
+                "MYPOS Menu Item",
                 filters={
                     "parent": menu.name,
-                    "parenttype": "Leescoffee Menu",
+                    "parenttype": "MYPOS Menu",
                     "parentfield": "items",
                 },
                 fields=[
@@ -265,7 +265,7 @@ class LeescoffeeMenu(Document):
                         template_codes.add(code)
 
             # 1 query variants của tất cả template (batch)
-            variants_map = LeescoffeeMenu._get_item_variants_batch(list(template_codes))
+            variants_map = MYPOSMenu._get_item_variants_batch(list(template_codes))
 
             # Gom tất cả item_code cần lấy giá:
             # - Item thường: chính nó
@@ -283,11 +283,11 @@ class LeescoffeeMenu(Document):
                     all_codes.add(code)
 
             # 1 query Item Price cho tất cả item_code
-            price_map = LeescoffeeMenu._get_item_prices(list(all_codes), menu.price_list)
+            price_map = MYPOSMenu._get_item_prices(list(all_codes), menu.price_list)
 
             items_payload = []
             for row_dict in item_rows:
-                payload = LeescoffeeMenu._build_item_payload(
+                payload = MYPOSMenu._build_item_payload(
                     row_dict, price_map, item_info, variants_map
                 )
                 if payload:

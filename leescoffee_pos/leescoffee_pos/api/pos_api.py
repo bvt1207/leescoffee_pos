@@ -25,7 +25,7 @@ ORDER_CHANNEL = "POS"
 WALK_IN = "Walk-in Customer"
 LEVELS = (50, 70, 100)
 KITCHEN_FLOW = ["Chưa làm", "Đã làm", "Đã hoàn thành"]
-# Tên Item Attribute dùng làm size (khớp leescoffee_menu.py).
+# Tên Item Attribute dùng làm size (khớp mypos_menu.py).
 SIZE_ATTRIBUTE = "Size"
 
 # ---------------------------------------------------------------------------
@@ -359,7 +359,7 @@ def _assign_buzzer(profile, buzzer=None):
 	if not buzzer:
 		frappe.throw(_("Đơn tại quán cần chọn thẻ rung."))
 
-	data = frappe.db.get_value("Leescoffee Buzzer", buzzer, ["branch", "status", "buzzer_number"], as_dict=True)
+	data = frappe.db.get_value("MYPOS Buzzer", buzzer, ["branch", "status", "buzzer_number"], as_dict=True)
 	if not data or data.branch != branch:
 		frappe.throw(_("Thẻ rung {0} không thuộc chi nhánh {1}.").format(buzzer, branch))
 	if data.status != "Sẵn sàng":
@@ -379,7 +379,7 @@ def _buzzer_number(buzzer_name):
 	if not buzzer_name:
 		return None
 
-	return frappe.db.get_value("Leescoffee Buzzer", buzzer_name, "buzzer_number")
+	return frappe.db.get_value("MYPOS Buzzer", buzzer_name, "buzzer_number")
 
 
 def _size_labels(item_codes):
@@ -549,9 +549,9 @@ def get_pos_config(branch_name=None):
 @frappe.whitelist()
 def get_menu_items(price_list=None):
 	"""Danh sách menu (nhóm món) để hiển thị trên màn hình chọn món."""
-	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
+	from ..doctype.mypos_menu.mypos_menu import MYPOSMenu
 
-	return LeescoffeeMenu.get_menu_with_items(price_list=price_list)
+	return MYPOSMenu.get_menu_with_items(price_list=price_list)
 
 
 @frappe.whitelist()
@@ -561,7 +561,7 @@ def get_buzzers(branch_name=None):
 	branch = getattr(profile, "branch", None) or branch_name
 
 	buzzers = frappe.get_all(
-		"Leescoffee Buzzer",
+		"MYPOS Buzzer",
 		filters={"branch": branch} if branch else {},
 		fields=["name", "buzzer_number", "status", "branch"],
 		order_by="buzzer_number asc",
@@ -795,7 +795,7 @@ def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_
 	Không gán rate/price_list_rate: set_missing_values chỉ điền field đang trống.
 	Vẫn chặn template và món chưa có giá trong Price List của menu.
 	"""
-	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
+	from ..doctype.mypos_menu.mypos_menu import MYPOSMenu
 
 	invoice = _new_invoice_header(profile, order_type, customer, price_list, mode, order_note)
 
@@ -832,7 +832,7 @@ def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_
 
 		# Lấy rate từ Item Price theo ĐÚNG Price List của menu đang dùng.
 		# Không fallback sang giá khác; không có thì throw nêu tên món và size.
-		rate = LeescoffeeMenu.get_price_for_item(code, price_list)
+		rate = MYPOSMenu.get_price_for_item(code, price_list)
 		if rate is None:
 			frappe.throw(
 				_(

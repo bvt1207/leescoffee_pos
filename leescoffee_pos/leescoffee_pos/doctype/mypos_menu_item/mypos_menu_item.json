@@ -1,8 +1,8 @@
 {
 	"doctype": "DocType",
-	"name": "Leescoffee Menu Item",
+	"name": "MYPOS Menu Item",
 	"module": "Leescoffee POS",
-	"modified": "2026-11-08 16:00:00.000000",
+	"modified": "2026-11-15 12:00:00.000000",
 	"istable": 1,
 	"issingle": 0,
 	"fields": [

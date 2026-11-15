@@ -4,7 +4,7 @@
 #     run_order_qr_selftest("Tên Branch")
 #
 # Điều kiện trước (script chỉ kiểm tra, không tự tạo):
-#   - POS Profile đang bật có branch + selling_price_list; có Leescoffee Menu cùng Price List, món có giá.
+#   - POS Profile đang bật có branch + selling_price_list; có MYPOS Menu cùng Price List, món có giá.
 #   - Có POS Opening Entry đang Open của POS Profile đó (mở ca trên /pos hoặc Desk).
 #   - Branch: sepay_enabled, sepay_va_account, sepay_bank_code, sepay_api_key đã điền.
 #   - Có Mode of Payment loại Bank, có tài khoản mặc định cho Company.
@@ -179,7 +179,7 @@ def run_order_qr_selftest(branch=None):
 		menu = guest(C.get_menu, tok_a)["menus"]
 		items = [it for m in menu for it in m["items"]]
 		check("4a Menu có món", bool(items), f"{len(menu)} menu, {len(items)} món")
-		menus_pl = {r.name for r in frappe.get_all("Leescoffee Menu", filters={"price_list": profile.selling_price_list}, fields=["name"])}
+		menus_pl = {r.name for r in frappe.get_all("MYPOS Menu", filters={"price_list": profile.selling_price_list}, fields=["name"])}
 		check("4b Chỉ menu cùng Price List của POS Profile", {m["name"] for m in menu} <= menus_pl, profile.selling_price_list)
 		check("4c Mỗi món có khóa option_groups", all("option_groups" in it for it in items))
 		check("4d Không lộ price_list trong payload", all("price_list" not in m for m in menu))

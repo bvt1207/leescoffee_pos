@@ -57,7 +57,7 @@
     "fieldname": "buzzer",
     "label": "Thẻ rung",
     "fieldtype": "Link",
-    "options": "Leescoffee Buzzer",
+    "options": "MYPOS Buzzer",
     "insert_after": "custom_kitchen_status",
     "hidden": 0,
     "reqd": 0,

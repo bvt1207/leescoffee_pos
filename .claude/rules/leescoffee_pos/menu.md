@@ -1,11 +1,14 @@
-# Module Rules: Leescoffee Menu / Menu Item — Price Logic
+# Module Rules: MYPOS Menu / Menu Item — Price Logic
 
-> Paths: `leescoffee_pos/leescoffee_pos/doctype/leescoffee_menu/` và `leescoffee_menu_item/`
+> Paths: `leescoffee_pos/leescoffee_pos/doctype/mypos_menu/` và `mypos_menu_item/`
+> Đổi tên 2026-11-15: `Leescoffee Menu` / `Leescoffee Menu Item` / `Leescoffee Buzzer` → `MYPOS Menu` / `MYPOS Menu Item` /
+> `MYPOS Buzzer` (patch `patches/v1_rename_mypos_doctypes.py`, [pre_model_sync], `frappe.rename_doc` + SQL sửa phần sót;
+> có cả tên cũ lẫn mới → dừng, không xóa gì). Module vẫn `Leescoffee POS`. Kiểm tra: `.claude/docs/mypos_rename_check.py`.
 
 ## 1. DocType
 
-- `Leescoffee Menu` (module "Leescoffee POS"): `menu_name`, `price_list` (Link → Price List), `currency` (default VND), `items` (Table → Leescoffee Menu Item).
-- `Leescoffee Menu Item` (child table): `item_code` (Link → Item), `item_name`, `item_type`, `price`, `currency`.
+- `MYPOS Menu` (module "Leescoffee POS"): `menu_name`, `price_list` (Link → Price List), `currency` (default VND), `items` (Table → MYPOS Menu Item).
+- `MYPOS Menu Item` (child table): `item_code` (Link → Item), `item_name`, `item_type`, `price`, `currency`.
 
 ## 2. Price logic (shared between `get_price_for_item()` and `load_item_price()`)
 
@@ -27,4 +30,4 @@
 
 ## 5. get_parent_doc()
 
-- Xử lý cả trường hợp `parent_doc` là weakref (callable) trước khi fallback `frappe.get_doc("Leescoffee Menu", self.parent)`.
+- Xử lý cả trường hợp `parent_doc` là weakref (callable) trước khi fallback `frappe.get_doc("MYPOS Menu", self.parent)`.

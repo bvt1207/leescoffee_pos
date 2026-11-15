@@ -38,17 +38,17 @@ class PosInvoiceHooks:
             and doc.buzzer
         ):
             buzzer_status = frappe.db.get_value(
-                "Leescoffee Buzzer",
+                "MYPOS Buzzer",
                 doc.buzzer,
                 "status",
             )
 
             if buzzer_status == "Sẵn sàng":
-                from leescoffee_pos.leescoffee_pos.doctype.leescoffee_buzzer.leescoffee_buzzer import (
-                    LeescoffeeBuzzer,
+                from leescoffee_pos.leescoffee_pos.doctype.mypos_buzzer.mypos_buzzer import (
+                    MYPOSBuzzer,
                 )
 
-                LeescoffeeBuzzer.set_busy(doc.buzzer, doc.name)
+                MYPOSBuzzer.set_busy(doc.buzzer, doc.name)
 
             elif buzzer_status == "Đang dùng":
                 # Buzzer đã được sử dụng; không tự đổi trạng thái tại đây.
@@ -110,7 +110,7 @@ class PosInvoiceHooks:
             return
 
         buzzer = frappe.get_doc(
-            "Leescoffee Buzzer",
+            "MYPOS Buzzer",
             doc.buzzer,
         )
 
@@ -150,7 +150,7 @@ class PosInvoiceHooks:
             return
 
         buzzer = frappe.get_doc(
-            "Leescoffee Buzzer",
+            "MYPOS Buzzer",
             doc.buzzer,
         )
 
@@ -195,7 +195,7 @@ class PosInvoiceHooks:
             return
 
         buzzer = frappe.get_doc(
-            "Leescoffee Buzzer",
+            "MYPOS Buzzer",
             doc.buzzer,
         )
 
@@ -262,7 +262,7 @@ def get_status_board_orders():
 
         if inv.buzzer:
             buzzer_number = frappe.db.get_value(
-                "Leescoffee Buzzer",
+                "MYPOS Buzzer",
                 inv.buzzer,
                 "buzzer_number",
             )

@@ -146,7 +146,7 @@ doc_events = {
 		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
 		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_cancel",
 	},
-	# Leescoffee Buzzer: validate là native lifecycle method của Document →
+	# MYPOS Buzzer: validate là native lifecycle method của Document →
 	# Frappe tự gọi, không cần đăng ký lại trong doc_events.
 }
 
@@ -234,9 +234,9 @@ scheduler_events = {
 
 fixtures = [
     
-	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Buzzer"]]},
-	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Menu"]]},
-	{"dt": "DocType", "filters": [["name", "=", "Leescoffee Menu Item"]]},
+	{"dt": "DocType", "filters": [["name", "=", "MYPOS Buzzer"]]},
+	{"dt": "DocType", "filters": [["name", "=", "MYPOS Menu"]]},
+	{"dt": "DocType", "filters": [["name", "=", "MYPOS Menu Item"]]},
 	{
 		"dt": "Custom Field",
 		"filters": [

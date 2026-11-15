@@ -2,7 +2,7 @@
 
 > Paths: `leescoffee_pos/leescoffee_pos/doctype/mypos_option_group/` (DocType + `option_resolver.py`),
 > `mypos_option_value/`, `mypos_option_target/` (bảng con), `api/pos_api.py` (`_normalize_items`,
-> `get_order_detail`, `get_kitchen_orders`), `doctype/leescoffee_menu/leescoffee_menu.py`
+> `get_order_detail`, `get_kitchen_orders`), `doctype/mypos_menu/mypos_menu.py`
 > (`get_menu_with_items` thêm `option_groups`). Giai đoạn 1+2 (backend) làm 2026-11-13, đã test Pass; giai đoạn 3 (UI) làm 2026-11-13, đã test Pass (`2f1d629`).
 
 ## 1. Nguyên tắc

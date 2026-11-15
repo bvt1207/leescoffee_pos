@@ -25,7 +25,7 @@
 |---|---|
 | Kênh | `POS Invoice.order_channel = "QR"`, `qr_source` = mã QR, `guest_session` = sid phiên |
 | Chi nhánh | Branch của mã QR → `pos_api._get_pos_profile(branch)` (không dùng user đăng nhập) |
-| Menu | `Leescoffee Menu` có `price_list = POS Profile.selling_price_list` (Menu không có field branch). POS Profile thiếu Price List → không đặt được |
+| Menu | `MYPOS Menu` có `price_list = POS Profile.selling_price_list` (Menu không có field branch). POS Profile thiếu Price List → không đặt được |
 | Ca POS | Cần POS Opening Entry `Open` của POS Profile (bất kỳ thu ngân). Không có → "Quán chưa mở bán". Không tự mở ca |
 | Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (`pos_closing_entry.get_invoices` lọc `owner == user` — đã đọc mã ERPNext 17-dev; chỉ gom POS Invoice khi `POS Settings.invoice_type = "POS Invoice"`; self-test 9a/9b) |
 | Thẻ rung | Đơn QR Dine In **không** có buzzer. Hook/`confirm_pickup` đã bỏ qua khi `buzzer` rỗng |

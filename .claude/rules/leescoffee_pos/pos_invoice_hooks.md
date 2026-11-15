@@ -9,7 +9,7 @@
 | `order_type` | Select: `Take Away` / `Dine In` | Loại đơn hàng |
 | `order_channel` | Select: `POS` | Kênh đặt (hiện tại chỉ POS) |
 | `custom_kitchen_status` | Select: `Chưa làm` / `Đã làm` / `Đã hoàn thành` | Trạng thái pha chế |
-| `buzzer` | Link → `Leescoffee Buzzer` | Thẻ rung (chỉ Dine In) |
+| `buzzer` | Link → `MYPOS Buzzer` | Thẻ rung (chỉ Dine In) |
 | `payment_code` | Data | Mã thanh toán SePay |
 | `payment_status` | Select | Trạng thái thanh toán |
 | `transaction_ref` | Data | Mã tham chiếu giao dịch |
@@ -83,7 +83,7 @@ LIMIT 1
 - **`confirm_pickup`** là static method, không phải native lifecycle — gọi thủ công từ UI/API.
 - **`db_set()`** dùng trong `on_submit` để cập nhật `custom_kitchen_status` ngay trong transaction (tránh pending commit).
 - **`frappe.get_all`** với `limit=1` và `fields=["name"]` để tối  hiệu suất khi kiểm tra đơn khác.
-- **Import trong function** (`from ... import LeescoffeeBuzzer`) để tránh circular import.
+- **Import trong function** (`from ... import MYPOSBuzzer`) để tránh circular import.
 - **`ignore_permissions=True`** khi save buzzer (buzzer update từ hook, không cần permission check).
 - **`method=None`** trong tất cả static methods để tương thích với Frappe hook system.
 

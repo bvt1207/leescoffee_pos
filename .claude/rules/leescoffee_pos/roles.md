@@ -23,8 +23,8 @@ Không cấp Cancel / Delete / Amend.
 | POS Opening Entry | S R W C Sub | — | S R W C Sub |
 | POS Closing Entry | S R W C Sub | — | S R W C Sub |
 | POS Profile | S R | — | S R W C |
-| Leescoffee Menu | R | R | S R W C |
-| Leescoffee Buzzer | R | R | S R W C |
+| MYPOS Menu | R | R | S R W C |
+| MYPOS Buzzer | R | R | S R W C |
 | Account | R | — | S R W C |
 | Customer | R | — | S R W C |
 | Item | R | — | S R W C |
@@ -58,7 +58,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 
 ## 4. Quy tắc module
 
-Mỗi role phải có quyền **Read ít nhất một DocType module `Leescoffee POS`** (Leescoffee Menu/Buzzer)
+Mỗi role phải có quyền **Read ít nhất một DocType module `Leescoffee POS`** (MYPOS Menu/MYPOS Buzzer)
 thì user không phải Administrator mới vào được workspace `leescoffee_pos` (`allowed_modules`).
 Chữ module phải khớp chính xác `Leescoffee POS` (CLAUDE.md §5).
 

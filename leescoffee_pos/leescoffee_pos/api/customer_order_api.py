@@ -231,13 +231,13 @@ def _open_shift(profile, throw=True):
 
 
 def _menu(profile):
-	"""Menu của chi nhánh = Leescoffee Menu có price_list = POS Profile.selling_price_list."""
-	from ..doctype.leescoffee_menu.leescoffee_menu import LeescoffeeMenu
+	"""Menu của chi nhánh = MYPOS Menu có price_list = POS Profile.selling_price_list."""
+	from ..doctype.mypos_menu.mypos_menu import MYPOSMenu
 
 	price_list = profile.get("selling_price_list")
 	if not price_list:
 		frappe.throw(_("Quán chưa cấu hình bảng giá nên chưa đặt món qua QR được."))
-	return price_list, _public_menu(LeescoffeeMenu.get_menu_with_items(price_list=price_list))
+	return price_list, _public_menu(MYPOSMenu.get_menu_with_items(price_list=price_list))
 
 
 def _public_menu(menus):

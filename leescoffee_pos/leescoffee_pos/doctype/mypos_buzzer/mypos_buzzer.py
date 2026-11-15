@@ -3,7 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 
 
-class LeescoffeeBuzzer(Document):
+class MYPOSBuzzer(Document):
 	"""Thẻ rung vật lý cho khách Dine In tại quầy.
 
 	Mỗi thẻ có một số duy nhất trong 1 chi nhánh (branch).
@@ -17,7 +17,7 @@ class LeescoffeeBuzzer(Document):
 	def _validate_unique_buzzer_per_branch(self):
 		"""Đảm bảo không có 2 buzzer có cùng số trong 1 branch."""
 		existing = frappe.db.exists(
-			"Leescoffee Buzzer",
+			"MYPOS Buzzer",
 			{
 				"buzzer_number": self.buzzer_number,
 				"branch": self.branch,
@@ -34,7 +34,7 @@ class LeescoffeeBuzzer(Document):
 	def get_available_buzzer(branch):
 		"""Trả về 1 buzzer 'Sẵn sàng' trong branch, hoặc None nếu không có."""
 		return frappe.db.get_value(
-			"Leescoffee Buzzer",
+			"MYPOS Buzzer",
 			{"status": "Sẵn sàng", "branch": branch},
 			"name",
 		)
@@ -42,7 +42,7 @@ class LeescoffeeBuzzer(Document):
 	@staticmethod
 	def set_busy(buzzer_name, pos_invoice_name):
 		"""Đánh dấu buzzer là 'Đang dùng' và gán cho POS Invoice."""
-		buzzer = frappe.get_doc("Leescoffee Buzzer", buzzer_name)
+		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
 		if buzzer.status != "Sẵn sàng":
 			frappe.throw(
 				_("Buzzer {0} không ở trạng thái Sẵn sàng.").format(buzzer_name)
@@ -53,6 +53,6 @@ class LeescoffeeBuzzer(Document):
 	@staticmethod
 	def set_available(buzzer_name):
 		"""Reset buzzer về 'Sẵn sàng' sau khi đơn xong."""
-		buzzer = frappe.get_doc("Leescoffee Buzzer", buzzer_name)
+		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
 		buzzer.status = "Sẵn sàng"
 		buzzer.save(ignore_permissions=True)

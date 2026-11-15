@@ -4,8 +4,8 @@ from frappe.model.document import Document
 from frappe.utils import getdate, nowdate
 
 
-class LeescoffeeMenuItem(Document):
-    """Child DocType lưu các món thuộc Leescoffee Menu."""
+class MYPOSMenuItem(Document):
+    """Child DocType lưu các món thuộc MYPOS Menu."""
 
     def validate(self):
         self.load_item_details()
@@ -44,11 +44,11 @@ class LeescoffeeMenuItem(Document):
         if not self.parent:
             return None
 
-        if self.parenttype != "Leescoffee Menu":
+        if self.parenttype != "MYPOS Menu":
             return None
 
         try:
-            return frappe.get_doc("Leescoffee Menu", self.parent)
+            return frappe.get_doc("MYPOS Menu", self.parent)
         except frappe.DoesNotExistError:
             return None
 
