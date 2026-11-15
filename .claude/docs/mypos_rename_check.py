@@ -12,11 +12,7 @@
 # Tham số: branch (mặc định Branch của POS Profile đang bật đầu tiên), cashier_user / manager_user
 # (mặc định user đang bật có role tương ứng, không phải Administrator).
 
-OLD_NEW = [
-	("Leescoffee Menu", "MYPOS Menu"),
-	("Leescoffee Menu Item", "MYPOS Menu Item"),
-	("Leescoffee Buzzer", "MYPOS Buzzer"),
-]
+# Mọi hằng đặt TRONG hàm (dán vào console không phụ thuộc biến toàn cục).
 
 
 def mypos_rename_count():
@@ -52,8 +48,18 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 	from leescoffee_pos.leescoffee_pos.api import pos_api as P
 	from leescoffee_pos.patches import v1_create_pos_roles as R
 
+	OLD_NEW = [
+		("Leescoffee Menu", "MYPOS Menu"),
+		("Leescoffee Menu Item", "MYPOS Menu Item"),
+		("Leescoffee Buzzer", "MYPOS Buzzer"),
+	]
+	# Trùng Custom DocPerm của role chuẩn ERPNext trên 2 DocType này có từ 08/11 -> chỉ cảnh báo (WARN).
+	WARN_DUP_ROLES = ("System Manager", "Manager", "Sales User")
+	WARN_DUP_DOCTYPES = ("MYPOS Menu", "MYPOS Buzzer")
+
 	admin = frappe.session.user
 	results = []
+	warns = []
 	new_names = [n for _o, n in OLD_NEW]
 	old_names = [o for o, _n in OLD_NEW]
 
@@ -172,18 +178,30 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 					continue
 				rows = frappe.db.sql(
 					"""SELECT `select`, `read`, `write`, `create` FROM `tabCustom DocPerm`
-					WHERE parent = %s AND role = %s AND permlevel = 0 AND if_owner = 0""",
+					WHERE parent = %s AND role = %s AND permlevel = 0""",
 					(dt, role),
 					as_dict=True,
 				)
 				ok = len(rows) == 1 and all(rows[0].get(p) == 1 for p in perms[dt])
 				check(f"R7 Custom DocPerm {role} / {dt}: đúng 1 dòng, có {perms[dt]}", ok, str(rows))
+		# R7b: trùng theo (parent, role, permlevel), in tên dòng. Role chuẩn ERPNext trên Menu/Buzzer -> WARN.
 		dups = frappe.db.sql(
-			"""SELECT parent, role, COUNT(*) c FROM `tabCustom DocPerm` WHERE parent IN %s
-			GROUP BY parent, role, permlevel, if_owner HAVING c > 1""",
+			"""SELECT parent, role, permlevel, COUNT(*) c,
+				GROUP_CONCAT(name ORDER BY creation, name SEPARATOR ', ') names
+			FROM `tabCustom DocPerm` WHERE parent IN %s
+			GROUP BY parent, role, permlevel HAVING c > 1""",
 			(tuple(new_names),),
+			as_dict=True,
 		)
-		check("R7b Không nhân bản Custom DocPerm", not dups, str(dups))
+		hard = []
+		for d in dups:
+			line = f"{d.parent} / {d.role} / permlevel {d.permlevel}: {d.c} dòng ({d.names})"
+			if d.role in WARN_DUP_ROLES and d.parent in WARN_DUP_DOCTYPES:
+				warns.append(line)
+				print("WARN R7b trùng Custom DocPerm (role chuẩn ERPNext, có từ 08/11): " + line)
+			else:
+				hard.append(line)
+		check("R7b Không nhân bản Custom DocPerm (ngoài các dòng WARN)", not hard, "; ".join(hard))
 
 		# ---------- 6. API màn nhân viên ----------
 		profile_name = None
@@ -197,9 +215,13 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 		check("R8 Có POS Profile đang bật có branch", bool(profile), str(branch))
 
 		if profile:
-			menus = P.get_menu_items(price_list=profile.selling_price_list)
+			menus = P.get_menu_items()
 			items = [it for m in menus for it in m.get("items", [])]
 			check("R8a get_menu_items trả menu có món", bool(items), f"{len(menus)} menu, {len(items)} món")
+			# create_draft_order bắt buộc price_list (_require_price_list): lấy từ get_menu_items()[0]["price_list"].
+			menu_price_list = menus[0].get("price_list") if menus else None
+			items = menus[0].get("items", []) if menus else []
+			check("R8c Menu đầu tiên có price_list", bool(menu_price_list), str(menu_price_list))
 			buzzers = P.get_buzzers(branch)
 			check("R8b get_buzzers chạy, có thẻ của chi nhánh", bool(buzzers), f"{len(buzzers)} thẻ")
 
@@ -211,8 +233,8 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 				limit=1,
 			)
 			free = next((b for b in buzzers if b.get("available")), None)
-			if not opening or not free or not items:
-				print(f"BỎ QUA R9 (tạo đơn Dine In): ca mở={bool(opening)}, thẻ trống={bool(free)}, món={bool(items)}")
+			if not opening or not free or not items or not menu_price_list:
+				print(f"BỎ QUA R9 (tạo đơn Dine In): ca mở={bool(opening)}, thẻ trống={bool(free)}, món menu đầu={bool(items)}, price_list={menu_price_list}")
 			else:
 				cashier = opening[0].user
 				it = items[0]
@@ -224,7 +246,7 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 				cart = [{"item_code": it["sizes"][0]["item_code"], "qty": 1, "options": opts}]
 				inv_name = None
 				try:
-					r = as_user(cashier, P.create_draft_order, json.dumps(cart), "Dine In", branch_name=branch, buzzer=free["name"])
+					r = as_user(cashier, P.create_draft_order, json.dumps(cart), "Dine In", branch_name=branch, price_list=menu_price_list, buzzer=free["name"])
 					inv_name = r["invoice_name"]
 					check("R9a create_draft_order Dine In gán thẻ rung", r.get("buzzer_number") == free["buzzer_number"], f"{inv_name} thẻ {r.get('buzzer_number')}")
 					o = next((x for x in as_user(cashier, P.get_orders, "draft") if x["name"] == inv_name), None)
@@ -320,7 +342,7 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 	finally:
 		frappe.set_user(admin)
 
-	print(f"\nTổng (đổi tên MYPOS): {sum(results)}/{len(results)} PASS")
+	print(f"\nTổng (đổi tên MYPOS): {sum(results)}/{len(results)} PASS, {len(warns)} WARN")
 
 	# ---------- 9. Hai bộ self-test cũ ----------
 	if run_selftests:

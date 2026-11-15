@@ -49,6 +49,9 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
   DocPerm chuẩn → fixture chỉ chứa 3 role sẽ làm role ERPNext khác mất quyền trên site mới; và tên
   dòng fixture khác tên dòng patch tạo → nhân bản. `add_permission` tự `setup_custom_perms` trước.
 - Patch chỉ **bật** cờ đang 0, không tắt cờ nào; quyền người dùng tự thêm được giữ.
+- Chống trùng (2026-11-15): `setup_custom_perms` một lần mỗi DocType; khóa dòng = (parent, role, permlevel 0), khớp
+  `update_permission_property`; dọn trùng giữ dòng cũ nhất, xóa dòng sau chỉ khi mọi cột quyền giống hệt (khác quyền → giữ, in ra).
+  [Unverified] Trùng role chuẩn ERPNext trên Menu/Buzzer có từ 08/11 — trước khi có patch này (12/11); nguyên nhân chưa xác định.
 - Site đang chạy: `patches.txt` [post_model_sync] (chạy 1 lần, ghi Patch Log).
 - Site cài mới: `hooks.after_install` gọi cùng `execute()` (install-app không chạy patch).
 - Muốn áp lại sau khi sửa `PERMS`: đổi nhãn sau `#` của dòng patch trong `patches.txt`
