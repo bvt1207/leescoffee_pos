@@ -973,6 +973,20 @@ button:disabled {
 
 /* ===== Đơn của tôi ===== */
 
+.qo-orders-group + .qo-orders-group {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid var(--pos-border);
+}
+
+.qo-orders-group__title {
+	margin: 0 0 4px;
+}
+
+.qo-empty--sm {
+	padding: 16px 0;
+}
+
 .qo-orders {
 	margin: 0;
 	padding: 0;

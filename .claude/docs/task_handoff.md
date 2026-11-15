@@ -10,6 +10,11 @@
   cấu hình bên SePay khớp key, nếu không mọi webhook bị 403.
 - **Giai đoạn 2 (frontend `/order`) — code xong 2026-11-14, CHỜ VAN TEST.** Chi tiết: `order-qr.md` §8.
   Trang shell tên `mypos_order` (không phải `order` — trùng trang của ERPNext). Build: `npm run build` (cả POS + order).
+- **Sửa hiệu năng `/order`** (debounce preview, poll có điều kiện, `poll.ts`) — `a1d75c9`, chờ Van test.
+- **"Đơn của tôi" lưu theo khách + giỏ localStorage + Thoát/F5** (2026-11-15) — code xong, CHỜ VAN TEST.
+  Backend: `get_my_orders` theo Customer + branch (active/history), `cart_key`, rate `orders_mobile`/`orders_ip`.
+  Frontend: `cart.ts` (lưu giỏ), `OrderApp.tsx`, `MyOrdersPanel.tsx`. Self-test: `.claude/docs/order_history_selftest.py`
+  (`run_order_history_selftest()` — dán `order_qr_selftest.py` trước, hàm tự chạy lại bộ cũ). Rule: `order-qr.md` §3, §4, §8.
 - Tồn đọng: OTP → đổi điểm; Web Push; xem `order-qr.md` §7.
 
 ## 1. Mục tiêu hiện tại

@@ -6,7 +6,8 @@ Tách hẳn khỏi pos_api.py (API nhân viên). Khách KHÔNG có User ERPNext:
 - Mã QR dán tại quán = bản ghi `MYPOS Order QR` (token ngẫu nhiên, gắn Branch, tắt được).
 - Đăng nhập SĐT + tên -> server cấp `session_token` (HMAC-SHA256, có hạn, thu hồi được qua cache).
   Mọi hàm (trừ get_shop, login) bắt buộc token này.
-- Khách chỉ xem đơn có `POS Invoice.guest_session` = sid của phiên mình.
+- "Đơn của tôi" theo KHÁCH (Customer của phiên) + chi nhánh của mã QR + kênh QR, không theo sid,
+  để đơn không mất khi đăng xuất/đăng nhập lại. Đơn chờ thanh toán (có payment_code) chỉ phiên tạo ra nó thấy.
 - Chỉ thanh toán chuyển khoản qua SePay; KHÔNG đổi điểm (chưa có OTP), chỉ xem điểm/hạng.
 - Giá, CTKM, tùy chọn món đều tính lại ở server bằng hàm dùng chung của pos_api.
 
@@ -40,6 +41,11 @@ MAX_OPEN_DRAFTS = 2  # đơn chờ thanh toán còn hạn tối đa mỗi phiên
 MAX_LINES = 30
 MAX_QTY_PER_LINE = 20
 NOTE_MAX = 200
+# "Đơn của tôi": đơn đã thanh toán chưa hoàn thành quá ACTIVE_PAID_HOURS -> chuyển sang Lịch sử (khỏi poll mãi
+# khi nhân viên quên bấm "Đã hoàn thành"). Lịch sử: HISTORY_DAYS ngày gần nhất, tối đa HISTORY_LIMIT đơn.
+ACTIVE_PAID_HOURS = 24
+HISTORY_DAYS = 30
+HISTORY_LIMIT = 30
 
 # bucket -> (số lần, trong bao nhiêu giây)
 RATE_LIMITS = {
@@ -51,6 +57,9 @@ RATE_LIMITS = {
 	"order_ip": (20, 600),
 	"qr_session": (20, 600),
 	"read_session": (120, 60),  # poll 5 giây = 12 lần/phút
+	# get_my_orders (lịch sử theo khách): theo SĐT chặt, theo IP rộng (nhiều khách chung wifi quán).
+	"orders_mobile": (60, 60),
+	"orders_ip": (300, 60),
 }
 
 QR_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
@@ -127,6 +136,12 @@ def _signature(body):
 
 def _sid_key(sid):
 	return f"mypos_guest_sid:{sid}"
+
+
+def _cart_key(customer, qr_name):
+	"""Khóa lưu giỏ ở localStorage theo (khách + mã QR). Mờ (HMAC), không lộ mã Customer/SĐT."""
+	raw = hmac.new(_secret(), f"cart|{customer}|{qr_name}".encode(), hashlib.sha256).digest()
+	return _b64(raw[:12])
 
 
 def _issue_session(customer, qr_name, branch, display_name):
@@ -413,7 +428,9 @@ def _stage(row):
 	return KITCHEN_STAGE.get(row.custom_kitchen_status or "Chưa làm", "queued")
 
 
-def _orders_payload(s, rows):
+def _orders_payload(s, rows, groups=None):
+	"""groups: {invoice_name: "active"|"history"} -> bản tối thiểu cho "Đơn của tôi" (thêm `group`,
+	bỏ ghi chú/kitchen_status). Không bao giờ trả payment_code, SĐT, mã Customer, thông tin SePay."""
 	from ..doctype.mypos_option_group.option_resolver import read_line_options
 
 	if not rows:
@@ -441,13 +458,14 @@ def _orders_payload(s, rows):
 	out = []
 	for r in rows:
 		stage = _stage(r)
+		minimal = groups is not None
 		out.append(
 			{
 				"invoice_name": r.name,
 				"order_type": r.order_type,
 				"stage": stage,
 				"stage_label": _(STAGE_LABELS[stage]),
-				"kitchen_status": r.custom_kitchen_status or "",
+				"kitchen_status": "" if minimal else (r.custom_kitchen_status or ""),
 				"customer_name": s.display_name,
 				"amount": flt(r.rounded_total or r.grand_total),
 				"currency": r.currency,
@@ -455,10 +473,12 @@ def _orders_payload(s, rows):
 				"expires_at": str(_expires_at(r.creation)) if r.docstatus == 0 else None,
 				"expires_in": _expires_in(r.creation) if r.docstatus == 0 else None,
 				"has_payment_qr": bool(r.payment_code) and stage == "awaiting_payment",
-				"order_note": r.order_note or "",
+				"order_note": "" if minimal else (r.order_note or ""),
 				"items": by_parent.get(r.name, []),
 			}
 		)
+		if minimal:
+			out[-1]["group"] = groups.get(r.name, "history")
 	return out
 
 
@@ -521,6 +541,7 @@ def login(qr_token, mobile, customer_name):
 		"session_token": token,
 		"expires_at": exp,
 		"customer_name": name,
+		"cart_key": _cart_key(customer, qr.name),
 		"shop": _shop(qr.branch),
 	}
 
@@ -543,6 +564,7 @@ def get_me(session_token):
 	profile = _profile(s.branch, throw=False)
 	return {
 		"customer_name": s.display_name,
+		"cart_key": _cart_key(s.customer, s.qr),
 		"loyalty": _loyalty_public(s.customer, profile.company) if profile else {"enrolled": False, "redeem_enabled": False},
 		"shop": _shop(s.branch),
 	}
@@ -646,19 +668,62 @@ def create_payment_qr(session_token, invoice_name):
 	}
 
 
+def _mobile_of(customer):
+	"""SĐT của khách (cho giới hạn tần suất theo SĐT); không có thì dùng mã Customer."""
+	return frappe.db.get_value("Customer", customer, "mobile_number") or customer
+
+
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-def get_my_orders(session_token, limit=20):
-	"""Đơn của phiên này (mới nhất trước) để màn 'Đơn của tôi' poll 5 giây."""
+def get_my_orders(session_token, limit=None):
+	"""'Đơn của tôi' theo khách + chi nhánh của mã QR + kênh QR (không theo sid).
+
+	- active: đơn Draft CÒN HẠN của chính phiên này (chỉ phiên tạo đơn thấy đơn chờ thanh toán);
+	  đơn đã thanh toán Chưa làm/Đã làm trong ACTIVE_PAID_HOURS giờ.
+	- history: đơn đã thanh toán còn lại trong HISTORY_DAYS ngày, tối đa HISTORY_LIMIT đơn, mới nhất trước.
+	Draft hết hạn / của phiên khác, đơn trả hàng, đơn chi nhánh khác: không trả.
+	`limit` giữ cho tương thích chữ ký cũ, không dùng.
+	"""
 	s = _session(session_token)
 	_rate("read_session", s.sid)
-	rows = frappe.get_all(
+	_rate("orders_ip", _ip())
+	_rate("orders_mobile", _mobile_of(s.customer))
+
+	qr_names = frappe.get_all("MYPOS Order QR", filters={"branch": s.branch}, pluck="name")
+	if not qr_names:
+		return []
+	now = now_datetime()
+	base = {"customer": s.customer, "order_channel": CHANNEL_QR, "qr_source": ["in", qr_names]}
+
+	drafts = frappe.get_all(
 		"POS Invoice",
-		filters={"guest_session": s.sid, "order_channel": CHANNEL_QR, "docstatus": ["in", [0, 1]]},
+		filters={**base, "docstatus": 0, "guest_session": s.sid,
+			"creation": [">", add_to_date(now, minutes=-PAY_WINDOW_MINUTES)]},
 		fields=_ORDER_FIELDS,
 		order_by="creation desc",
-		limit=min(cint(limit) or 20, 50),
+		limit=MAX_OPEN_DRAFTS * 5,
 	)
-	return _orders_payload(s, rows)
+	paid = frappe.get_all(
+		"POS Invoice",
+		filters={**base, "docstatus": 1, "is_return": 0,
+			"creation": [">=", add_to_date(now, days=-HISTORY_DAYS)]},
+		fields=_ORDER_FIELDS,
+		order_by="creation desc",
+		limit=HISTORY_LIMIT + 50,
+	)
+
+	active_since = add_to_date(now, hours=-ACTIVE_PAID_HOURS)
+	groups, active, history = {}, list(drafts), []
+	for r in drafts:
+		groups[r.name] = "active"
+	for r in paid:
+		is_active = r.custom_kitchen_status != "Đã hoàn thành" and get_datetime(r.creation) >= active_since
+		if is_active:
+			groups[r.name] = "active"
+			active.append(r)
+		elif len(history) < HISTORY_LIMIT:
+			groups[r.name] = "history"
+			history.append(r)
+	return _orders_payload(s, active + history, groups)
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])

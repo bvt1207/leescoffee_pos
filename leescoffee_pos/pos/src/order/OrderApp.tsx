@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notifyReady, unlockAudio } from "./alert";
 import { errorText, OrderApiError, orderApi } from "./api";
-import { cartPayload, useOrderCart } from "./cart";
+import { attachCartStorage, cartPayload, cartStorageKey, discardCart, pruneCart, useOrderCart } from "./cart";
 import BrandHeader from "./components/BrandHeader";
 import CartSheet from "./components/CartSheet";
 import ItemSheet from "./components/ItemSheet";
@@ -34,6 +34,9 @@ function saveAck(qr: string, ids: string[]) {
 		/* ignore */
 	}
 }
+
+/** Nhóm do server chia (get_my_orders.group); thiếu (server cũ) thì suy theo stage. */
+const isActiveOrder = (o: CustomerOrder) => (o.group ? o.group === "active" : isActiveStage(o.stage));
 
 export default function OrderApp() {
 	const qrToken = useMemo(readQrToken, []);
@@ -87,6 +90,8 @@ export default function OrderApp() {
 	}, [qrToken]);
 
 	const expireSession = useCallback(() => {
+		// Phiên hết hạn (không phải Thoát): bỏ giỏ khỏi bộ nhớ nhưng GIỮ bản lưu cho lần đăng nhập lại.
+		attachCartStorage(null);
 		clearSession(qrToken);
 		setSession(null);
 		setMe(null);
@@ -111,7 +116,19 @@ export default function OrderApp() {
 		let off = false;
 		orderApi
 			.getMe(token)
-			.then((m) => !off && setMe(m))
+			.then((m) => {
+				if (off) return;
+				setMe(m);
+				// Phiên lưu từ bản cũ chưa có cartKey -> bổ sung từ get_me.
+				if (m.cart_key) {
+					setSession((cur) => {
+						if (!cur || cur.cartKey === m.cart_key) return cur;
+						const next = { ...cur, cartKey: m.cart_key };
+						saveSession(qrToken, next);
+						return next;
+					});
+				}
+			})
 			.catch((err) => !off && handleError(err));
 		orderApi
 			.getMenu(token)
@@ -129,7 +146,20 @@ export default function OrderApp() {
 		return () => {
 			off = true;
 		};
-	}, [token, handleError, expireSession]);
+	}, [token, qrToken, handleError, expireSession]);
+
+	// Giỏ lưu theo (mã QR + khách). Chưa có khóa (phiên cũ, đang chờ get_me) -> chưa gắn.
+	const cartKey = session?.cartKey || "";
+	useEffect(() => {
+		if (cartKey) attachCartStorage(cartStorageKey(qrToken, cartKey));
+	}, [qrToken, cartKey]);
+
+	// Giỏ khôi phục từ localStorage: bỏ món không còn trong menu (chạy sau khi có cả menu lẫn giỏ đã gắn;
+	// giá luôn do preview tính lại).
+	useEffect(() => {
+		if (!cartKey || !menus.length) return;
+		pruneCart(new Set(menus.flatMap((mn) => mn.items.flatMap((it) => it.sizes.map((sz) => sz.item_code)))));
+	}, [menus, cartKey]);
 
 	// Mở giỏ: tải lại trạng thái quán (mở/đóng ca) + điểm, vì có thể đã đổi từ lúc vào trang.
 	useEffect(() => {
@@ -144,16 +174,16 @@ export default function OrderApp() {
 	// đang xử lý (chờ thanh toán / chưa làm / đã làm), tab đang hiện và không ở màn thanh toán
 	// (PaymentView đã tự poll get_order). Phát hiện chuyển sang "Đã làm" để báo.
 	const refreshOrders = useCallback(
-		async (signal?: AbortSignal) => {
-			if (!token) return;
+		async (signal?: AbortSignal): Promise<CustomerOrder[] | undefined> => {
+			if (!token) return undefined;
 			try {
 				const list = await orderApi.getMyOrders(token, signal);
-				if (signal?.aborted) return;
+				if (signal?.aborted) return undefined;
 				const ack = loadAck(qrToken);
 				let fresh: CustomerOrder | null = null;
 				for (const o of list) {
 					const before = stages.current[o.invoice_name];
-					if (o.stage === "ready" && before !== "ready" && !ack.includes(o.invoice_name)) fresh = o;
+					if (o.stage === "ready" && isActiveOrder(o) && before !== "ready" && !ack.includes(o.invoice_name)) fresh = o;
 					stages.current[o.invoice_name] = o.stage;
 				}
 				// Không đổi gì -> không setState (tránh render lại menu mỗi 5 giây).
@@ -166,11 +196,12 @@ export default function OrderApp() {
 					setReady(fresh);
 					notifyReady();
 				}
+				return list;
 			} catch (err) {
-				if (signal?.aborted || (err instanceof OrderApiError && err.aborted)) return;
+				if (signal?.aborted || (err instanceof OrderApiError && err.aborted)) return undefined;
 				if (err instanceof OrderApiError && err.sessionExpired) {
 					expireSession();
-					return;
+					return undefined;
 				}
 				throw err; // để usePolling giãn nhịp
 			}
@@ -181,11 +212,16 @@ export default function OrderApp() {
 	useEffect(() => {
 		if (!token) return;
 		const ctrl = new AbortController();
-		refreshOrders(ctrl.signal).catch(() => undefined);
+		refreshOrders(ctrl.signal)
+			.then((list) => {
+				// Vào lại (F5 / đăng nhập lại) mà còn đơn đang xử lý -> tự mở "Đơn của tôi" (nếu chưa mở gì khác).
+				if (list?.some(isActiveOrder)) setPanel((p) => (p === "none" ? "orders" : p));
+			})
+			.catch(() => undefined);
 		return () => ctrl.abort();
 	}, [token, refreshOrders]);
 
-	const hasActive = orders.some((o) => isActiveStage(o.stage));
+	const hasActive = orders.some(isActiveOrder);
 	usePolling(refreshOrders, !!token && !paying && hasActive, POLL_MS, { immediate: false });
 
 	const setOrderType = (v: OrderTypeValue) => {
@@ -196,9 +232,10 @@ export default function OrderApp() {
 	};
 
 	const logout = async () => {
+		// Thoát chủ động: thu hồi phiên ở server + xóa giỏ đã lưu. Đơn trên server không bị đụng.
 		if (token) await orderApi.logout(token).catch(() => undefined);
 		clearSession(qrToken);
-		clearCart();
+		discardCart();
 		setSession(null);
 		setMe(null);
 		setOrders([]);
@@ -255,7 +292,12 @@ export default function OrderApp() {
 				shop={shop}
 				notice={loginNotice}
 				onLoggedIn={(r) => {
-					const s: StoredSession = { token: r.session_token, exp: r.expires_at, name: r.customer_name };
+					const s: StoredSession = {
+						token: r.session_token,
+						exp: r.expires_at,
+						name: r.customer_name,
+						cartKey: r.cart_key,
+					};
 					saveSession(qrToken, s);
 					stages.current = {};
 					setShop(r.shop);
@@ -269,7 +311,7 @@ export default function OrderApp() {
 	const brand = (me?.shop || shop).brand;
 	const count = lines.reduce((n, l) => n + l.qty, 0);
 	const subtotal = lines.reduce((n, l) => n + l.qty * l.rate, 0);
-	const active = orders.filter((o) => isActiveStage(o.stage)).length;
+	const active = orders.filter(isActiveOrder).length;
 	const loyalty = me?.loyalty || null;
 
 	return (

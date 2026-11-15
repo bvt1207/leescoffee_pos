@@ -23,6 +23,8 @@ export interface LoginResult {
 	session_token: string;
 	expires_at: number;
 	customer_name: string;
+	/** Khóa mờ (HMAC khách + mã QR) để lưu giỏ ở localStorage. */
+	cart_key: string;
 	shop: Shop;
 }
 
@@ -35,6 +37,7 @@ export interface Loyalty {
 
 export interface Me {
 	customer_name: string;
+	cart_key: string;
 	loyalty: Loyalty;
 	shop: Shop;
 }
@@ -116,6 +119,8 @@ export interface CustomerOrder {
 	has_payment_qr: boolean;
 	order_note: string;
 	items: OrderLine[];
+	/** Chỉ có ở get_my_orders: "active" (Đang xử lý) | "history" (Lịch sử). */
+	group?: "active" | "history";
 }
 
 export interface PaymentQr {

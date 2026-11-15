@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
  * `task` đọc qua ref nên đổi hàm (closure mới mỗi render) KHÔNG khởi động lại vòng poll.
  */
 export function usePolling(
-	task: (signal: AbortSignal) => Promise<void>,
+	task: (signal: AbortSignal) => Promise<unknown>,
 	enabled: boolean,
 	intervalMs: number,
 	{ immediate = true, maxBackoffMs = 30000 }: { immediate?: boolean; maxBackoffMs?: number } = {}

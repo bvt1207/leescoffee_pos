@@ -10,6 +10,8 @@ export interface StoredSession {
 	exp: number; // epoch giây (server)
 	name: string;
 	orderType?: OrderTypeValue;
+	/** Khóa lưu giỏ (server cấp). Phiên cũ chưa có -> lấy từ get_me. */
+	cartKey?: string;
 }
 
 const key = (qrToken: string) => `mypos_order_session:${qrToken}`;
