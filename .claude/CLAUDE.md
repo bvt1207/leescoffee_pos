@@ -40,7 +40,7 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
 - Tên app kỹ thuật hiện tại (`leescoffee_pos`) và App title ("Leescoffee POS") chỉ
   là tên đặt lúc khởi tạo, không bắt buộc đổi ngay — nhưng nếu về sau cần dùng lại
   cho khách hàng khác, nên cân nhắc đổi sang tên trung tính hơn.
-- *Lưu ý: `allow_bulk_edit: 1` đã thêm vào field `items` của Leescoffee Menu (tương tác Download/Upload Frappe).*
+- *Lưu ý: `allow_bulk_edit: 1` đã thêm vào field `items` của MYPOS Menu (tương tác Download/Upload Frappe).*
 
 ## 2. Nền tảng, công nghệ & nguyên tắc kiến trúc
 
@@ -204,7 +204,12 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
 ## 5. Quy ước code & quy tắc tổng quát
 
 - Quy ước chi tiết được lưu trong `.claude/rules/` (xem file cụ thể).
-- Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`, `order_channel`), Title Case cho DocType name (`Leescoffee Buzzer`).
+- Tên DocType, field: tiếng Anh, snake_case cho fieldname (`order_type`, `order_channel`), Title Case cho DocType name (`MYPOS Buzzer`).
+- **Tiền tố DocType mới: `MYPOS`** (2026-11-15): `Leescoffee Menu` / `Leescoffee Menu Item` / `Leescoffee Buzzer` đã đổi
+  thành `MYPOS Menu` / `MYPOS Menu Item` / `MYPOS Buzzer` (patch `v1_rename_mypos_doctypes`, [pre_model_sync], **đã test Pass**:
+  `fb935d7`, `0b35c20`, `c78d4e4`). Giữ module `Leescoffee POS`, package `leescoffee_pos`, tên method API, route.
+  Đổi tên DocType: `frappe.rename_doc` (v16 không có `ignore_permissions`) + SQL sửa phần sót; xóa tay thư mục doctype cũ
+  trên bench trước khi migrate.
 - Mọi DocType mới của app phải chọn đúng `Module = Leescoffee POS`.
 - Business logic đặt trong `leescoffee_pos/leescoffee_pos/doctype/<doctype>/...py` theo đúng convention chuẩn của Frappe.
 - Document Events (before_insert, validate, on_submit...) khai báo tập trung trong `hooks.py`, trỏ tới file logic riêng.
@@ -223,7 +228,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   - Frappe v16 resolve doc_events theo "module.attribute" — KHÔNG reference trực tiếp "module.ClassName.method".
     Giữ class để tổ chức logic, nhưng expose thêm module-level wrapper function cùng tên sự kiện, mỗi hàm chỉ
     gọi lại method tương ứng trên class. hooks.py chỉ reference tới wrapper này.
-  - DocType thuần cấu hình (như Leescoffee Menu Item), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
+  - DocType thuần cấu hình (như MYPOS Menu Item), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
 - Ví dụ trong mục này viết `...PosInvoiceHooks.on_submit` để minh họa đường dẫn đầy đủ;
   `hooks.py` thực tế reference module-level wrapper `...pos_invoice_hooks.on_submit`.
 - **Tên module (đã thống nhất 2026-11-08):** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
@@ -235,8 +240,8 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   `hooks.py` và chạy `bench export-fixtures` để sinh file JSON commit vào git.
   Custom DocType mới hoàn toàn thì **không cần** fixtures.
 - **Hiện trạng `hooks.py` (giữ nguyên, quyết định của Van):** `fixtures` đang export
-  thêm 3 DocType của app (`Leescoffee Buzzer`, `Leescoffee Menu`,
-  `Leescoffee Menu Item`) bên cạnh Custom Field của `POS Invoice`,
+  thêm 3 DocType của app (`MYPOS Buzzer`, `MYPOS Menu`,
+  `MYPOS Menu Item`) bên cạnh Custom Field của `POS Invoice`,
   `POS Invoice Item`, `POS Profile`, `Branch`, `Customer.mobile_number`. Đây là ngoại lệ
   so với nguyên tắc trên — không tự xóa các dòng này.
 - **Role & quyền (2026-11-12):** 3 role `POS CASHIER` / `POS KITCHEN` / `POS MANAGER` qua fixture
@@ -258,14 +263,14 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       mặc định, thông tin thương hiệu dạng cấu hình. **Đã test Pass**. *Đã ngưng dùng
       (2026-11-08): code chỉ đọc Branch; DocType đã xóa (giai đoạn 2, patch
       `v1_remove_pos_settings`) — **Đã test Pass** (`b2e1614`).*
-- [x] `Leescoffee Buzzer` (Custom DocType) + Custom Field trên `POS Invoice`
+- [x] `MYPOS Buzzer` (tên cũ `Leescoffee Buzzer`, Custom DocType) + Custom Field trên `POS Invoice`
       (`order_type`, `order_channel`, `custom_kitchen_status`, `buzzer`). **Đã test Pass**.
 - [x] Branch — thông tin từng chi nhánh, cấu hình SePay riêng theo chi nhánh nếu cần
       (không còn fallback Settings). **Đã test Pass**. Thêm field `company` và bỏ
       phụ thuộc Settings (2026-11-08) — **Đã test Pass** (`1b92c1a`, `b041c8e`).
 - [x] Tích hợp thanh toán SePay tại quầy — sinh VietQR động, xác nhận qua webhook, dùng native ERPNext POS Invoice.payments flow (xóa create_payment_entry())
       **Đã test Pass** (TC1-TC5, duplicate webhook trả về `{success: true, already_processed: true}`)
-- [x] `Leescoffee Menu` + `Leescoffee Menu Item` DocType — chọn Price List, child table
+- [x] `MYPOS Menu` + `MYPOS Menu Item` DocType (tên cũ `Leescoffee Menu` / `Leescoffee Menu Item`) — chọn Price List, child table
       load Item/Item Price tự động, phân biệt Template/Variant, loại Stock/Service theo
       `is_stock_item`. **Đã test Pass**. (Chi tiết logic: `.claude/rules/leescoffee_pos/menu.md`)
 - [x] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số

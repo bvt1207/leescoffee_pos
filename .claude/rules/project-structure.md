@@ -19,6 +19,8 @@ PROJECTPOS/                        # git repo
 │   ├── docs/
 │   │   ├── task_handoff.md        # bàn giao giữa các phiên
 │   │   ├── order_qr_selftest.py   # script bench console tự kiểm tra web đặt món QR
+│   │   ├── order_history_selftest.py  # self-test lịch sử đơn theo khách + giỏ
+│   │   ├── mypos_rename_check.py  # kiểm tra đổi tên MYPOS Menu/Menu Item/Buzzer
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -34,7 +36,8 @@ PROJECTPOS/                        # git repo
     ├── __init__.py
     ├── hooks.py                   # doc_events, website_route_rules (/pos/*), scheduler_events, fixtures
     ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
-    ├── patches.txt, patches/      # v1_remove_pos_settings.py, v1_create_pos_roles.py (post_model_sync)
+    ├── patches.txt, patches/      # v1_rename_mypos_doctypes.py (pre_model_sync); v1_remove_pos_settings.py,
+    │                              # v1_create_pos_roles.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/leescoffee_pos.json
     ├── workspace_sidebar/leescoffee_pos.json
@@ -62,9 +65,9 @@ PROJECTPOS/                        # git repo
         │   └── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
         ├── workspace/leescoffee_pos/leescoffee_pos.json
         └── doctype/
-            ├── leescoffee_buzzer/         # thẻ rung
-            ├── leescoffee_menu/           # menu theo Price List
-            ├── leescoffee_menu_item/      # child table của Menu
+            ├── mypos_buzzer/              # thẻ rung (tên cũ leescoffee_buzzer)
+            ├── mypos_menu/                # menu theo Price List (tên cũ leescoffee_menu)
+            ├── mypos_menu_item/           # child table của Menu (tên cũ leescoffee_menu_item)
             ├── mypos_option_group/        # nhóm tùy chọn món + option_resolver.py
             ├── mypos_option_value/        # bảng con: giá trị tùy chọn
             ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
