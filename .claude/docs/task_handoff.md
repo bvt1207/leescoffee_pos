@@ -55,7 +55,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | CTKM tính theo tổng qty mỗi mã trong hóa đơn (`_apply_rules_on_total_qty`: hóa đơn tạm 1 dòng/mã rồi chép luật sang các dòng thật); không dùng `is_cumulative`/`mixed_conditions`; luật tặng sản phẩm chưa gộp | Đã test (`5b17b6c`) |
 | POS KITCHEN `desk_access = 1` (role.json, `ROLES`, patch `v1_kitchen_desk_access`: bật role + lưu lại user KITCHEN đang Website User); `_require_sale_role` chặn `create_draft_order`/`pay_cash`/`cancel_draft_order` cho role ngoài CASHIER/MANAGER/System Manager/Administrator; self-test cũ bỏ qua ca POS nếu người mở ca thiếu role; script `.claude/docs/kitchen_desk_check.py` | Đã test (`3abc40f`, bench DEV) |
 | Phụ thu topping giai đoạn 1 (backend): `extra_price` hiện trên form (≥ 0), `option_groups`/`options` có giá, `_apply_option_surcharge` = 1 dòng Taxes and Charges kiểu Actual (sau CTKM, idempotent, tài khoản POS Profile → Company), `total_surcharge` ở preview/chi tiết đơn; quy tắc `options.md` §9; script `.claude/docs/surcharge_check.py`. Giai đoạn 2 (UI) chưa làm | Đã test (`c97f685`, bench DEV: script + self-test + đóng ca) |
-| Phụ thu topping giai đoạn 2 (UI `/pos` + `/order`): chip "+giá", giá dòng giỏ gồm phụ thu, dòng "Phụ thu topping" từ preview, Orders/hóa đơn/"Đơn của tôi" kèm giá tùy chọn; Kitchen/tem chỉ tên (`options.md` §9b) | Chờ Van test |
+| Phụ thu topping giai đoạn 2 (UI `/pos` + `/order`): chip "+giá", giá dòng giỏ gồm phụ thu, dòng "Phụ thu topping" từ preview, Orders/hóa đơn/"Đơn của tôi" kèm giá tùy chọn; Kitchen/tem chỉ tên (`options.md` §9b) | Đã test (`cabdabe`, bench DEV) |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 

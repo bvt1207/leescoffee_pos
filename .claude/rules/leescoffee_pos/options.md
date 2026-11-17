@@ -143,7 +143,7 @@ dùng để nhận diện), `tax_amount` = tổng phụ thu, `account_head` = `P
 webhook đơn QR, đổi giá sau bán, hủy Draft + xóa như job dọn đơn QR, mẫu thuế, thiếu tài khoản, mua tặng (tùy chọn).
 Đóng ca: kiểm tra tay (checklist trong báo cáo).
 
-### 9b. UI phụ thu (giai đoạn 2, `pos/src` + `pos/src/order`) — 2026-11-17, chờ test
+### 9b. UI phụ thu (giai đoạn 2, `pos/src` + `pos/src/order`) — 2026-11-17, đã test Pass (`cabdabe`)
 
 - `lib/options.ts`: `valueSurcharge`, `cartUnitSurcharge` (ước tính từ `extra_price` của menu, chỉ hiển thị),
   `lineUnitSurcharge` (từ `price` server lưu), `plusPrice` ("+10.000"); `formatOptions` / `optionParts` /
