@@ -112,7 +112,7 @@ Desk → MYPOS Option Group → New:
   pha chế), CupLabels (tem ly, `Cup.opts`) — đều từ `options` server trả; món không có tùy chọn không in dòng.
 - Đã bỏ: `LEVELS`, `ICE_SUGAR`, `changeIceSugar`, `optsLabel`, CSS `.pos-segmented--sm`, `.pos-cart-line__option*`.
 
-## 9. Phụ thu tùy chọn món (topping) — backend 2026-11-17, chờ test
+## 9. Phụ thu tùy chọn món (topping) — backend 2026-11-17, đã test Pass (`c97f685`, gồm đóng ca)
 
 **Quy tắc:** giá cuối dòng = `rate` sau Pricing Rule + Σ `extra_price` các giá trị đã chọn (× qty dòng).
 Phụ thu **không** bị CTKM giảm, **không** đếm vào qty của luật, **không** cộng cho dòng tặng (`is_free_item`).

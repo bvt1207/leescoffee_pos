@@ -22,6 +22,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── order_history_selftest.py  # self-test lịch sử đơn theo khách + giỏ
 │   │   ├── mypos_rename_check.py  # kiểm tra đổi tên MYPOS Menu/Menu Item/Buzzer
 │   │   ├── kitchen_desk_check.py  # kiểm tra KITCHEN vào Desk + chặn API bán hàng theo role
+│   │   ├── surcharge_check.py     # kiểm tra phụ thu topping (dòng Actual, sau CTKM)
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
