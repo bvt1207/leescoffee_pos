@@ -53,6 +53,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Phân quyền màn POS theo role: `get_pos_config` trả `roles`/`nav`/`kitchen_tabs`/`kitchen_transitions`; `get_kitchen_orders`, `set_kitchen_status` chặn theo role; "Đã hoàn thành" chỉ hôm nay (backend); frontend ẩn menu/tab/nút, KITCHEN tự về `/pos/kitchen` (rule `roles.md` §7) | Đã test (`2be2ae8`) |
 | Tùy chọn món động giai đoạn 1+2 (backend): DocType `MYPOS Option Group`/`Value`/`Target`, Custom Field `POS Invoice Item.options`, quyền; `get_menu_items` trả `option_groups`, `_normalize_items` kiểm tra `options`, `get_order_detail`/`get_kitchen_orders` trả `options` (rule `options.md`). Giai đoạn 3 (UI) chưa làm | Đã test (`12137bd`) |
 | CTKM tính theo tổng qty mỗi mã trong hóa đơn (`_apply_rules_on_total_qty`: hóa đơn tạm 1 dòng/mã rồi chép luật sang các dòng thật); không dùng `is_cumulative`/`mixed_conditions`; luật tặng sản phẩm chưa gộp | Đã test (`5b17b6c`) |
+| POS KITCHEN `desk_access = 1` (role.json, `ROLES`, patch `v1_kitchen_desk_access`: bật role + lưu lại user KITCHEN đang Website User); `_require_sale_role` chặn `create_draft_order`/`pay_cash`/`cancel_draft_order` cho role ngoài CASHIER/MANAGER/System Manager/Administrator; self-test cũ bỏ qua ca POS nếu người mở ca thiếu role; script `.claude/docs/kitchen_desk_check.py` | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 

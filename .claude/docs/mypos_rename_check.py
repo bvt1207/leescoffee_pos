@@ -233,8 +233,12 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 				limit=1,
 			)
 			free = next((b for b in buzzers if b.get("available")), None)
-			if not opening or not free or not items or not menu_price_list:
-				print(f"BỎ QUA R9 (tạo đơn Dine In): ca mở={bool(opening)}, thẻ trống={bool(free)}, món menu đầu={bool(items)}, price_list={menu_price_list}")
+			# create_draft_order / cancel_draft_order cần POS CASHIER / POS MANAGER / System Manager / Administrator.
+			sale_ok = bool(opening) and (opening[0].user == "Administrator" or bool(
+				set(frappe.get_roles(opening[0].user)) & {"POS CASHIER", "POS MANAGER", "System Manager"}))
+			if not opening or not free or not items or not menu_price_list or not sale_ok:
+				print(f"BỎ QUA R9 (tạo đơn Dine In): ca mở={bool(opening)}, thẻ trống={bool(free)}, món menu đầu={bool(items)}, "
+					f"price_list={menu_price_list}, người mở ca có role bán hàng={sale_ok}")
 			else:
 				cashier = opening[0].user
 				it = items[0]

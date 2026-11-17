@@ -8,8 +8,13 @@
 | Role | desk_access | Dùng cho |
 |------|-------------|----------|
 | `POS CASHIER` | 1 | Thu ngân: mở/đóng ca, /pos, Orders |
-| `POS KITCHEN` | 0 | Pha chế: chỉ `/pos/kitchen` (không vào Desk) |
+| `POS KITCHEN` | 1 | Pha chế: vào `/desk`, thấy icon `leescoffee_pos`, bấm POS → `/pos` tự chuyển `/pos/kitchen` |
 | `POS MANAGER` | 1 | Quản lý cửa hàng |
+
+**KITCHEN `desk_access = 1` (quyết định Van, 2026-11-17):** để pha chế đăng nhập và vào màn Pha chế từ Desk
+như các role khác. Quyền vẫn tối thiểu: chỉ Read `MYPOS Menu`, `MYPOS Buzzer`, `MYPOS Option Group` (§2); API bán
+hàng bị chặn ở backend (§8). Site cũ: patch `v1_kitchen_desk_access` bật role lên 1 và lưu lại user có role KITCHEN
+đang là Website User (để thành System User); cài mới: `role.json` + `ROLES` đã là 1.
 
 Role ERPNext gán **kèm** cho user MANAGER (không tạo trong code, gán tay khi tạo user):
 `Auditor`, `Sales User`, `Sales Manager`, `Stock User`.
@@ -114,12 +119,12 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `pos_api.search_customers` | CASHIER, MANAGER |
 | `pos_api.get_customer_loyalty` | CASHIER, MANAGER |
 | `pos_api.create_customer` | CASHIER, MANAGER |
-| `pos_api.create_draft_order` | CASHIER, MANAGER |
+| `pos_api.create_draft_order` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role` — CASHIER, MANAGER, System Manager, Administrator |
 | `pos_api.preview_pricing` | CASHIER, MANAGER |
 | `pos_api.get_orders` | CASHIER, MANAGER |
 | `pos_api.get_order_detail` | KITCHEN, CASHIER, MANAGER (KITCHEN cần để in tem / phiếu pha chế) |
-| `pos_api.pay_cash` | CASHIER, MANAGER |
-| `pos_api.cancel_draft_order` | CASHIER, MANAGER; `force=1` chỉ MANAGER |
+| `pos_api.pay_cash` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role` |
+| `pos_api.cancel_draft_order` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role`; chưa làm: `force=1` chỉ MANAGER |
 | `pos_api.generate_qr` | CASHIER, MANAGER |
 | `pos_api.confirm_pickup` | CASHIER, MANAGER |
 | `pos_api.get_status_board` | KITCHEN, CASHIER, MANAGER |

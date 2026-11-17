@@ -107,6 +107,20 @@ def _require_pos_role(roles):
 		)
 
 
+def _require_sale_role():
+	"""Chỉ thu ngân / quản lý được tạo đơn, thu tiền, hủy đơn.
+
+	Cho phép: POS MANAGER, POS CASHIER, System Manager, Administrator (_pos_roles: hai role sau tính là
+	manager). POS KITCHEN (kể cả khi vào được Desk) bị chặn.
+	"""
+	roles = _pos_roles()
+	if not (roles["manager"] or roles["cashier"]):
+		frappe.throw(
+			_("Bạn không có quyền thực hiện thao tác bán hàng (cần role POS CASHIER hoặc POS MANAGER)."),
+			frappe.PermissionError,
+		)
+
+
 def _get_pos_profile(branch_name=None):
 	"""Trả về POS Profile đang dùng.
 
@@ -675,6 +689,7 @@ def create_draft_order(
 	- redeem_points > 0: đổi điểm thành giảm giá trên Grand Total (xem _apply_redemption).
 	- Pricing Rule (CTKM) do ERPNext tự áp; điểm đổi tối đa tính trên tổng SAU luật.
 	"""
+	_require_sale_role()
 	rows = _normalize_items(items)
 	if not rows:
 		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
@@ -1070,6 +1085,7 @@ def get_order_detail(invoice_name):
 @frappe.whitelist()
 def pay_cash(invoice_name):
 	"""Thu tiền tại quầy: đặt đúng số tiền của đơn rồi submit."""
+	_require_sale_role()
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 
 	if invoice.docstatus != 0:
@@ -1104,6 +1120,7 @@ def cancel_draft_order(invoice_name, force=0):
 	  đơn khách đã chuyển tiền.
 	- Thẻ rung tự được nhả vì _assign_buzzer chỉ xét các POS Invoice còn tồn tại.
 	"""
+	_require_sale_role()
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 
 	if invoice.docstatus != 0:

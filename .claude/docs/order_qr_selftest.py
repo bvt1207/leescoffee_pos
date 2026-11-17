@@ -92,6 +92,13 @@ def run_order_qr_selftest(branch=None):
 		if not shift:
 			print(f"DỪNG: POS Profile {pname} chưa có ca POS đang mở. Mở ca rồi chạy lại.")
 			return
+		# create_draft_order / pay_cash / cancel_draft_order chỉ cho POS CASHIER / POS MANAGER / System Manager /
+		# Administrator (pos_api._require_sale_role, 2026-11-17). Người mở ca thiếu role -> bỏ qua 8k-8o.
+		sale_ok = shift.user == "Administrator" or bool(
+			set(frappe.get_roles(shift.user)) & {"POS CASHIER", "POS MANAGER", "System Manager"})
+
+		class _SkipStaff(Exception):
+			pass
 		api_key = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)
 		try:
 			C._require_sepay(branch)
@@ -282,6 +289,8 @@ def run_order_qr_selftest(branch=None):
 		# [HỒI QUY] dùng LẠI id giao dịch của đơn TA (đã Paid) cho đơn Draft này: trước bản sửa,
 		# nhánh 3c trả already_processed và KHÔNG thanh toán (lỗi LCNH-00279).
 		try:
+			if not sale_ok:
+				raise _SkipStaff()
 			frappe.set_user(shift.user)  # dùng ca đang mở của thu ngân, không mở ca mới
 			try:
 				staff = P.create_draft_order(cart, "Take Away", customer_name=cust_a,
@@ -329,6 +338,9 @@ def run_order_qr_selftest(branch=None):
 			check("8o Đơn đã thu tiền mặt + chuyển khoản -> needs_review, không already_processed, đơn không đổi",
 				r8o.get("needs_review") is True and "already_processed" not in r8o
 				and crow.docstatus == 1 and not crow.transaction_ref, str(r8o)[:150])
+		except _SkipStaff:
+			print(f"BỎ QUA 8k-8o: người mở ca {shift.user} chưa có POS CASHIER / POS MANAGER. "
+				"Gán role cho user này (hoặc mở ca bằng thu ngân) rồi chạy lại.")
 		except Exception:
 			check("8k-8o Lỗi ngoài dự kiến ở luồng POS cũ", False)
 			traceback.print_exc()

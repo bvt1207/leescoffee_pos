@@ -5,7 +5,8 @@ Gọi từ:
 - hooks.after_install            -> site cài mới (install-app không chạy patch).
 
 Idempotent, chỉ BẬT quyền, không bao giờ tắt:
-- Role chưa có -> tạo với desk_access theo ROLES. Role đã có -> KHÔNG đổi desk_access.
+- Role chưa có -> tạo với desk_access theo ROLES. Role đã có -> KHÔNG đổi desk_access
+  (site cũ có POS KITCHEN desk_access = 0: patch riêng v1_kitchen_desk_access bật lên 1).
 - DocType chưa có Custom DocPerm nào -> setup_custom_perms MỘT lần (chép DocPerm chuẩn, role ERPNext
   khác không mất quyền). setup_custom_perms tự bỏ qua nếu đã có.
 - Dọn trùng (parent, role, permlevel): giữ dòng cũ nhất, xóa dòng sau CHỈ khi mọi cột quyền giống hệt.
@@ -21,10 +22,11 @@ CASHIER = "POS CASHIER"
 KITCHEN = "POS KITCHEN"
 MANAGER = "POS MANAGER"
 
-# role -> desk_access (chỉ dùng khi TẠO MỚI role)
+# role -> desk_access (chỉ dùng khi TẠO MỚI role). KITCHEN = 1 từ 2026-11-17: vào /desk, bấm POS
+# -> /pos/kitchen; quyền DocType vẫn tối thiểu (chỉ Read, xem PERMS).
 ROLES = {
 	CASHIER: 1,
-	KITCHEN: 0,
+	KITCHEN: 1,
 	MANAGER: 1,
 }
 

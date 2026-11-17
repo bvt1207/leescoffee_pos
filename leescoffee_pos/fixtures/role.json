@@ -10,7 +10,7 @@
   "doctype": "Role",
   "name": "POS KITCHEN",
   "role_name": "POS KITCHEN",
-  "desk_access": 0,
+  "desk_access": 1,
   "disabled": 0
  },
  {

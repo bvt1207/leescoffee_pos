@@ -7,3 +7,4 @@ leescoffee_pos.patches.v1_rename_mypos_doctypes
 # Patches added in this section will be executed after doctypes are migrated
 leescoffee_pos.patches.v1_remove_pos_settings
 leescoffee_pos.patches.v1_create_pos_roles #2026-11-15 rename-mypos-doctypes
+leescoffee_pos.patches.v1_kitchen_desk_access
