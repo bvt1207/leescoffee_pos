@@ -99,7 +99,7 @@ function OrderCard({ order: o, onPay }: { order: CustomerOrder; onPay: (invoiceN
 
 			<ul className="qo-order__items">
 				{o.items.map((it, i) => {
-					const opts = formatOptions(it.options);
+					const opts = formatOptions(it.options, true);
 					return (
 						<li key={i}>
 							{it.qty}× {it.item_name}

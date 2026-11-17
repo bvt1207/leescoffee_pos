@@ -60,6 +60,29 @@ export function missingRequired(options: CartOption[], groups: OptionGroup[] = [
 	return groups.filter((g) => g.required && !options.some((o) => o.group === g.name));
 }
 
+// ---- Phụ thu (extra_price) — server là nguồn sự thật; hàm dưới chỉ để hiển thị ----
+
+/** Phụ thu mỗi đơn vị của một giá trị theo cấu hình menu (0 nếu không có). */
+export function valueSurcharge(groups: OptionGroup[] = [], group: string, value: string): number {
+	const v = groups.find((g) => g.name === group)?.values.find((x) => x.label === value);
+	return Math.max(0, Number(v?.extra_price) || 0);
+}
+
+/** Phụ thu mỗi đơn vị của dòng giỏ (ước tính từ menu, trước khi có preview). */
+export function cartUnitSurcharge(options: CartOption[], groups: OptionGroup[] = []): number {
+	return options.reduce((sum, o) => sum + valueSurcharge(groups, o.group, o.value), 0);
+}
+
+/** Phụ thu mỗi đơn vị của dòng đơn đã lưu (price snapshot server trả). */
+export function lineUnitSurcharge(options?: LineOption[] | null): number {
+	return (options || []).reduce((sum, o) => sum + Math.max(0, Number(o.price) || 0), 0);
+}
+
+/** "+10.000" (không đơn vị tiền) cho chip / chuỗi tùy chọn. */
+export function plusPrice(amount: number): string {
+	return `+${Math.round(amount).toLocaleString("vi-VN")}`;
+}
+
 /** Gom theo nhóm: [{title, values}] giữ thứ tự xuất hiện. */
 function grouped(list: Array<{ title: string; value: string }>): Array<{ title: string; values: string[] }> {
 	const out: Array<{ title: string; values: string[] }> = [];
@@ -71,20 +94,31 @@ function grouped(list: Array<{ title: string; value: string }>): Array<{ title: 
 	return out;
 }
 
-/** Từng nhóm thành một mẩu "Tên nhóm giá trị[, giá trị]" (dùng cho chip ở màn Pha chế). */
-export function optionParts(options?: LineOption[] | null): string[] {
-	return grouped((options || []).map((o) => ({ title: o.group_title || "", value: o.value })))
+/** Từng nhóm thành một mẩu "Tên nhóm giá trị[, giá trị]" (dùng cho chip ở màn Pha chế).
+ * withPrice: thêm " (+10.000)" sau giá trị có phụ thu (hóa đơn, chi tiết đơn, giỏ). */
+export function optionParts(options?: LineOption[] | null, withPrice = false): string[] {
+	const label = (o: LineOption) =>
+		withPrice && Number(o.price) > 0 ? `${o.value} (${plusPrice(Number(o.price))})` : o.value;
+	return grouped((options || []).map((o) => ({ title: o.group_title || "", value: label(o) })))
 		.map((g) => `${g.title ? `${g.title} ` : ""}${g.values.join(", ")}`.trim())
 		.filter(Boolean);
 }
 
 /** Chuỗi hiển thị cho dòng đơn: "Đường 70% · Đá 50% · Topping Trân châu, Thạch". Rỗng nếu không có. */
-export function formatOptions(options?: LineOption[] | null): string {
-	return optionParts(options).join(" · ");
+export function formatOptions(options?: LineOption[] | null, withPrice = false): string {
+	return optionParts(options, withPrice).join(" · ");
 }
 
 /** Chuỗi tóm tắt cho dòng giỏ (dùng title từ option_groups của món). */
-export function formatCartOptions(options: CartOption[], groups: OptionGroup[] = []): string {
+export function formatCartOptions(options: CartOption[], groups: OptionGroup[] = [], withPrice = false): string {
 	const title = (name: string) => groups.find((g) => g.name === name)?.title || "";
-	return formatOptions(options.map((o) => ({ group: o.group, group_title: title(o.group), value: o.value, price: 0 })));
+	return formatOptions(
+		options.map((o) => ({
+			group: o.group,
+			group_title: title(o.group),
+			value: o.value,
+			price: valueSurcharge(groups, o.group, o.value),
+		})),
+		withPrice
+	);
 }

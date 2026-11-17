@@ -142,3 +142,16 @@ dùng để nhận diện), `tax_amount` = tổng phụ thu, `account_head` = `P
 180.400 / 170.400 (2 dòng vẫn giảm 10%), chọn nhiều, từ chối giá trị tắt/nhóm không áp dụng, idempotent, đổi điểm,
 webhook đơn QR, đổi giá sau bán, hủy Draft + xóa như job dọn đơn QR, mẫu thuế, thiếu tài khoản, mua tặng (tùy chọn).
 Đóng ca: kiểm tra tay (checklist trong báo cáo).
+
+### 9b. UI phụ thu (giai đoạn 2, `pos/src` + `pos/src/order`) — 2026-11-17, chờ test
+
+- `lib/options.ts`: `valueSurcharge`, `cartUnitSurcharge` (ước tính từ `extra_price` của menu, chỉ hiển thị),
+  `lineUnitSurcharge` (từ `price` server lưu), `plusPrice` ("+10.000"); `formatOptions` / `optionParts` /
+  `formatCartOptions` có tham số `withPrice` (mặc định không kèm giá).
+- Chip: giá trị có phụ thu hiện "+giá" (`.pos-optchip__price` ở `/pos`, `.qo-chip__price` ở `/order`).
+- Giỏ (`CartPanel`, `CartSheet`): giá dòng = (giá sau CTKM từ preview, hoặc giá món) + phụ thu × qty; tóm tắt tùy chọn kèm giá;
+  dòng "Phụ thu topping +X" từ `preview.total_surcharge`; tổng tạm khi chưa có preview đã cộng phụ thu. `ItemSheet` hiện
+  giá gồm topping đang chọn. Không thêm request: khóa debounce preview đã gồm `options`.
+- Đơn đã tạo: `Orders` (chi tiết) + `ReceiptModal` (hóa đơn khách): tùy chọn kèm giá, giá dòng gồm phụ thu, dòng
+  "Gồm phụ thu topping" (từ `total_surcharge`, chỉ thông tin — giá dòng đã gồm). `MyOrdersPanel`: tùy chọn kèm giá.
+  `Kitchen`, `CupLabels`, phiếu pha chế: chỉ tên tùy chọn, không giá.

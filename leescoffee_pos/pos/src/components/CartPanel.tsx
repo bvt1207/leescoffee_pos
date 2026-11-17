@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
 import { usePos } from "../lib/pos-context";
-import { formatCartOptions, isSelected, missingRequired, toggleOption } from "../lib/options";
+import { cartUnitSurcharge, formatCartOptions, isSelected, missingRequired, plusPrice, toggleOption, valueSurcharge } from "../lib/options";
 import type { LoyaltyInfo, PricingPreview, PricingPreviewItem } from "../types";
 
 interface Props {
@@ -37,7 +37,8 @@ export default function CartPanel({
 	const { config } = usePos();
 
 	const currency = config?.profile?.currency || "VND";
-	const total = cartTotal(lines);
+	// Tổng tạm (chưa có preview): giá món + phụ thu ước tính từ menu. Số thật lấy từ preview.
+	const total = cartTotal(lines) + lines.reduce((s, l) => s + cartUnitSurcharge(l.options, l.option_groups) * l.qty, 0);
 	const count = cartCount(lines);
 
 	// Đổi điểm Loyalty: mức tối đa và số tiền giảm lấy từ preview (server tính sau CTKM).
@@ -87,7 +88,8 @@ export default function CartPanel({
 						const groups = line.option_groups || [];
 						const missing = missingRequired(line.options, groups);
 						const isOpen = expanded === key;
-						const summary = formatCartOptions(line.options, groups);
+						const summary = formatCartOptions(line.options, groups, true);
+						const unitExtra = cartUnitSurcharge(line.options, groups);
 						const pv = previewFor(idx);
 						const promo = hasPromo(pv) ? pv : undefined;
 						return (
@@ -103,12 +105,12 @@ export default function CartPanel({
 										{promo ? (
 											<>
 												<span className="pos-price-old">
-													{formatMoney(promo.price_list_rate * promo.qty, currency)}
+													{formatMoney((promo.price_list_rate + unitExtra) * promo.qty, currency)}
 												</span>
-												{formatMoney(promo.rate * promo.qty, currency)}
+												{formatMoney((promo.rate + unitExtra) * promo.qty, currency)}
 											</>
 										) : (
-											formatMoney(line.price * line.qty, currency)
+											formatMoney((line.price + unitExtra) * line.qty, currency)
 										)}
 									</div>
 									<button
@@ -194,6 +196,11 @@ export default function CartPanel({
 																}
 															>
 																{v.label}
+																{valueSurcharge(groups, g.name, v.label) > 0 ? (
+																	<span className="pos-optchip__price">
+																		{plusPrice(valueSurcharge(groups, g.name, v.label))}
+																	</span>
+																) : null}
 															</button>
 														);
 													})}
@@ -286,6 +293,12 @@ export default function CartPanel({
 							<div className="pos-redeem__row pos-redeem__row--discount">
 								<span>Khuyến mãi</span>
 								<span>−{formatMoney(preview.total_discount_rules, currency)}</span>
+							</div>
+						) : null}
+						{(preview.total_surcharge ?? 0) > 0 ? (
+							<div className="pos-redeem__row">
+								<span>Phụ thu topping</span>
+								<span>+{formatMoney(preview.total_surcharge ?? 0, currency)}</span>
 							</div>
 						) : null}
 						{preview.loyalty_discount > 0 ? (

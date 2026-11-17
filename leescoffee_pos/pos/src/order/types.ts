@@ -90,6 +90,7 @@ export interface Preview {
 	total_before: number;
 	total_discount_rules: number;
 	loyalty_discount: number;
+	total_surcharge?: number;
 	grand_total: number;
 	loyalty: Loyalty;
 }

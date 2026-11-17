@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { isQrOrder, typeLabel } from "./OrderTypeChip";
-import { formatOptions } from "../lib/options";
+import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { printWithPage } from "../lib/print";
 import { formatMoney } from "../store/cart";
@@ -217,8 +217,9 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 									{isKitchen ? `${it.qty}× ` : ""}
 									{itemTitle(it.item_name, it.size)}
 								</div>
-								{formatOptions(it.options) ? (
-									<div className="pos-receipt__opts">{formatOptions(it.options)}</div>
+								{/* Phiếu pha chế: chỉ tên tùy chọn; hóa đơn khách: kèm phụ thu "(+10.000)". */}
+								{formatOptions(it.options, !isKitchen) ? (
+									<div className="pos-receipt__opts">{formatOptions(it.options, !isKitchen)}</div>
 								) : null}
 								{!isKitchen && itemPromo(it) ? (
 									<div className="pos-receipt__opts">
@@ -229,9 +230,9 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 								{!isKitchen ? (
 									<div className="pos-receipt__row">
 										<span>
-											{it.qty} × {formatMoney(it.rate, "")}
+											{it.qty} × {formatMoney(it.rate + lineUnitSurcharge(it.options), "")}
 										</span>
-										<span>{formatMoney(it.amount, "")}</span>
+										<span>{formatMoney(it.amount + lineUnitSurcharge(it.options) * it.qty, "")}</span>
 									</div>
 								) : null}
 							</div>
@@ -253,6 +254,12 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 									<div className="pos-receipt__row">
 										<span>Khuyến mãi</span>
 										<span>−{formatMoney(promoTotal(order.items), "")}</span>
+									</div>
+								) : null}
+								{(order.total_surcharge ?? 0) > 0 ? (
+									<div className="pos-receipt__row">
+										<span>Gồm phụ thu topping</span>
+										<span>{formatMoney(order.total_surcharge ?? 0, "")}</span>
 									</div>
 								) : null}
 								{(order.discount_amount ?? 0) > 0 ? (

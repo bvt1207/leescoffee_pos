@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { defaultOptions, isSelected, missingRequired, toggleOption } from "../../lib/options";
+import { cartUnitSurcharge, defaultOptions, isSelected, missingRequired, plusPrice, toggleOption, valueSurcharge } from "../../lib/options";
 import type { CartOption } from "../../types";
 import { MAX_LINE_QTY } from "../cart";
 import { money } from "../format";
@@ -55,7 +55,9 @@ export default function ItemSheet({
 				disabled={missing.length > 0}
 				onClick={() => onAdd(sizeIndex, options, qty)}
 			>
-				{missing.length ? `Chọn ${missing[0].title}` : `Thêm · ${money(size.rate * qty, currency)}`}
+				{missing.length
+					? `Chọn ${missing[0].title}`
+					: `Thêm · ${money((size.rate + cartUnitSurcharge(options, item.option_groups)) * qty, currency)}`}
 			</button>
 		</div>
 	);
@@ -108,7 +110,12 @@ export default function ItemSheet({
 										className={`qo-chip ${on ? "is-on" : ""}`}
 										onClick={() => setOptions((o) => toggleOption(o, g, v.label))}
 									>
-										{v.label}
+										<span>{v.label}</span>
+										{valueSurcharge(item.option_groups, g.name, v.label) > 0 ? (
+											<span className="qo-chip__price">
+												{plusPrice(valueSurcharge(item.option_groups, g.name, v.label))}
+											</span>
+										) : null}
 									</button>
 								);
 							})}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatCartOptions } from "../../lib/options";
+import { cartUnitSurcharge, formatCartOptions } from "../../lib/options";
 import { errorText, OrderApiError, orderApi } from "../api";
 import { cartPayload, MAX_LINE_QTY, useOrderCart } from "../cart";
 import { money } from "../format";
@@ -81,7 +81,8 @@ export default function CartSheet({
 
 	const paid = preview ? preview.items.filter((p) => !p.is_free_item) : [];
 	const gifts = preview ? preview.items.filter((p) => p.is_free_item) : [];
-	const fallbackTotal = lines.reduce((s, l) => s + l.rate * l.qty, 0);
+	// Tổng tạm khi chưa có preview: giá món + phụ thu ước tính từ menu (số thật do server tính).
+	const fallbackTotal = lines.reduce((s, l) => s + (l.rate + cartUnitSurcharge(l.options, l.option_groups)) * l.qty, 0);
 	const pts = (preview?.loyalty || loyalty) as Loyalty | null;
 
 	const checkout = async () => {
@@ -137,7 +138,8 @@ export default function CartSheet({
 						{lines.map((l, i) => {
 							const p = paid[i] && paid[i].item_code === l.item_code ? paid[i] : null;
 							const discounted = p && p.rate < p.price_list_rate;
-							const opts = formatCartOptions(l.options, l.option_groups);
+							const opts = formatCartOptions(l.options, l.option_groups, true);
+							const unitExtra = cartUnitSurcharge(l.options, l.option_groups);
 							return (
 								<li key={l.key} className="qo-line">
 									<div className="qo-line__main">
@@ -150,8 +152,10 @@ export default function CartSheet({
 											<div className="qo-line__promo">{p.rules.map((r) => r.title).join(", ")}</div>
 										) : null}
 										<div className="qo-line__price">
-											{discounted ? <s className="qo-line__was">{money(p.price_list_rate * l.qty, currency)}</s> : null}
-											<span>{money((p ? p.rate : l.rate) * l.qty, currency)}</span>
+											{discounted ? (
+												<s className="qo-line__was">{money((p.price_list_rate + unitExtra) * l.qty, currency)}</s>
+											) : null}
+											<span>{money(((p ? p.rate : l.rate) + unitExtra) * l.qty, currency)}</span>
 										</div>
 									</div>
 									<div className="qo-stepper qo-stepper--sm">
@@ -214,6 +218,12 @@ export default function CartSheet({
 									<span>−{money(preview.total_discount_rules, currency)}</span>
 								</div>
 							</>
+						) : null}
+						{preview && (preview.total_surcharge ?? 0) > 0 ? (
+							<div className="qo-summary__row">
+								<span>Phụ thu topping</span>
+								<span>+{money(preview.total_surcharge ?? 0, currency)}</span>
+							</div>
 						) : null}
 						{previewError ? (
 							<div className="qo-alert qo-alert--error" role="alert">

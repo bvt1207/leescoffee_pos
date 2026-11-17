@@ -837,6 +837,19 @@ body {
 	border-color: var(--pos-primary);
 }
 
+/* Phụ thu trên chip tùy chọn ("+10.000") */
+.pos-optchip__price {
+	margin-left: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--pos-text-muted);
+}
+
+.pos-optchip.is-active .pos-optchip__price {
+	color: inherit;
+	opacity: 0.85;
+}
+
 .pos-optchip.is-active {
 	background: var(--pos-primary);
 	border-color: var(--pos-primary);

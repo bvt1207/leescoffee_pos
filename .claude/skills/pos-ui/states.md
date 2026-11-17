@@ -80,6 +80,7 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 #### CartPanel.tsx (CartPanel)
 - Mỗi dòng: tên + size, giá, nút xóa, chip tùy chọn, nút +/− 44px.
 - **Chip tùy chọn** (`lib/options.ts`): "Chọn 1" = chip radio (`role=radio`; nhóm không bắt buộc bấm lại để bỏ chọn, nhóm bắt buộc không bỏ được), "Chọn nhiều" = chip bật/tắt (`role=checkbox`). `.pos-optchip` cao ≥ 44px, active = `--pos-primary`. Nhóm bắt buộc có dấu `*`.
+- **Phụ thu topping**: chip có `extra_price > 0` hiện "+giá" (`.pos-optchip__price`); giá dòng giỏ gồm phụ thu; footer "Phụ thu topping +X" lấy `preview.total_surcharge` (server). Màn pha chế / tem ly chỉ tên, không giá (`options.md` §9b).
 - **Thu gọn/mở**: mỗi lúc chỉ mở chip của 1 dòng (`expanded`); dòng vừa thêm (có nhóm) tự mở; dòng thu gọn hiện `.pos-cart-line__summary` (1 dòng "Đường 70% · Đá 50%", bấm để mở).
 - **Trạng thái thiếu bắt buộc**: dòng `.is-missing` (viền trái `--pos-warning`) + chữ "Chọn {nhóm}"; `POS.tsx` chặn Tạo đơn + nhắc nhẹ.
 - Ghi chú đơn ở footer (`pos-cart__note-label`, `pos-input pos-textarea`).

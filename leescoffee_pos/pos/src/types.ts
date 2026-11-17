@@ -82,6 +82,8 @@ export type SelectionType = "Chọn 1" | "Chọn nhiều";
 export interface OptionValue {
 	label: string;
 	is_default: number;
+	/** Phụ thu mỗi đơn vị (cộng SAU CTKM). Chỉ để hiển thị — số tiền thật do server tính. */
+	extra_price?: number;
 }
 
 export interface OptionGroup {
@@ -171,6 +173,8 @@ export interface OrderDetail {
 	order_note?: string;
 	discount_amount?: number;
 	redeemed_points?: number;
+	/** Phụ thu tùy chọn món đã lưu trên hóa đơn. */
+	total_surcharge?: number;
 }
 
 export interface LoyaltyInfo {
@@ -266,6 +270,8 @@ export interface PricingPreview {
 	total_before: number;
 	total_discount_rules: number;
 	loyalty_discount: number;
+	/** Tổng phụ thu tùy chọn món (dòng "Phụ thu" kiểu Actual, sau CTKM). */
+	total_surcharge?: number;
 	grand_total: number;
 	max_redeem_points: number;
 }

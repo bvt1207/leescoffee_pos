@@ -4,7 +4,7 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
-import { formatOptions } from "../lib/options";
+import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { formatMoney } from "../store/cart";
 import { useSearch } from "../store/search";
 import type { OrderDetail, OrderSummary, QrInfo, StatusBoardRow } from "../types";
@@ -248,18 +248,19 @@ export default function Orders() {
 									<div key={`${it.item_code}-${i}`} className="pos-detail__row pos-detail__row--item">
 										<div className="pos-detail__item-main">
 											<span>{it.item_name}</span>
-											{formatOptions(it.options) ? (
-												<small className="pos-detail__opts">{formatOptions(it.options)}</small>
+											{formatOptions(it.options, true) ? (
+												<small className="pos-detail__opts">{formatOptions(it.options, true)}</small>
 											) : null}
 										</div>
 										<span>x{it.qty}</span>
 										<strong>
 											{itemPromo(it) ? (
 												<span className="pos-price-old">
-													{formatMoney((it.price_list_rate ?? 0) * it.qty, detail.currency)}
+													{formatMoney(((it.price_list_rate ?? 0) + lineUnitSurcharge(it.options)) * it.qty, detail.currency)}
 												</span>
 											) : null}
-											{formatMoney(it.amount, detail.currency)}
+											{/* Giá dòng gồm phụ thu topping (server lưu ở dòng Actual, cộng sau CTKM). */}
+											{formatMoney(it.amount + lineUnitSurcharge(it.options) * it.qty, detail.currency)}
 											{(it.discount_percentage ?? 0) > 0 ? (
 												<span className="pos-promo-chip">−{it.discount_percentage}%</span>
 											) : null}
@@ -272,6 +273,12 @@ export default function Orders() {
 								<div className="pos-detail__row pos-detail__row--promo">
 									<span>Khuyến mãi</span>
 									<span>−{formatMoney(promoTotal(detail.items), detail.currency)}</span>
+								</div>
+							) : null}
+							{(detail.total_surcharge ?? 0) > 0 ? (
+								<div className="pos-detail__row">
+									<span>Gồm phụ thu topping</span>
+									<span>{formatMoney(detail.total_surcharge ?? 0, detail.currency)}</span>
 								</div>
 							) : null}
 							{(detail.discount_amount ?? 0) > 0 ? (
