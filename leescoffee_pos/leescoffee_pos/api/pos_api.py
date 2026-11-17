@@ -526,6 +526,9 @@ def _apply_redemption(invoice, customer, company, redeem_points):
 	invoice.discount_amount = redeem * info["conversion_factor"]
 	invoice.redeemed_points = redeem
 	invoice.calculate_taxes_and_totals()
+	# Gốc đổi điểm = Grand Total sau luật + phụ thu (dòng Actual). Không cho tổng âm.
+	if flt(invoice.grand_total) < 0:
+		frappe.throw(_("Số điểm đổi vượt tổng tiền đơn ({0} {1}).").format(pre_total, invoice.currency))
 
 # ---------------------------------------------------------------------------
 # API giao diện
@@ -792,6 +795,7 @@ def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_poi
 		"total_before": total_before,
 		"total_discount_rules": total_before - flt(invoice.total),
 		"loyalty_discount": flt(invoice.discount_amount),
+		"total_surcharge": flt(_invoice_surcharge(invoice)),
 		"grand_total": flt(invoice.grand_total),
 		"max_redeem_points": info["max_redeem_points"] if info else 0,
 	}
@@ -868,6 +872,8 @@ def _build_invoice(profile, rows, order_type, customer, price_list, mode, order_
 	# CTKM theo TỔNG qty mỗi mã trong hóa đơn (cùng món tách dòng vì khác tùy chọn).
 	_apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list, mode)
 	invoice.calculate_taxes_and_totals()
+	# Phụ thu tùy chọn món (topping): cộng SAU CTKM, một dòng Taxes and Charges kiểu Actual.
+	_apply_option_surcharge(invoice, profile)
 	return invoice
 
 
@@ -913,6 +919,81 @@ _RULE_FIELDS = (
 	"pricing_rules", "discount_percentage", "discount_amount", "rate",
 	"margin_type", "margin_rate_or_amount", "rate_with_margin",
 )
+
+
+# ---------------------------------------------------------------------------
+# Phụ thu tùy chọn món (MYPOS Option Value.extra_price) — 2026-11-17
+# ---------------------------------------------------------------------------
+# Nhận diện dòng phụ thu trong bảng taxes: charge_type Actual + mô tả cố định (không thêm Custom Field).
+SURCHARGE_DESCRIPTION = "Phụ thu tùy chọn món"
+
+
+def _invoice_surcharge(invoice):
+	"""Tổng phụ thu = Σ qty × phụ thu mỗi đơn vị (snapshot trong JSON options), bỏ dòng tặng."""
+	from ..doctype.mypos_option_group.option_resolver import line_surcharge
+
+	return sum(
+		flt(row.qty) * line_surcharge(row.get("options"))
+		for row in invoice.items
+		if not cint(row.get("is_free_item"))
+	)
+
+
+def _is_surcharge_row(tax):
+	return tax.charge_type == "Actual" and (tax.description or "") == SURCHARGE_DESCRIPTION
+
+
+def _surcharge_account(profile):
+	"""Tài khoản doanh thu cho dòng phụ thu: POS Profile.income_account -> Company.default_income_account."""
+	account = profile.get("income_account") or frappe.db.get_value(
+		"Company", profile.company, "default_income_account"
+	)
+	if not account:
+		frappe.throw(
+			_(
+				"Chưa cấu hình tài khoản doanh thu cho phụ thu tùy chọn món: điền Income Account ở POS Profile {0} "
+				"hoặc Default Income Account của công ty {1}."
+			).format(profile.name, profile.company)
+		)
+	return account
+
+
+def _apply_option_surcharge(invoice, profile):
+	"""Cộng phụ thu tùy chọn món vào ĐÚNG MỘT dòng Taxes and Charges kiểu Actual (sau CTKM).
+
+	- Idempotent: gọi nhiều lần không nhân đôi (luôn tính lại từ JSON options, cập nhật dòng cũ).
+	- Tổng = 0 -> xóa dòng phụ thu cũ nếu có (đơn không topping có giá: số liệu như trước).
+	- Dòng Actual không chịu thuế % của mẫu thuế; không bị Pricing Rule giảm; Grand Total gồm phụ thu
+	  nên đổi điểm (giảm trên Grand Total) tính trên tổng sau luật + phụ thu.
+	- ERPNext không tính lại số tiền của dòng Actual khi save/submit, nên phụ thu không bị ghi đè.
+	"""
+	total = flt(_invoice_surcharge(invoice), invoice.precision("grand_total"))
+	others = [t for t in invoice.get("taxes") or [] if not _is_surcharge_row(t)]
+	existing = [t for t in invoice.get("taxes") or [] if _is_surcharge_row(t)]
+
+	if total <= 0:
+		if existing:
+			invoice.set("taxes", others)
+			for i, t in enumerate(invoice.taxes, 1):
+				t.idx = i
+			invoice.calculate_taxes_and_totals()
+		return
+
+	row = existing[0] if existing else None
+	if row is None:
+		row = invoice.append("taxes", {"charge_type": "Actual", "description": SURCHARGE_DESCRIPTION})
+	row.account_head = _surcharge_account(profile)
+	row.cost_center = row.cost_center or profile.get("cost_center") or frappe.db.get_value(
+		"Company", profile.company, "cost_center"
+	)
+	row.rate = 0
+	row.included_in_print_rate = 0
+	row.tax_amount = total
+	if len(existing) > 1:  # dọn bản trùng (nếu có) — giữ một dòng
+		invoice.set("taxes", others + [row])
+	for i, t in enumerate(invoice.taxes, 1):
+		t.idx = i
+	invoice.calculate_taxes_and_totals()
 
 
 def _apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list, mode):
@@ -1079,6 +1160,8 @@ def get_order_detail(invoice_name):
 		"order_note": invoice.get("order_note") or "",
 		"discount_amount": flt(invoice.discount_amount),
 		"redeemed_points": int(flt(invoice.get("redeemed_points"))),
+		# Phụ thu tùy chọn món đã lưu trên hóa đơn (dòng Taxes and Charges kiểu Actual).
+		"total_surcharge": flt(sum(flt(t.tax_amount) for t in invoice.get("taxes") or [] if _is_surcharge_row(t))),
 	}
 
 

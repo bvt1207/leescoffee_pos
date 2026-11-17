@@ -2,7 +2,7 @@
   "doctype": "DocType",
   "name": "MYPOS Option Value",
   "module": "Leescoffee POS",
-  "modified": "2026-11-13 09:00:00.000000",
+  "modified": "2026-11-17 10:00:00.000000",
   "istable": 1,
   "issingle": 0,
   "fields": [
@@ -39,8 +39,10 @@
       "label": "Phụ thu",
       "fieldtype": "Currency",
       "default": "0",
-      "hidden": 1,
-      "description": "Chưa dùng (task phụ thu topping làm sau)."
+      "hidden": 0,
+      "in_list_view": 1,
+      "non_negative": 1,
+      "description": "Cộng SAU CTKM, nhân theo số lượng dòng (không bị giảm giá, không cộng cho ly tặng). 0 = không phụ thu."
     }
   ],
   "permissions": []

@@ -54,6 +54,7 @@ không hardcode branding — lấy từ `get_pos_config` → `get_brand_info()`)
 | Tùy chọn món động giai đoạn 1+2 (backend): DocType `MYPOS Option Group`/`Value`/`Target`, Custom Field `POS Invoice Item.options`, quyền; `get_menu_items` trả `option_groups`, `_normalize_items` kiểm tra `options`, `get_order_detail`/`get_kitchen_orders` trả `options` (rule `options.md`). Giai đoạn 3 (UI) chưa làm | Đã test (`12137bd`) |
 | CTKM tính theo tổng qty mỗi mã trong hóa đơn (`_apply_rules_on_total_qty`: hóa đơn tạm 1 dòng/mã rồi chép luật sang các dòng thật); không dùng `is_cumulative`/`mixed_conditions`; luật tặng sản phẩm chưa gộp | Đã test (`5b17b6c`) |
 | POS KITCHEN `desk_access = 1` (role.json, `ROLES`, patch `v1_kitchen_desk_access`: bật role + lưu lại user KITCHEN đang Website User); `_require_sale_role` chặn `create_draft_order`/`pay_cash`/`cancel_draft_order` cho role ngoài CASHIER/MANAGER/System Manager/Administrator; self-test cũ bỏ qua ca POS nếu người mở ca thiếu role; script `.claude/docs/kitchen_desk_check.py` | Đã test (`3abc40f`, bench DEV) |
+| Phụ thu topping giai đoạn 1 (backend): `extra_price` hiện trên form (≥ 0), `option_groups`/`options` có giá, `_apply_option_surcharge` = 1 dòng Taxes and Charges kiểu Actual (sau CTKM, idempotent, tài khoản POS Profile → Company), `total_surcharge` ở preview/chi tiết đơn; quy tắc `options.md` §9; script `.claude/docs/surcharge_check.py`. Giai đoạn 2 (UI) chưa làm | Chờ Van test |
 
 Commit đồng bộ: `475127a` (API), `084a317` (frontend), `993066e` (skill pos-ui), `59a576b` (rule thẻ rung).
 
@@ -166,15 +167,6 @@ Kiểm tra type: trong `pos/` chạy `../../node_modules/.bin/tsc --noEmit -p . 
 Quyết định đang chờ cho refactor: (1) bỏ `board` + `getStatusBoard` trong Orders; (2) bỏ alert lỗi
 hiện 2 lần ở POS; (3) Modal chung giữ nguyên hành vi hay đồng nhất Esc/khóa cuộn/focus;
 (4) backend `get_pos_config` thiếu `user` → menu người dùng không hiện (task backend riêng).
-
-## 3b. Task sau: phụ thu topping (CHƯA làm)
-- Việc cần làm: (1) sửa logic "giá phải khớp Price List" trong `_build_invoice` / `get_price_for_item` để cho phép
-  cộng phụ thu; (2) chốt cộng phụ thu **trước hay sau** CTKM (Pricing Rule); (3) tương tác với đổi điểm loyalty
-  (điểm tối đa tính trên tổng có phụ thu?); (4) test topping có giá (preview, tạo đơn, hóa đơn in, đóng ca).
-- Câu hỏi chưa chốt: (a) topping là `MYPOS Option Value` (`extra_price`) hay **Item riêng** (tồn kho, giá,
-  báo cáo); (b) vị trí hiển thị UI (chip trong giỏ hay bước chọn riêng); (c) topping có tính vào luật số lượng
-  của CTKM không.
-- Field `MYPOS Option Value.extra_price` đã có (ẩn, mặc định 0), backend đang bỏ qua.
 
 ## 4. Quyết định đang chờ Van
 - Phân quyền các API `pos_api` còn lại theo role (`frappe.only_for`) — đề xuất từng hàm ở `rules/leescoffee_pos/roles.md` §8, chưa làm.

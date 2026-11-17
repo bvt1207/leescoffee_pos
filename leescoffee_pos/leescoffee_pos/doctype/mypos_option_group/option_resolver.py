@@ -7,7 +7,8 @@ Quy tắc (xem .claude/rules/leescoffee_pos/options.md):
   cùng độ cụ thể thì dòng Loại trừ thắng.
 - Giữa các nhóm: hai nhóm trùng `title` hoặc trùng `legacy_field` (khác none) thì chỉ giữ nhóm có
   target cụ thể hơn (cùng độ cụ thể: sort_order nhỏ hơn, rồi tên).
-- Không có phụ thu: extra_price bị bỏ qua, price luôn 0.
+- Phụ thu (2026-11-17): price = extra_price lấy từ DB lúc bán (không tin client), snapshot vào JSON options;
+  pos_api._apply_option_surcharge cộng tổng vào một dòng Taxes and Charges kiểu Actual (SAU CTKM).
 
 Cache: chỉ cache CẤU HÌNH nhóm (xóa khi lưu/xóa Option Group). Cây Item Group và Item Group của
 món đọc mỗi lần (gom truy vấn) để đổi nhóm hàng có hiệu lực ngay.
@@ -19,7 +20,7 @@ import re
 import frappe
 from frappe import _
 
-CACHE_KEY = "mypos_option_config"
+CACHE_KEY = "mypos_option_config_v2"  # v2: cấu hình có extra_price (khóa mới để bỏ cache cũ)
 LEGACY_FIELDS = ("sugar_level", "ice_level")
 LEGACY_VALUES = ("50", "70", "100")  # options của Custom Field Select cũ
 
@@ -56,7 +57,7 @@ def _load_config():
 		values = frappe.get_all(
 			"MYPOS Option Value",
 			filters={"parent": ["in", names], "parenttype": "MYPOS Option Group", "enabled": 1},
-			fields=["parent", "label", "is_default", "sort_order", "idx"],
+			fields=["parent", "label", "is_default", "sort_order", "idx", "extra_price"],
 			order_by="parent asc, sort_order asc, idx asc",
 		)
 		targets = frappe.get_all(
@@ -79,7 +80,9 @@ def _load_config():
 		for g in groups
 	}
 	for v in values:
-		by_group[v.parent]["values"].append({"label": v.label, "is_default": int(v.is_default or 0)})
+		by_group[v.parent]["values"].append(
+			{"label": v.label, "is_default": int(v.is_default or 0), "extra_price": max(0.0, float(v.extra_price or 0))}
+		)
 	for t in targets:
 		by_group[t.parent]["targets"].append(
 			{
@@ -220,14 +223,17 @@ def item_names(item_codes):
 
 
 def public_groups(groups):
-	"""Payload cho frontend (không có extra_price, không có targets)."""
+	"""Payload cho frontend: có extra_price (phụ thu hiển thị), không có targets."""
 	return [
 		{
 			"name": g["name"],
 			"title": g["title"],
 			"selection_type": g["selection_type"],
 			"required": g["required"],
-			"values": [{"label": v["label"], "is_default": v["is_default"]} for v in g["values"]],
+			"values": [
+				{"label": v["label"], "is_default": v["is_default"], "extra_price": v.get("extra_price", 0.0)}
+				for v in g["values"]
+			],
 		}
 		for g in groups
 	]
@@ -304,9 +310,11 @@ def validate_line_options(raw, groups, item_label):
 		if not chosen:
 			continue
 		order = [v["label"] for v in g["values"]]
+		price_of = {v["label"]: float(v.get("extra_price") or 0) for v in g["values"]}
 		chosen.sort(key=order.index)
 		for v in chosen:
-			options.append({"group": g["name"], "group_title": g["title"], "value": v, "price": 0})
+			# price = phụ thu MỖI ĐƠN VỊ lấy từ cấu hình lúc bán (snapshot), không lấy từ client.
+			options.append({"group": g["name"], "group_title": g["title"], "value": v, "price": price_of.get(v, 0.0)})
 		if g["legacy_field"]:
 			legacy[g["legacy_field"]] = _legacy_number(chosen[0])
 	return options, legacy
@@ -323,6 +331,24 @@ def _legacy_number(label):
 # ---------------------------------------------------------------------------
 
 
+def _num(v):
+	try:
+		return max(0.0, float(v or 0))
+	except (TypeError, ValueError):
+		return 0.0
+
+
+def line_surcharge(options_json):
+	"""Phụ thu MỖI ĐƠN VỊ của một dòng = tổng price trong JSON options đã lưu (snapshot lúc bán)."""
+	if not options_json:
+		return 0.0
+	try:
+		parsed = json.loads(options_json) or []
+	except Exception:
+		return 0.0
+	return sum(_num(o.get("price")) for o in parsed if isinstance(o, dict))
+
+
 def read_line_options(options_json, sugar_level=None, ice_level=None):
 	"""options đã lưu; JSON rỗng mà cột cũ có giá trị thì dựng từ cột cũ (chỉ đọc)."""
 	parsed = []
@@ -337,7 +363,7 @@ def read_line_options(options_json, sugar_level=None, ice_level=None):
 				"group": o.get("group"),
 				"group_title": o.get("group_title") or "",
 				"value": o.get("value") or "",
-				"price": 0,
+				"price": _num(o.get("price")),
 			}
 			for o in parsed
 			if isinstance(o, dict)

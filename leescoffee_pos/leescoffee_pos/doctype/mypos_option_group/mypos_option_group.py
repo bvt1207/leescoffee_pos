@@ -37,6 +37,8 @@ class MYPOSOptionGroup(Document):
 				frappe.throw(_("Nhãn '{0}' bị trùng trong nhóm '{1}'.").format(label, self.title))
 			seen.add(key)
 			row.label = label
+			if (row.extra_price or 0) < 0:
+				frappe.throw(_("Phụ thu của '{0}' trong nhóm '{1}' không được âm.").format(label, self.title))
 
 		defaults = [r for r in self.values if r.is_default and r.enabled]
 		if self.selection_type == "Chọn 1" and len(defaults) > 1:
