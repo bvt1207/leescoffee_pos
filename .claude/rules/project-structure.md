@@ -21,6 +21,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── order_qr_selftest.py   # script bench console tự kiểm tra web đặt món QR
 │   │   ├── order_history_selftest.py  # self-test lịch sử đơn theo khách + giỏ
 │   │   ├── mypos_rename_check.py  # kiểm tra đổi tên MYPOS Menu/Menu Item/Buzzer
+│   │   ├── kitchen_desk_check.py  # kiểm tra KITCHEN vào Desk + chặn API bán hàng theo role
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -37,7 +38,7 @@ PROJECTPOS/                        # git repo
     ├── hooks.py                   # doc_events, website_route_rules (/pos/*), scheduler_events, fixtures
     ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
     ├── patches.txt, patches/      # v1_rename_mypos_doctypes.py (pre_model_sync); v1_remove_pos_settings.py,
-    │                              # v1_create_pos_roles.py (post_model_sync)
+    │                              # v1_create_pos_roles.py, v1_kitchen_desk_access.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/leescoffee_pos.json
     ├── workspace_sidebar/leescoffee_pos.json
