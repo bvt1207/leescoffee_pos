@@ -55,10 +55,10 @@ PROJECTPOS/                        # git repo
     │   └── src/
     │       ├── main.tsx, App.tsx, types.ts
     │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub)
-    │       ├── components/        # AppHeader, MenuGrid, SizeModal, CartPanel,
-    │       │                      # CustomerPicker, BuzzerPicker, QrModal,
+    │       ├── components/        # AppHeader, MenuGrid (tab Item Group), SizeModal + ItemModalFrame,
+    │       │                      # CartPanel + OptionChips (chip tùy chọn), CustomerPicker, BuzzerPicker, QrModal,
     │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly)
-    │       ├── store/             # cart.ts, search.ts (zustand)
+    │       ├── store/             # cart.ts, search.ts, menuFilter.ts (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm)
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee POS"
