@@ -74,6 +74,8 @@ export interface MenuItem {
 	sizes?: MenuSize[];
 	/** Nhóm tùy chọn (MYPOS Option Group) server đã giải quyết cho món; variant dùng chung của template. */
 	option_groups?: OptionGroup[];
+	/** Item Group của món (template -> nhóm của template); dùng cho tab lọc ở lưới món. */
+	item_group?: string | null;
 }
 
 // ---- Tùy chọn món động (MYPOS Option) — không hardcode tên nhóm/giá trị ----

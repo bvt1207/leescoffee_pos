@@ -511,53 +511,81 @@ body {
 	gap: 14px;
 }
 
-.pos-chips {
+/* Tab nhóm món (Item Group): cuộn ngang, dính dưới header (64px) khi cuộn lưới. */
+.pos-menu-tabs {
+	position: sticky;
+	top: 64px;
+	z-index: 5;
 	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.pos-chip {
-	min-height: 44px;
-	padding: 0 16px;
-	border-radius: 999px;
-	border: 1px solid var(--pos-border);
-	background: var(--pos-bg);
-	color: var(--pos-text);
-	font: inherit;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.pos-chip:hover {
+	gap: 6px;
+	margin: -4px -4px 0;
+	padding: 6px 4px;
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scrollbar-width: none;
 	background: var(--pos-surface);
 }
 
-.pos-chip.is-active {
-	color: var(--pos-primary);
-	border-color: var(--pos-primary);
-	background: var(--pos-primary-disabled);
+.pos-menu-tabs::-webkit-scrollbar {
+	display: none;
 }
 
+.pos-menu-tab {
+	flex: none;
+	min-height: 44px;
+	padding: 0 16px;
+	border: 1px solid var(--pos-border);
+	border-radius: 999px;
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.pos-menu-tab:hover {
+	border-color: var(--pos-primary);
+}
+
+.pos-menu-tab.is-active {
+	background: var(--pos-primary);
+	border-color: var(--pos-primary);
+	color: var(--pos-primary-contrast);
+}
+
+.pos-menu-tab:focus-visible,
+.pos-menu-card:focus-visible {
+	outline: 2px solid var(--pos-primary);
+	outline-offset: 2px;
+}
+
+/* Lưới món: thẻ cao đồng đều 170px = ảnh 110px + tên 2 dòng. */
 .pos-menu-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	grid-auto-rows: 170px;
 	gap: 12px;
 }
 
 .pos-menu-card {
 	display: flex;
 	flex-direction: column;
-	text-align: left;
+	height: 170px;
 	padding: 0;
+	text-align: left;
 	background: var(--pos-bg);
 	color: var(--pos-text);
 	border: 1px solid var(--pos-border);
-	border-radius: var(--pos-radius);
+	border-radius: 12px;
 	overflow: hidden;
 	cursor: pointer;
 	font: inherit;
-	transition: border-color .15s, box-shadow .15s, transform .1s;
+	/* Danh sách dài: trình duyệt bỏ qua dựng thẻ ngoài màn hình. */
+	content-visibility: auto;
+	contain-intrinsic-size: auto 170px;
+	transition: border-color .15s, box-shadow .15s;
 }
 
 .pos-menu-card:hover:not(:disabled) {
@@ -566,7 +594,8 @@ body {
 }
 
 .pos-menu-card:active:not(:disabled) {
-	transform: scale(.98);
+	border-color: var(--pos-primary-active);
+	box-shadow: inset 0 0 0 1px var(--pos-primary-active);
 }
 
 .pos-menu-card:disabled {
@@ -574,38 +603,46 @@ body {
 	cursor: not-allowed;
 }
 
+/* Ảnh: khung vuông 110px giữa nền trung tính. */
 .pos-menu-card__media {
 	position: relative;
-	aspect-ratio: 1 / 1;
+	display: flex;
+	flex: none;
+	justify-content: center;
+	height: 110px;
 	background: var(--pos-surface);
 }
 
+.pos-menu-card__media img,
+.pos-menu-card__placeholder {
+	height: 110px;
+	aspect-ratio: 1 / 1;
+}
+
 .pos-menu-card__media img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
 	display: block;
+	object-fit: cover;
 }
 
 .pos-menu-card__placeholder {
 	display: grid;
 	place-items: center;
-	height: 100%;
+	background: var(--pos-surface-alt);
 	font-size: 32px;
 	font-weight: 700;
 	color: var(--pos-text-muted);
 }
 
-.pos-menu-card__chip {
+/* Chấm báo món có size / tùy chọn (bấm sẽ mở bảng chọn). */
+.pos-menu-card__dot {
 	position: absolute;
 	top: 8px;
 	right: 8px;
-	padding: 2px 8px;
-	font-size: 12px;
-	font-weight: 600;
-	border-radius: 999px;
-	background: var(--pos-chip-on-media);
-	color: var(--pos-text);
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--pos-primary);
+	box-shadow: 0 0 0 2px var(--pos-chip-on-media);
 }
 
 .pos-menu-card__qty {
@@ -623,14 +660,16 @@ body {
 }
 
 .pos-menu-card__name {
-	padding: 10px 12px 12px;
+	display: -webkit-box;
+	margin: auto 0;
+	padding: 6px 10px;
+	font-size: 14px;
 	font-weight: 600;
 	line-height: 1.3;
-	min-height: 3.4em;
-	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 
 /* ===== Cart — thiết lập đơn, khách hàng, giỏ hàng, thanh tạo đơn ===== */
@@ -1905,13 +1944,19 @@ button.pos-cart-line__main:hover {
 	color: var(--pos-text-muted);
 }
 
-.pos-modal--size {
+/* Bảng chọn món (ItemModalFrame: SizeModal, OptionModal): đầu cố định, thân cuộn, chân cố định.
+   Giá luôn ở cột phải: hàng size và hàng giá ở chân thẳng một cột. */
+.pos-modal--item {
+	display: flex;
+	flex-direction: column;
 	width: min(480px, 100%);
+	max-height: calc(100dvh - 32px);
 	background: var(--pos-bg);
 }
 
 .pos-size-head {
 	display: flex;
+	flex: none;
 	align-items: center;
 	gap: 14px;
 	padding: 16px;
@@ -1941,10 +1986,8 @@ button.pos-cart-line__main:hover {
 }
 
 .pos-size-head__hint {
-	font-size: 12px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: .6px;
+	font-size: 13px;
+	font-weight: 600;
 	color: var(--pos-text-muted);
 }
 
@@ -1952,72 +1995,118 @@ button.pos-cart-line__main:hover {
 	margin: 2px 0 0;
 	font-size: 18px;
 	line-height: 1.25;
+	overflow-wrap: anywhere;
 }
 
-.pos-size-body {
-	padding: 16px;
+.pos-item-modal__body {
+	flex: 1;
+	min-height: 0;
+	padding: 8px 16px 16px;
+	overflow-y: auto;
 }
 
-.pos-size-list {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+.pos-item-modal__foot {
+	display: flex;
+	flex: none;
+	flex-direction: column;
 	gap: 10px;
+	padding: 12px 16px 16px;
+	border-top: 1px solid var(--pos-border);
+	background: var(--pos-surface);
 }
 
-.pos-size-card {
+/* Hàng size: nhãn trái, giá phải. */
+.pos-size-rows {
 	display: flex;
 	flex-direction: column;
+}
+
+.pos-size-row,
+.pos-item-modal__price-row {
+	display: flex;
 	align-items: center;
-	justify-content: center;
-	gap: 4px;
-	min-height: 84px;
-	padding: 10px;
-	font: inherit;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.pos-size-row {
+	min-height: 56px;
+	padding: 0 12px;
+	border: 0;
+	border-bottom: 1px solid var(--pos-border);
+	background: transparent;
 	color: var(--pos-text);
-	background: var(--pos-bg);
-	border: 1.5px solid var(--pos-border);
-	border-radius: var(--pos-radius);
+	font: inherit;
+	text-align: left;
 	cursor: pointer;
-	transition: border-color .15s, background .15s, transform .1s;
 }
 
-.pos-size-card:hover:not(:disabled) {
-	border-color: var(--pos-primary);
-	background: var(--pos-primary-disabled);
+.pos-size-row:last-child {
+	border-bottom: 0;
 }
 
-.pos-size-card:active:not(:disabled) {
-	transform: scale(.97);
+.pos-size-row:hover:not(:disabled) {
+	background: var(--pos-surface);
+	box-shadow: inset 3px 0 0 var(--pos-primary);
 }
 
-.pos-size-card:focus-visible {
+.pos-size-row:focus-visible {
 	outline: 2px solid var(--pos-primary);
-	outline-offset: 2px;
+	outline-offset: -2px;
 }
 
-.pos-size-card__label {
-	font-size: 22px;
-	font-weight: 800;
-	line-height: 1;
-}
-
-.pos-size-card__price {
-	font-size: 14px;
+.pos-size-row__label {
+	min-width: 0;
+	font-size: 17px;
 	font-weight: 700;
+	overflow-wrap: anywhere;
+}
+
+.pos-size-row__price,
+.pos-item-modal__price {
+	flex: none;
+	font-size: 16px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
 	color: var(--pos-primary);
 }
 
-.pos-size-card__price--none {
-	font-size: 12px;
+.pos-size-row.is-disabled {
+	cursor: not-allowed;
+	opacity: .55;
+}
+
+.pos-size-row.is-disabled .pos-size-row__price {
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--pos-text-muted);
 }
 
-.pos-size-card--disabled {
-	opacity: .55;
-	cursor: not-allowed;
-	background: var(--pos-surface);
-	border-style: dashed;
+.pos-item-modal__price-row {
+	padding: 0 12px;
+}
+
+.pos-item-modal__hint {
+	min-width: 0;
+	font-size: 13px;
+	color: var(--pos-text-muted);
+}
+
+.pos-item-modal__hint.is-warn {
+	font-weight: 700;
+	color: var(--pos-warning);
+}
+
+.pos-item-modal__price {
+	font-size: 18px;
+}
+
+.pos-optgroups--modal {
+	margin-top: 0;
+}
+
+.pos-optgroups--modal .pos-optgroup {
+	grid-template-columns: 80px minmax(0, 1fr);
 }
 
 .pos-confirm {
@@ -2404,10 +2493,6 @@ button.pos-cart-line__main:hover {
 
 	.pos-header__kbd {
 		display: none;
-	}
-
-	.pos-menu-grid {
-		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	}
 }
 

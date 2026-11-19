@@ -3,6 +3,13 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0b. Lưới món /pos + tab Item Group (2026-11-19) — CHỜ VAN TEST
+- Backend tối thiểu (Van duyệt): `mypos_menu.py` thêm khóa `item_group` vào payload món (cùng truy vấn Item đã có). /order không nhận khóa này (`_public_menu`).
+- Frontend: `MenuGrid.tsx` (tab nhóm sticky, tìm toàn bộ, thẻ ảnh + tên + chấm), `SizeModal.tsx` (hàng giá), mới `ItemModalFrame.tsx`,
+  `OptionModal.tsx`, `OptionChips.tsx` (CartPanel dùng chung), `store/menuFilter.ts`; `types.ts`, `global.css`.
+- Hành vi mới: món 1 size có tùy chọn mở `OptionModal` thay vì thêm thẳng giỏ. Chi tiết: skill `pos-ui`, `rules/leescoffee_pos/menu.md` §6–7.
+- `npx tsc --noEmit` sạch; chưa thử trên trình duyệt.
+
 ## 0a. Làm gọn Cart Panel /pos (2026-11-19, chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`3077eec`)
 - Sửa `pos/src/components/CartPanel.tsx`, `pos/src/pages/POS.tsx`, `pos/src/styles/global.css`. Không đổi backend, logic giỏ/giá/CTKM/điểm/topping.
 - Dòng món thu gọn (tóm tắt 1 dòng + stepper + giá), 1 dòng mở chip, bấm ngoài thu; chip gọn (mặt 30px, vùng chạm 44px);

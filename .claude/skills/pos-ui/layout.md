@@ -23,7 +23,7 @@
 │  ┌──────────────────────────────┬──────────────────────────────────┐ │
 │  │ Lưới món (grid auto-fill)    │ [Giỏ hàng - Cart sticky]         │ │
 │  │ [Thẻ món: ảnh vuông, tên,    │ - Loại đơn: Tại quán / Mang đi   │ │
-│  │  chip "N size", badge qty]   │ - Tên khách                      │ │
+│  │  chấm size/tùy chọn, xN]     │ - Tên khách                      │ │
 │  │ Cả thẻ bấm, không nút phụ    │ - Phương thức thanh toán         │ │
 │  │ Món 1 size: thêm thẳng giỏ   │ - Dòng món gọn (VÙNG CUỘN DUY    │ │
 │  │ Món nhiều size: mở SizeModal │   NHẤT): tên+size/tóm tắt, giá/± │ │
@@ -36,8 +36,17 @@
 
 - Header: trắng (`--pos-surface`), viền dưới mảnh (`--pos-border`), cao 64px. Trái: logo + tên + địa chỉ từ `usePos().config.brand`. Giữa: ô tìm món + phím tắt `Ctrl K` (đọc/ghi qua `store/search.ts`). Phải: điều hướng Bán món/Đơn hàng + menu tài khoản (Chuyển sang Desk `/desk`, Xóa bộ nhớ đệm, Đăng xuất).
 - Body: lưới món chiếm cột trái, giỏ hàng cột phải (sticky). Loại đơn, tên khách, thanh toán chuyển lên đầu giỏ (`.pos-order-setup`).
-- Chip lọc menu (`.pos-chip`) + chip lọc từ khóa tìm (qua `useSearch`).
-- Thẻ món (`MenuCard`): nút bấm toàn thẻ, ảnh vuông (`pos-menu-card__media`), tên luôn hiển thị 2 dòng, chip "N size", badge số lượng. Không hiển thị giá. Món 1 size (label rỗng) thêm thẳng giỏ; nhiều size mở `SizeModal`; size `rate=null` mờ, không chọn được.
+- Lưới món (2026-11-19): tab nhóm `.pos-menu-tabs` (sticky `top: 64px`, cuộn ngang): "Tất cả" + Item Group theo thứ tự
+  xuất hiện trong menu + "Khác" (món không có `item_group`) cuối; tab sinh từ món có thật (không tab rỗng); ≤ 1 nhóm → ẩn thanh tab.
+  Tab nhớ trong `store/menuFilter.ts` (giữ khi chuyển trang). Ô tìm Ctrl K tìm trên toàn bộ món bất kể tab; bấm tab khi đang tìm → xóa từ khóa.
+- Thẻ món (`MenuCard`): nút bấm toàn thẻ, cao đồng đều 170px (`grid-auto-rows`), lưới `repeat(auto-fill, minmax(140px, 1fr))` gap 12px,
+  bo 12px; ảnh khung vuông 110px (`object-fit: cover`, `loading="lazy"`, `decoding="async"`) trên nền trung tính, không ảnh = chữ cái đầu;
+  tên 14px semibold tối đa 2 dòng (`title` đủ tên); badge `xN`; chấm `.pos-menu-card__dot` khi có size hoặc tùy chọn. **Không hiển thị giá.**
+  `content-visibility: auto` cho danh sách dài. Hover / nhấn / focus: viền `--pos-primary`.
+- Bấm thẻ: nhiều size → `SizeModal` (bấm hàng size = thêm ngay, tùy chọn mặc định); 1 size có `option_groups` → `OptionModal` (chọn
+  tùy chọn, giá ở chân, "Thêm vào giỏ"); 1 size không tùy chọn → thêm thẳng; 1 size `rate=null` → thẻ mờ.
+- Bảng chọn món dùng chung `ItemModalFrame` (đầu ảnh + tên + ×, thân cuộn, chân cố định); giá luôn ở cột phải
+  (`.pos-size-row__price` / `.pos-item-modal__price`, `tabular-nums`).
 - Giỏ hàng (làm gọn 2026-11-19):
   - Cột phải `.pos-page__side` cao `calc(100dvh - 98px)` (header 64 + đệm), sticky; `.pos-order-setup` cố định, `.pos-cart` flex 1.
     Trong giỏ chỉ `.pos-cart__lines` cuộn (**một vùng cuộn duy nhất**); header giỏ (có "Xoá giỏ") và `.pos-cart__footer` không cuộn.
@@ -114,11 +123,14 @@ src/
 │   └── search.ts          # zustand: keyword để phân trang / lọc món
 ├── components/
 │   ├── AppHeader.tsx      # Header + NavLink pha chế + ô tìm trang (đổi theo trang)
-│   ├── MenuGrid.tsx       # Chip filter menu + lưới món (MenuCard + SizeModal)
+│   ├── MenuGrid.tsx       # Tab nhóm (Item Group) + lưới món (MenuCard → SizeModal / OptionModal)
+│   ├── ItemModalFrame.tsx # Khung chung bảng chọn món (đầu, thân cuộn, chân giá)
+│   ├── OptionModal.tsx    # Món 1 size có tùy chọn: chip + giá + Thêm vào giỏ
+│   ├── OptionChips.tsx    # Chip tùy chọn dùng chung (giỏ + OptionModal)
 │   ├── CartPanel.tsx      # Giỏ hàng: lines, chip tùy chọn (lib/options.ts), ghi chú, tổng
 │   ├── CustomerPicker.tsx # Tìm khách + tạo mới (debounced search, dropdown)
 │   ├── QrModal.tsx        # Hiển thị QR thanh toán
-│   ├── SizeModal.tsx      # Modal chọn size (ảnh, tên, lưới size)
+│   ├── SizeModal.tsx      # Chọn size: hàng "nhãn …… giá"
 │   └── PaymentModal.tsx    # Stub - thanh toán (khởi tạo sau, theo ràng buộc dự án)
 ├── pages/
 │   ├── POS.tsx            # Chọn món, tạo đơn (loại đơn, khách, MOP, priceList)
@@ -156,8 +168,8 @@ Routes:
 **Luồng xử lý:**
 1. Page load → fetch `get_pos_config` + `get_menu_items` (qua PosContext)
 2. User chọn loại đơn (segmented: Tại quán / Mang đi)
-3. User gõ tìm kiếm hoặc chọn chip menu → lọc món
-4. User bấm thẻ món → nếu 1 size: thêm thẳng giỏ; nếu nhiều size: mở SizeModal
+3. User gõ tìm kiếm (toàn bộ món) hoặc chọn tab nhóm → lọc món
+4. User bấm thẻ món → 1 size không tùy chọn: thêm thẳng giỏ; nhiều size: SizeModal; 1 size có tùy chọn: OptionModal
 5. User chọn size → thêm vào cart
 6. Ở giỏ: chọn chip tùy chọn (mặc định chọn sẵn; nhóm bắt buộc chưa chọn chặn Tạo đơn), nhập ghi chú đơn (footer × `orderNote` → lưu `order_note`) — đã triển khai trên backend.
 7. User bấm "Tạo đơn" → `create_draft_order({price_list})` → chuyển `/pos/orders?draft=<name>` + xóa cart
@@ -237,7 +249,7 @@ Routes:
 | Component | Gọi API | Phản hồi |
 |---|---|---|
 | AppHeader.tsx | `getPosConfig()` (qua PosContext) | `{ brand, branch, profile, payment_modes }` |
-| MenuGrid.tsx | `getMenuItems()` (qua PosContext) | `[{ name, price_list, items: [{ name, sizes: [{ label, item_code, rate }] }] }]` |
+| MenuGrid.tsx | `getMenuItems()` (qua PosContext) | `[{ name, price_list, items: [{ name, image, item_group, sizes: [{ label, item_code, rate }], option_groups }] }]` |
 | POS.tsx | `createDraftOrder()` | `{ invoice_name, grand_total, qty_sum, buzzer_number }` |
 | Orders.tsx | `getOrders("draft"|"paid")` | `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` |
 | Orders.tsx (Kitchen tab rút) | `getOrders("paid")` | chỉ trả `[{ name, customer_name, amount, status, order_type, buzzer_number, custom_kitchen_status, payment_status, creation }]` — Pha chế bây giờ ở Kitchen.tsx riêng |

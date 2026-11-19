@@ -69,13 +69,19 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - Giữa: ô tìm món (`pos-header__search-input`) + phím tắt `Ctrl K`; đọc/ghi qua `store/search.ts`.
 - Phải: điều hướng Bán món/Đơn hàng (`pos-navlink`) + menu tài khoản (`pos-user`) — Chuyển sang Desk `/desk`, Xóa bộ nhớ đệm, Đăng xuất.
 
-#### MenuGrid.tsx (kèm MenuCard + SizeModal)
-- Chip lọc menu (`.pos-chip`, `pos-chip--is-active`) + chip lọc từ khóa tìm.
-- `MenuCard`: toàn bộ thẻ là `button`, ảnh vuông (`pos-menu-card__media`), tên luôn hiện 2 dòng, chip "N size", badge số lượng. Không hiển thị giá.
-- Món 1 size (label rỗng): thêm thẳng giỏ, không mở modal.
-- Món nhiều size: mở `SizeModal`.
-- Size `rate=null`: thẻ mờ (`pos-size-card--disabled`), không chọn được.
-- `SizeModal`: `role="dialog"`, `aria-modal`, ảnh + tên ở đầu, lưới thẻ size lớn, tiền tệ từ `config.profile.currency`, Esc đóng.
+#### MenuGrid.tsx (kèm MenuCard, SizeModal, OptionModal)
+- Tab nhóm `.pos-menu-tab` (`role="tab"`, `aria-selected`, `.is-active`), khóa tab = `item_group`, `NO_GROUP` = "Khác",
+  `ALL_GROUPS` = "Tất cả" (`store/menuFilter.ts`). Tab đã nhớ không còn trong menu → hiển thị "Tất cả". Không có tên nhóm cứng.
+- Có từ khóa tìm → lọc toàn bộ món, tab hiện "Tất cả"; bấm tab → `setSearch("")` rồi đổi tab.
+- `MenuCard`: toàn bộ thẻ là `button` (`title` = tên), ảnh/chữ cái đầu, tên 2 dòng, badge `xN`, chấm `.pos-menu-card__dot`
+  (`aria-label` "Có size" / "Có tùy chọn"). Không hiển thị giá.
+- 1 size không tùy chọn: thêm thẳng giỏ. Nhiều size: `SizeModal`. 1 size có `option_groups`: `OptionModal`. 1 size `rate=null`: thẻ mờ.
+- `ItemModalFrame`: `role="dialog"`, `aria-modal`, Esc / nền để đóng, khóa cuộn trang, focus nút ×; `onClose` giữ trong ref (effect chạy 1 lần).
+  Modal chỉ render khi mở (OptionModal khởi tạo lại `defaultOptions` mỗi lần mở).
+- `SizeModal`: hàng `.pos-size-row` (nhãn trái, giá phải), size `rate=null` → `.is-disabled` "Chưa có giá". Bấm hàng = thêm ngay.
+- `OptionModal`: `OptionChips` + chân: hàng giá (giá món + `cartUnitSurcharge`, chỉ ước tính; giá thật do preview ở giỏ) + nút
+  "Thêm vào giỏ" (khóa khi thiếu nhóm bắt buộc, chữ "Chọn {nhóm}" màu cảnh báo).
+- `OptionChips`: khu chip dùng chung giỏ + OptionModal (nhãn nhóm cùng hàng, mặt chip 30px trong vùng chạm 44px, "+giá", "chưa chọn").
 
 #### CartPanel.tsx (CartPanel)
 - Mỗi dòng (thu gọn): tên + size, tóm tắt tùy chọn 1 dòng + CTKM ngắn, giá, stepper −/+ (vùng chạm 44px). Nút "Xoá món" nằm trong khu chip khi mở; thu gọn thì `−` ở qty 1 xóa dòng (store).

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
 import { usePos } from "../lib/pos-context";
-import { cartUnitSurcharge, formatCartOptions, isSelected, missingRequired, plusPrice, toggleOption, valueSurcharge } from "../lib/options";
+import { cartUnitSurcharge, formatCartOptions, missingRequired } from "../lib/options";
+import OptionChips from "./OptionChips";
 import type { LoyaltyInfo, PricingPreview, PricingPreviewItem } from "../types";
 
 interface Props {
@@ -216,57 +217,11 @@ export default function CartPanel({
 
 								{isOpen ? (
 									<div className="pos-optgroups">
-										{groups.map((g) => {
-											const groupMissing = missing.some((m) => m.name === g.name);
-											return (
-												<div
-													key={g.name}
-													className={`pos-optgroup${groupMissing ? " is-missing" : ""}`}
-												>
-													<span className="pos-optgroup__title">
-														{g.title}
-														{g.required ? <span className="pos-optgroup__req"> *</span> : null}
-														{g.selection_type === "Chọn nhiều" ? (
-															<span className="pos-optgroup__hint">chọn nhiều</span>
-														) : null}
-														{groupMissing ? (
-															<span className="pos-optgroup__hint pos-optgroup__hint--warn">
-																chưa chọn
-															</span>
-														) : null}
-													</span>
-													<div
-														className="pos-optchips"
-														role={g.selection_type === "Chọn 1" ? "radiogroup" : "group"}
-														aria-label={g.title}
-													>
-														{g.values.map((v) => {
-															const on = isSelected(line.options, g.name, v.label);
-															const extra = valueSurcharge(groups, g.name, v.label);
-															return (
-																<button
-																	type="button"
-																	key={v.label}
-																	className={`pos-optchip${on ? " is-active" : ""}`}
-																	role={g.selection_type === "Chọn 1" ? "radio" : "checkbox"}
-																	aria-checked={on}
-																	onClick={() =>
-																		setExpanded(setLineOptions(key, toggleOption(line.options, g, v.label)))
-																	}
-																>
-																	<span className="pos-optchip__face">
-																		{v.label}
-																		{extra > 0 ? (
-																			<span className="pos-optchip__price">{plusPrice(extra)}</span>
-																		) : null}
-																	</span>
-																</button>
-															);
-														})}
-													</div>
-												</div>
-											);
-										})}
+										<OptionChips
+											groups={groups}
+											options={line.options}
+											onChange={(next) => setExpanded(setLineOptions(key, next))}
+										/>
 										<div className="pos-optgroups__actions">
 											<button
 												type="button"

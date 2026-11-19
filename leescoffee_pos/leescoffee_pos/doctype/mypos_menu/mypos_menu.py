@@ -141,7 +141,7 @@ class MYPOSMenu(Document):
         """Xây payload 1 món cho POS UI.
 
         Trả về dict:
-            {template, name, image, sizes: [{label, item_code, rate}]}
+            {template, name, image, sizes: [{label, item_code, rate}], item_group}
         - template: True nếu item là template (has_variants=1, variant_of rỗng).
         - name: tên item_code.
         - image: ảnh sản phẩm của Item (hoặc None).
@@ -184,6 +184,8 @@ class MYPOSMenu(Document):
             "name": info.get("item_name") or item_code,
             "image": info.get("image") or None,
             "sizes": sizes,
+            # Item Group của mã trên dòng menu (template -> nhóm của template); POS dùng để lọc tab.
+            "item_group": info.get("item_group") or None,
         }
 
     @staticmethod
@@ -253,6 +255,7 @@ class MYPOSMenu(Document):
                         "has_variants",
                         "variant_of",
                         "disabled",
+                        "item_group",
                     ],
                 ):
                     item_info[doc.name] = doc
