@@ -25,11 +25,11 @@
 │  │ [Thẻ món: ảnh vuông, tên,    │ - Loại đơn: Tại quán / Mang đi   │ │
 │  │  chip "N size", badge qty]   │ - Tên khách                      │ │
 │  │ Cả thẻ bấm, không nút phụ    │ - Phương thức thanh toán         │ │
-│  │ Món 1 size: thêm thẳng giỏ   │ - Dòng món: tên+size, giá,       │ │
-│  │ Món nhiều size: mở SizeModal │   chip tùy chọn động, +/− 44px   │ │
-│  │ Size rate=null: mờ, không chọn│ - Ghi chú đơn (footer)           │ │
-│  │                              │ - Nút Tạo đơn (disabled khi      │ │
-│  │                              │   thiếu Price List)              │ │
+│  │ Món 1 size: thêm thẳng giỏ   │ - Dòng món gọn (VÙNG CUỘN DUY    │ │
+│  │ Món nhiều size: mở SizeModal │   NHẤT): tên+size/tóm tắt, giá/± │ │
+│  │ Size rate=null: mờ, không chọn│ - Chân giỏ cố định: ghi chú,     │ │
+│  │                              │   điểm (gập), tổng, cảnh báo,    │ │
+│  │                              │   nút Tạo đơn (luôn hiện)        │ │
 │  └──────────────────────────────┴──────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -38,7 +38,15 @@
 - Body: lưới món chiếm cột trái, giỏ hàng cột phải (sticky). Loại đơn, tên khách, thanh toán chuyển lên đầu giỏ (`.pos-order-setup`).
 - Chip lọc menu (`.pos-chip`) + chip lọc từ khóa tìm (qua `useSearch`).
 - Thẻ món (`MenuCard`): nút bấm toàn thẻ, ảnh vuông (`pos-menu-card__media`), tên luôn hiển thị 2 dòng, chip "N size", badge số lượng. Không hiển thị giá. Món 1 size (label rỗng) thêm thẳng giỏ; nhiều size mở `SizeModal`; size `rate=null` mờ, không chọn được.
-- Giỏ hàng: mỗi dòng có tên+size, giá, nút xóa, **chip tùy chọn động** theo `option_groups` của món (thu gọn = 1 dòng tóm tắt, chỉ mở 1 dòng; món không có nhóm không hiện gì), nút +/− 44px; ghi chú đơn ở footer; trạng thái giỏ trống.
+- Giỏ hàng (làm gọn 2026-11-19):
+  - Cột phải `.pos-page__side` cao `calc(100dvh - 98px)` (header 64 + đệm), sticky; `.pos-order-setup` cố định, `.pos-cart` flex 1.
+    Trong giỏ chỉ `.pos-cart__lines` cuộn (**một vùng cuộn duy nhất**); header giỏ (có "Xoá giỏ") và `.pos-cart__footer` không cuộn.
+  - Dòng món thu gọn (`.pos-cart-line__row`, grid `main | price` / `main | qty`): tên+size, tóm tắt tùy chọn 1 dòng (ellipsis,
+    `title` đầy đủ) + nhãn CTKM ngắn "−10%"; giá; stepper (vùng chạm 44px, mặt nút 32px). Bấm vùng tên mở chip (chỉ 1 dòng mở).
+  - Khu chip: nhãn nhóm cùng hàng với chip (grid 64px | chips), chip mặt 30px trong nút 44px, "Xoá món" ở cuối khu chip.
+  - Chân giỏ: hàng gập "Ghi chú đơn hàng" (bấm mới hiện textarea) và "Dùng điểm" (bấm mới hiện stepper); Tạm tính / Khuyến mãi /
+    Phụ thu / Đổi điểm / Tổng cộng luôn hiện; cảnh báo + `pos-create-bar` do `POS.tsx` truyền qua `children`.
+  - Breakpoint: ≥ 1024px giữ 2 cột (giỏ 340px, 320px khi ≤ 1180px); < 1024px xếp dọc, cột phải `height: auto`, cuộn theo trang.
 - Price List lấy từ menu đầu tiên có `price_list`. Box lỗi chỉ hiện khi `!loading && !priceList`. Lỗi tạo đơn hiện cạnh nút Tạo đơn.
 - **Không còn footer nav** (thanh điều hướng dưới) — điều hướng nằm ở Header.
 

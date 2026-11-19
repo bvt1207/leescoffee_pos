@@ -3,7 +3,14 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0. Đang làm: web đặt món QR cho khách (2026-11-14)
+## 0a. Đang làm: làm gọn Cart Panel /pos (2026-11-19, chỉ frontend) — CHỜ VAN TEST
+- Sửa `pos/src/components/CartPanel.tsx`, `pos/src/pages/POS.tsx`, `pos/src/styles/global.css`. Không đổi backend, logic giỏ/giá/CTKM/điểm/topping.
+- Dòng món thu gọn (tóm tắt 1 dòng + stepper + giá), 1 dòng mở chip, bấm ngoài thu; chip gọn (mặt 30px, vùng chạm 44px);
+  chân giỏ cố định (ghi chú + đổi điểm gập, tổng, cảnh báo, Tạo đơn); chỉ danh sách món cuộn; 1024px giữ 2 cột.
+- Chi tiết: skill `pos-ui` (`layout.md` mục Giỏ hàng, `states.md` CartPanel). `npx tsc --noEmit` sạch; chưa thử trên trình duyệt.
+- [Inference] Màn 768px cao, Dine In + khách có điểm + đủ dòng KM/phụ thu/đổi điểm + cảnh báo: vùng danh sách món còn rất thấp (ước tính ~1 dòng) — cần Van kiểm tra.
+
+## 0. Web đặt món QR cho khách (2026-11-14)
 - **Giai đoạn 1 (backend) — ĐÃ TEST PASS 2026-11-14** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Rule: `rules/leescoffee_pos/order-qr.md`.
   Self-test: `.claude/docs/order_qr_selftest.py` (`run_order_qr_selftest()`).
   Gồm cả mục A (webhook xác thực API key) — sau khi deploy phải điền `sepay_api_key` ở Branch và

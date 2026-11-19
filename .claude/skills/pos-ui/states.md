@@ -78,12 +78,12 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - `SizeModal`: `role="dialog"`, `aria-modal`, ảnh + tên ở đầu, lưới thẻ size lớn, tiền tệ từ `config.profile.currency`, Esc đóng.
 
 #### CartPanel.tsx (CartPanel)
-- Mỗi dòng: tên + size, giá, nút xóa, chip tùy chọn, nút +/− 44px.
-- **Chip tùy chọn** (`lib/options.ts`): "Chọn 1" = chip radio (`role=radio`; nhóm không bắt buộc bấm lại để bỏ chọn, nhóm bắt buộc không bỏ được), "Chọn nhiều" = chip bật/tắt (`role=checkbox`). `.pos-optchip` cao ≥ 44px, active = `--pos-primary`. Nhóm bắt buộc có dấu `*`.
+- Mỗi dòng (thu gọn): tên + size, tóm tắt tùy chọn 1 dòng + CTKM ngắn, giá, stepper −/+ (vùng chạm 44px). Nút "Xoá món" nằm trong khu chip khi mở; thu gọn thì `−` ở qty 1 xóa dòng (store).
+- **Chip tùy chọn** (`lib/options.ts`): "Chọn 1" = chip radio (`role=radio`; nhóm không bắt buộc bấm lại để bỏ chọn, nhóm bắt buộc không bỏ được), "Chọn nhiều" = chip bật/tắt (`role=checkbox`). `.pos-optchip` là nút trong suốt cao 44px (vùng chạm), mặt chip `.pos-optchip__face` cao 30px, active = `--pos-primary`. Nhãn nhóm cùng hàng với chip (`.pos-optgroup` grid). Nhóm bắt buộc có dấu `*`; chưa chọn → nhãn màu `--pos-warning` + "chưa chọn".
 - **Phụ thu topping**: chip có `extra_price > 0` hiện "+giá" (`.pos-optchip__price`); giá dòng giỏ gồm phụ thu; footer "Phụ thu topping +X" lấy `preview.total_surcharge` (server). Màn pha chế / tem ly chỉ tên, không giá (`options.md` §9b).
-- **Thu gọn/mở**: mỗi lúc chỉ mở chip của 1 dòng (`expanded`); dòng vừa thêm (có nhóm) tự mở; dòng thu gọn hiện `.pos-cart-line__summary` (1 dòng "Đường 70% · Đá 50%", bấm để mở).
-- **Trạng thái thiếu bắt buộc**: dòng `.is-missing` (viền trái `--pos-warning`) + chữ "Chọn {nhóm}"; `POS.tsx` chặn Tạo đơn + nhắc nhẹ.
-- Ghi chú đơn ở footer (`pos-cart__note-label`, `pos-input pos-textarea`).
+- **Thu gọn/mở**: mỗi lúc chỉ mở chip của 1 dòng (`expanded`); thêm món mới → mở nếu món có nhóm, không có nhóm thì thu dòng đang mở; `pointerdown` ra ngoài dòng đang mở (ref `openRef`) → thu. Dòng thu gọn: `.pos-cart-line__main` là `<button aria-expanded>` chứa tên + `.pos-cart-line__summary` ("Đường 70% · Đá 50% · Topping Trân châu (+10.000)").
+- **Trạng thái thiếu bắt buộc**: dòng `.is-missing` (viền trái `--pos-warning`) + tóm tắt đổi thành "Chọn {nhóm}" (`.is-warn`); `POS.tsx` chặn Tạo đơn + nhắc nhẹ (trong chân giỏ).
+- Chân giỏ (`.pos-cart__footer`, không cuộn): ghi chú đơn = hàng gập `.pos-cart__toggle` (bấm → `pos-input pos-textarea`, blur → thu), đổi điểm = `.pos-redeem` gập (`.pos-redeem__body` chứa stepper), tổng (`.pos-cart__sums`), gợi ý preview, rồi `children` (cảnh báo + `pos-create-bar` từ `POS.tsx`).
 - Trạng thái giỏ trống (`.pos-cart__empty`).
 - Gửi `options` mỗi dòng ở cả `preview_pricing` (khóa debounce gồm options) và `create_draft_order`; ghi chú đơn: footer textarea (`orderNote`) → gửi `order_note`.
 - Tương tác giỏ luôn qua `cartLineKey` (`${item_code}|${group=value;...}`, options chuẩn hóa theo thứ tự cấu hình) cho `increment/decrement/remove` — cùng món khác tổ hợp tùy chọn = dòng khác nhau. `setLineOptions(key, options)` đổi key dòng (trùng dòng khác thì gộp qty) và trả key mới.

@@ -240,34 +240,35 @@ export default function POS() {
 					preview={preview}
 					previewError={previewError}
 					previewLoading={previewLoading}
-				/>
+				>
+					{/* Cảnh báo + Tạo đơn nằm trong chân giỏ: luôn hiện, không cuộn theo danh sách món. */}
+					{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
+					{missingLine ? (
+						<div className="pos-cart__hint pos-cart__hint--error">
+							Món {missingLine.item_name} còn tùy chọn bắt buộc chưa chọn.
+						</div>
+					) : null}
+					{needBuzzer && lines.length > 0 ? (
+						<div className="pos-alert pos-alert--error">Chọn thẻ rung cho đơn tại quán.</div>
+					) : null}
+					{!loading && !priceList ? (
+						<div className="pos-alert pos-alert--error">
+							Thiếu Price List của menu — không thể tạo đơn.
+						</div>
+					) : null}
 
-				{formError ? <div className="pos-alert pos-alert--error">{formError}</div> : null}
-				{missingLine ? (
-					<div className="pos-cart__hint pos-cart__hint--error">
-						Món {missingLine.item_name} còn tùy chọn bắt buộc chưa chọn.
+					<div className="pos-create-bar">
+						<span className="pos-create-bar__count">{cartCount(lines)} món</span>
+						<button
+							type="button"
+							className="pos-btn pos-btn--primary pos-btn--block"
+							disabled={!canSubmit}
+							onClick={createOrder}
+						>
+							{submitting ? "Đang tạo…" : "Tạo đơn"}
+						</button>
 					</div>
-				) : null}
-				{needBuzzer && lines.length > 0 ? (
-					<div className="pos-alert pos-alert--error">Chọn thẻ rung cho đơn tại quán.</div>
-				) : null}
-				{!loading && !priceList ? (
-					<div className="pos-alert pos-alert--error">
-						Thiếu Price List của menu — không thể tạo đơn.
-					</div>
-				) : null}
-
-				<div className="pos-create-bar">
-					<span className="pos-create-bar__count">{cartCount(lines)} món</span>
-					<button
-						type="button"
-						className="pos-btn pos-btn--primary pos-btn--block"
-						disabled={!canSubmit}
-						onClick={createOrder}
-					>
-						{submitting ? "Đang tạo…" : "Tạo đơn"}
-					</button>
-				</div>
+				</CartPanel>
 			</aside>
 
 			<BuzzerPicker

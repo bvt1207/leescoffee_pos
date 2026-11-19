@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
 import { usePos } from "../lib/pos-context";
 import { cartUnitSurcharge, formatCartOptions, isSelected, missingRequired, plusPrice, toggleOption, valueSurcharge } from "../lib/options";
@@ -9,6 +9,8 @@ interface Props {
 	preview?: PricingPreview | null;
 	previewError?: string;
 	previewLoading?: boolean;
+	/** Phần cuối chân giỏ (cảnh báo + nút Tạo đơn) do trang POS truyền vào, luôn hiện, không cuộn. */
+	children?: ReactNode;
 }
 
 const hasPromo = (p?: PricingPreviewItem) =>
@@ -20,11 +22,16 @@ const promoLabel = (p: PricingPreviewItem) => {
 	return titles ? `${pct} · ${titles}` : pct;
 };
 
+/** Nhãn CTKM ngắn trên dòng thu gọn; nhãn đầy đủ nằm ở title. */
+const promoShort = (p: PricingPreviewItem) =>
+	p.discount_percentage > 0 ? `−${p.discount_percentage}%` : "Khuyến mãi";
+
 export default function CartPanel({
 	loyalty = null,
 	preview = null,
 	previewError = "",
 	previewLoading = false,
+	children,
 }: Props) {
 	const lines = useCart((state) => state.lines);
 	const increment = useCart((state) => state.increment);
@@ -58,22 +65,43 @@ export default function CartPanel({
 	};
 	const freeItems = (preview?.items || []).filter((p) => p.is_free_item);
 
-	// Chỉ mở chip tùy chọn của MỘT dòng; dòng vừa thêm tự mở, dòng khác hiện tóm tắt.
+	// Chỉ mở chip tùy chọn của MỘT dòng. Món vừa thêm: mở nếu có nhóm tùy chọn, không thì thu dòng đang mở.
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const prevCount = useRef(lines.length);
 	useEffect(() => {
 		if (lines.length > prevCount.current) {
 			const last = lines[lines.length - 1];
-			if (last?.option_groups?.length) setExpanded(cartLineKey(last));
+			setExpanded(last?.option_groups?.length ? cartLineKey(last) : null);
 		}
 		prevCount.current = lines.length;
 	}, [lines]);
+
+	// Bấm ra ngoài dòng đang mở -> thu lại.
+	const openRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!expanded) return;
+		const onDown = (event: PointerEvent) => {
+			const el = openRef.current;
+			if (el && !el.contains(event.target as Node)) setExpanded(null);
+		};
+		document.addEventListener("pointerdown", onDown);
+		return () => document.removeEventListener("pointerdown", onDown);
+	}, [expanded]);
+
+	// Ghi chú đơn và khối đổi điểm gập mặc định.
+	const [noteOpen, setNoteOpen] = useState(false);
+	const [redeemOpen, setRedeemOpen] = useState(false);
 
 	return (
 		<aside className="pos-cart">
 			<div className="pos-cart__header">
 				<h2>Giỏ hàng</h2>
 				<span className="pos-badge">{count} món</span>
+				{lines.length ? (
+					<button type="button" className="pos-cart__clear" onClick={() => clear()}>
+						Xoá giỏ
+					</button>
+				) : null}
 			</div>
 
 			<div className="pos-cart__lines">
@@ -87,20 +115,71 @@ export default function CartPanel({
 						const key = cartLineKey(line);
 						const groups = line.option_groups || [];
 						const missing = missingRequired(line.options, groups);
-						const isOpen = expanded === key;
+						const isOpen = expanded === key && groups.length > 0;
 						const summary = formatCartOptions(line.options, groups, true);
 						const unitExtra = cartUnitSurcharge(line.options, groups);
 						const pv = previewFor(idx);
 						const promo = hasPromo(pv) ? pv : undefined;
-						return (
-							<div key={key} className={`pos-cart-line${missing.length ? " is-missing" : ""}`}>
-								<div className="pos-cart-line__head">
-									<div className="pos-cart-line__name">
-										{line.item_name}
-										{line.size ? (
-											<span className="pos-cart-line__size">{line.size}</span>
+						const metaText = missing.length
+							? `Chọn ${missing.map((g) => g.title).join(", ")}`
+							: summary || (groups.length ? "Chọn tùy chọn" : "");
+
+						const main = (
+							<>
+								<span className="pos-cart-line__name">
+									<span className="pos-cart-line__name-text">{line.item_name}</span>
+									{line.size ? <span className="pos-cart-line__size">{line.size}</span> : null}
+								</span>
+								{metaText || promo ? (
+									<span className="pos-cart-line__meta">
+										{metaText ? (
+											<span
+												className={`pos-cart-line__summary${missing.length ? " is-warn" : ""}`}
+											>
+												{metaText}
+											</span>
 										) : null}
-									</div>
+										{promo ? (
+											<span className="pos-cart-line__promo" title={promoLabel(promo)}>
+												{promoShort(promo)}
+											</span>
+										) : null}
+										{groups.length ? (
+											<span className="pos-cart-line__caret" aria-hidden>
+												{isOpen ? "▴" : "▾"}
+											</span>
+										) : null}
+									</span>
+								) : null}
+							</>
+						);
+
+						return (
+							<div
+								key={key}
+								ref={isOpen ? openRef : undefined}
+								className={`pos-cart-line${missing.length ? " is-missing" : ""}${isOpen ? " is-open" : ""}`}
+							>
+								<div className="pos-cart-line__row">
+									{groups.length ? (
+										<button
+											type="button"
+											className="pos-cart-line__main"
+											aria-expanded={isOpen}
+											title={[summary, promo ? promoLabel(promo) : ""].filter(Boolean).join(" · ")}
+											onClick={() => setExpanded(isOpen ? null : key)}
+										>
+											{main}
+										</button>
+									) : (
+										<div
+											className="pos-cart-line__main"
+											title={promo ? promoLabel(promo) : undefined}
+										>
+											{main}
+										</div>
+									)}
+
 									<div className="pos-cart-line__price">
 										{promo ? (
 											<>
@@ -113,37 +192,6 @@ export default function CartPanel({
 											formatMoney((line.price + unitExtra) * line.qty, currency)
 										)}
 									</div>
-									<button
-										type="button"
-										className="pos-cart-line__remove"
-										title="Xoá món"
-										aria-label="Xoá món"
-										onClick={() => removeLine(key)}
-									>
-										×
-									</button>
-								</div>
-
-								{promo ? <span className="pos-promo-chip">{promoLabel(promo)}</span> : null}
-
-								<div className="pos-cart-line__body">
-									{groups.length ? (
-										<button
-											type="button"
-											className="pos-cart-line__summary"
-											aria-expanded={isOpen}
-											onClick={() => setExpanded(isOpen ? null : key)}
-										>
-											<span className="pos-cart-line__summary-text">
-												{summary || "Chọn tùy chọn"}
-											</span>
-											<span className="pos-cart-line__summary-caret" aria-hidden>
-												{isOpen ? "▴" : "▾"}
-											</span>
-										</button>
-									) : (
-										<span />
-									)}
 
 									<div className="pos-cart-line__qty">
 										<button
@@ -166,53 +214,69 @@ export default function CartPanel({
 									</div>
 								</div>
 
-								{groups.length && isOpen ? (
+								{isOpen ? (
 									<div className="pos-optgroups">
-										{groups.map((g) => (
-											<div key={g.name} className="pos-optgroup">
-												<span className="pos-optgroup__title">
-													{g.title}
-													{g.required ? <span className="pos-optgroup__req"> *</span> : null}
-													{g.selection_type === "Chọn nhiều" ? (
-														<span className="pos-optgroup__hint"> · chọn nhiều</span>
-													) : null}
-												</span>
+										{groups.map((g) => {
+											const groupMissing = missing.some((m) => m.name === g.name);
+											return (
 												<div
-													className="pos-optchips"
-													role={g.selection_type === "Chọn 1" ? "radiogroup" : "group"}
-													aria-label={g.title}
+													key={g.name}
+													className={`pos-optgroup${groupMissing ? " is-missing" : ""}`}
 												>
-													{g.values.map((v) => {
-														const on = isSelected(line.options, g.name, v.label);
-														return (
-															<button
-																type="button"
-																key={v.label}
-																className={`pos-optchip${on ? " is-active" : ""}`}
-																role={g.selection_type === "Chọn 1" ? "radio" : "checkbox"}
-																aria-checked={on}
-																onClick={() =>
-																	setExpanded(setLineOptions(key, toggleOption(line.options, g, v.label)))
-																}
-															>
-																{v.label}
-																{valueSurcharge(groups, g.name, v.label) > 0 ? (
-																	<span className="pos-optchip__price">
-																		{plusPrice(valueSurcharge(groups, g.name, v.label))}
+													<span className="pos-optgroup__title">
+														{g.title}
+														{g.required ? <span className="pos-optgroup__req"> *</span> : null}
+														{g.selection_type === "Chọn nhiều" ? (
+															<span className="pos-optgroup__hint">chọn nhiều</span>
+														) : null}
+														{groupMissing ? (
+															<span className="pos-optgroup__hint pos-optgroup__hint--warn">
+																chưa chọn
+															</span>
+														) : null}
+													</span>
+													<div
+														className="pos-optchips"
+														role={g.selection_type === "Chọn 1" ? "radiogroup" : "group"}
+														aria-label={g.title}
+													>
+														{g.values.map((v) => {
+															const on = isSelected(line.options, g.name, v.label);
+															const extra = valueSurcharge(groups, g.name, v.label);
+															return (
+																<button
+																	type="button"
+																	key={v.label}
+																	className={`pos-optchip${on ? " is-active" : ""}`}
+																	role={g.selection_type === "Chọn 1" ? "radio" : "checkbox"}
+																	aria-checked={on}
+																	onClick={() =>
+																		setExpanded(setLineOptions(key, toggleOption(line.options, g, v.label)))
+																	}
+																>
+																	<span className="pos-optchip__face">
+																		{v.label}
+																		{extra > 0 ? (
+																			<span className="pos-optchip__price">{plusPrice(extra)}</span>
+																		) : null}
 																	</span>
-																) : null}
-															</button>
-														);
-													})}
+																</button>
+															);
+														})}
+													</div>
 												</div>
-											</div>
-										))}
-									</div>
-								) : null}
-
-								{missing.length ? (
-									<div className="pos-cart-line__missing">
-										Chọn {missing.map((g) => g.title).join(", ")}
+											);
+										})}
+										<div className="pos-optgroups__actions">
+											<button
+												type="button"
+												className="pos-cart-line__delete"
+												aria-label="Xoá món"
+												onClick={() => removeLine(key)}
+											>
+												Xoá món
+											</button>
+										</div>
 									</div>
 								) : null}
 
@@ -225,10 +289,12 @@ export default function CartPanel({
 				{lines.length
 					? freeItems.map((p, i) => (
 							<div key={`free-${p.item_code}-${i}`} className="pos-cart-line pos-cart-line--free">
-								<div className="pos-cart-line__head">
-									<div className="pos-cart-line__name">
-										{p.item_code}
-										<span className="pos-promo-chip">Tặng</span>
+								<div className="pos-cart-line__row">
+									<div className="pos-cart-line__main">
+										<span className="pos-cart-line__name">
+											<span className="pos-cart-line__name-text">{p.item_code}</span>
+											<span className="pos-promo-chip">Tặng</span>
+										</span>
 									</div>
 									<div className="pos-cart-line__price">
 										{p.qty} × {formatMoney(0, currency)}
@@ -240,51 +306,76 @@ export default function CartPanel({
 			</div>
 
 			<div className="pos-cart__footer">
-				<label className="pos-cart__note-label" htmlFor="pos-order-note">
-					Ghi chú đơn hàng
-				</label>
-				<textarea
-					id="pos-order-note"
-					className="pos-input pos-textarea"
-					placeholder="Ví dụ: ít ngọt, mang đi…"
-					value={orderNote}
-					onChange={(event) => setOrderNote(event.target.value)}
-					rows={2}
-				/>
+				{noteOpen ? (
+					<textarea
+						id="pos-order-note"
+						className="pos-input pos-textarea"
+						aria-label="Ghi chú đơn hàng"
+						placeholder="Ví dụ: ít ngọt, mang đi…"
+						value={orderNote}
+						onChange={(event) => setOrderNote(event.target.value)}
+						onBlur={() => setNoteOpen(false)}
+						rows={2}
+						autoFocus
+					/>
+				) : (
+					<button
+						type="button"
+						className="pos-cart__toggle"
+						aria-expanded={false}
+						onClick={() => setNoteOpen(true)}
+					>
+						<span className="pos-cart__toggle-label">Ghi chú đơn hàng</span>
+						<span className="pos-cart__toggle-value">{orderNote || "Thêm"}</span>
+					</button>
+				)}
+
 				{canRedeem ? (
-					<div className="pos-redeem">
-						<div className="pos-redeem__info">
-							<span className="pos-redeem__label">Dùng điểm</span>
-							<small>
-								Tối đa {maxRedeem} điểm · 1 điểm = {formatMoney(factor, currency)}
-							</small>
-						</div>
-						<div className="pos-redeem__stepper">
-							<button
-								type="button"
-								className="pos-step"
-								aria-label="Bớt điểm"
-								disabled={redeemPoints <= 0}
-								onClick={() => setRedeemPoints(redeemPoints - 1)}
-							>
-								−
-							</button>
-							<span className="pos-redeem__value">{redeemPoints}</span>
-							<button
-								type="button"
-								className="pos-step"
-								aria-label="Thêm điểm"
-								disabled={redeemPoints >= maxRedeem}
-								onClick={() => setRedeemPoints(redeemPoints + 1)}
-							>
-								+
-							</button>
-						</div>
+					<div className={`pos-redeem${redeemOpen ? " is-open" : ""}`}>
+						<button
+							type="button"
+							className="pos-cart__toggle"
+							aria-expanded={redeemOpen}
+							onClick={() => setRedeemOpen(!redeemOpen)}
+						>
+							<span className="pos-cart__toggle-label">Dùng điểm</span>
+							<span className="pos-cart__toggle-value">
+								{redeemPoints} điểm {redeemOpen ? "▴" : "▾"}
+							</span>
+						</button>
+						{redeemOpen ? (
+							<div className="pos-redeem__body">
+								<small className="pos-redeem__info">
+									Tối đa {maxRedeem} điểm · 1 điểm = {formatMoney(factor, currency)}
+								</small>
+								<div className="pos-redeem__stepper">
+									<button
+										type="button"
+										className="pos-step"
+										aria-label="Bớt điểm"
+										disabled={redeemPoints <= 0}
+										onClick={() => setRedeemPoints(redeemPoints - 1)}
+									>
+										−
+									</button>
+									<span className="pos-redeem__value">{redeemPoints}</span>
+									<button
+										type="button"
+										className="pos-step"
+										aria-label="Thêm điểm"
+										disabled={redeemPoints >= maxRedeem}
+										onClick={() => setRedeemPoints(redeemPoints + 1)}
+									>
+										+
+									</button>
+								</div>
+							</div>
+						) : null}
 					</div>
 				) : null}
 
 				{preview && lines.length ? (
-					<>
+					<div className="pos-cart__sums">
 						<div className="pos-redeem__row">
 							<span>Tạm tính</span>
 							<span>{formatMoney(preview.total_before, currency)}</span>
@@ -311,7 +402,7 @@ export default function CartPanel({
 							<span>Tổng cộng</span>
 							<strong>{formatMoney(preview.grand_total, currency)}</strong>
 						</div>
-					</>
+					</div>
 				) : (
 					<div className="pos-cart__total">
 						<span>{lines.length ? "Tổng cộng (chưa áp KM)" : "Tổng cộng"}</span>
@@ -327,11 +418,8 @@ export default function CartPanel({
 						Chưa tính được khuyến mãi: {previewError}
 					</div>
 				) : null}
-				{lines.length ? (
-					<button type="button" className="pos-btn pos-btn--ghost" onClick={() => clear()}>
-						Xoá giỏ
-					</button>
-				) : null}
+
+				{children}
 			</div>
 		</aside>
 	);
