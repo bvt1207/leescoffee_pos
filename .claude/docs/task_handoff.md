@@ -3,11 +3,11 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0a. Đang làm: làm gọn Cart Panel /pos (2026-11-19, chỉ frontend) — CHỜ VAN TEST
+## 0a. Làm gọn Cart Panel /pos (2026-11-19, chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`3077eec`)
 - Sửa `pos/src/components/CartPanel.tsx`, `pos/src/pages/POS.tsx`, `pos/src/styles/global.css`. Không đổi backend, logic giỏ/giá/CTKM/điểm/topping.
 - Dòng món thu gọn (tóm tắt 1 dòng + stepper + giá), 1 dòng mở chip, bấm ngoài thu; chip gọn (mặt 30px, vùng chạm 44px);
   chân giỏ cố định (ghi chú + đổi điểm gập, tổng, cảnh báo, Tạo đơn); chỉ danh sách món cuộn; 1024px giữ 2 cột.
-- Chi tiết: skill `pos-ui` (`layout.md` mục Giỏ hàng, `states.md` CartPanel). `npx tsc --noEmit` sạch; chưa thử trên trình duyệt.
+- Chi tiết: skill `pos-ui` (`layout.md` mục Giỏ hàng, `states.md` CartPanel). `npx tsc --noEmit` sạch; Van đã test trên bench DEV: Pass.
 - [Inference] Màn 768px cao, Dine In + khách có điểm + đủ dòng KM/phụ thu/đổi điểm + cảnh báo: vùng danh sách món còn rất thấp (ước tính ~1 dòng) — cần Van kiểm tra.
 
 ## 0. Web đặt món QR cho khách (2026-11-14)
