@@ -69,22 +69,25 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - Giữa: ô tìm món (`pos-header__search-input`) + phím tắt `Ctrl K`; đọc/ghi qua `store/search.ts`.
 - Phải: điều hướng Bán món/Đơn hàng (`pos-navlink`) + menu tài khoản (`pos-user`) — Chuyển sang Desk `/desk`, Xóa bộ nhớ đệm, Đăng xuất.
 
-#### MenuGrid.tsx (kèm MenuCard, SizeModal, OptionModal)
+#### MenuGrid.tsx (kèm MenuCard, SizeModal)
 - Tab nhóm `.pos-menu-tab` (`role="tab"`, `aria-selected`, `.is-active`), khóa tab = `item_group`, `NO_GROUP` = "Khác",
   `ALL_GROUPS` = "Tất cả" (`store/menuFilter.ts`). Tab đã nhớ không còn trong menu → hiển thị "Tất cả". Không có tên nhóm cứng.
 - Có từ khóa tìm → lọc toàn bộ món, tab hiện "Tất cả"; bấm tab → `setSearch("")` rồi đổi tab.
 - `MenuCard`: toàn bộ thẻ là `button` (`title` = tên), ảnh/chữ cái đầu, tên 2 dòng, badge `xN`, chấm `.pos-menu-card__dot`
   (`aria-label` "Có size" / "Có tùy chọn"). Không hiển thị giá.
-- 1 size không tùy chọn: thêm thẳng giỏ. Nhiều size: `SizeModal`. 1 size có `option_groups`: `OptionModal`. 1 size `rate=null`: thẻ mờ.
+- 1 size (có hoặc không `option_groups`): thêm thẳng giỏ với `defaultOptions`. Nhiều size: `SizeModal`. 1 size `rate=null`: thẻ mờ.
+  (OptionModal đã bỏ 2026-11-19 — xem layout.md.)
 - `ItemModalFrame`: `role="dialog"`, `aria-modal`, Esc / nền để đóng, khóa cuộn trang, focus nút ×; `onClose` giữ trong ref (effect chạy 1 lần).
-  Modal chỉ render khi mở (OptionModal khởi tạo lại `defaultOptions` mỗi lần mở).
+  Chỉ render khi mở.
 - `SizeModal`: hàng `.pos-size-row` (nhãn trái, giá phải), size `rate=null` → `.is-disabled` "Chưa có giá". Bấm hàng = thêm ngay.
-- `OptionModal`: `OptionChips` + chân: hàng giá (giá món + `cartUnitSurcharge`, chỉ ước tính; giá thật do preview ở giỏ) + nút
-  "Thêm vào giỏ" (khóa khi thiếu nhóm bắt buộc, chữ "Chọn {nhóm}" màu cảnh báo).
-- `OptionChips`: khu chip dùng chung giỏ + OptionModal (nhãn nhóm cùng hàng, mặt chip 30px trong vùng chạm 44px, "+giá", "chưa chọn").
+- `OptionChips`: khu chip trong giỏ (nhãn nhóm cùng hàng, mặt chip 30px trong vùng chạm 44px, "+giá", "chưa chọn").
 
 #### CartPanel.tsx (CartPanel)
 - Mỗi dòng (thu gọn): tên + size, tóm tắt tùy chọn 1 dòng + CTKM ngắn, giá, stepper −/+ (vùng chạm 44px). Nút "Xoá món" nằm trong khu chip khi mở; thu gọn thì `−` ở qty 1 xóa dòng (store).
+- **Số lượng gõ trực tiếp** (`QtyInput` trong `CartPanel.tsx`, `.pos-qty__input` 44×44px, `inputMode="numeric"`): focus chọn hết; khi
+  gõ chỉ giữ bản nháp cục bộ (không ghi store → không gọi `preview_pricing`); Enter / rời ô áp dụng qua `setQty` (store, kẹp
+  1..`MAX_LINE_QTY` = 999); vượt 999 → cắt 999 + báo "Tối đa 999"; rỗng/0 → về số cũ; chữ/số âm → về số cũ + báo nhẹ; Esc → hủy.
+  Không xóa dòng — xóa bằng `−` ở qty 1 hoặc "Xoá món". Khóa dòng không đổi → CTKM theo tổng qty mỗi mã qua preview như cũ.
 - **Chip tùy chọn** (`lib/options.ts`): "Chọn 1" = chip radio (`role=radio`; nhóm không bắt buộc bấm lại để bỏ chọn, nhóm bắt buộc không bỏ được), "Chọn nhiều" = chip bật/tắt (`role=checkbox`). `.pos-optchip` là nút trong suốt cao 44px (vùng chạm), mặt chip `.pos-optchip__face` cao 30px, active = `--pos-primary`. Nhãn nhóm cùng hàng với chip (`.pos-optgroup` grid). Nhóm bắt buộc có dấu `*`; chưa chọn → nhãn màu `--pos-warning` + "chưa chọn".
 - **Phụ thu topping**: chip có `extra_price > 0` hiện "+giá" (`.pos-optchip__price`); giá dòng giỏ gồm phụ thu; footer "Phụ thu topping +X" lấy `preview.total_surcharge` (server). Màn pha chế / tem ly chỉ tên, không giá (`options.md` §9b).
 - **Thu gọn/mở**: mỗi lúc chỉ mở chip của 1 dòng (`expanded`); thêm món mới → mở nếu món có nhóm, không có nhóm thì thu dòng đang mở; `pointerdown` ra ngoài dòng đang mở (ref `openRef`) → thu. Dòng thu gọn: `.pos-cart-line__main` là `<button aria-expanded>` chứa tên + `.pos-cart-line__summary` ("Đường 70% · Đá 50% · Topping Trân châu (+10.000)").

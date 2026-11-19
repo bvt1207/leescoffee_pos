@@ -10,7 +10,7 @@ interface Props {
 
 /**
  * Chip tùy chọn món (MYPOS Option Group): nhãn nhóm cùng hàng với chip, mặt chip 30px trong vùng chạm 44px,
- * "+giá" cho giá trị có phụ thu, nhắc nhóm bắt buộc chưa chọn. Dùng chung cho giỏ (CartPanel) và OptionModal.
+ * "+giá" cho giá trị có phụ thu, nhắc nhóm bắt buộc chưa chọn. Dùng trong giỏ (CartPanel).
  */
 export default function OptionChips({ groups, options, onChange }: Props) {
 	const missing = missingRequired(options, groups);

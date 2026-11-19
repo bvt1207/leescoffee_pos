@@ -11,6 +11,8 @@ interface CartState {
 	addVariant: (line: NewLine) => void;
 	increment: (key: string) => void;
 	decrement: (key: string) => void;
+	/** Đặt số lượng dòng (số nguyên, kẹp 1..MAX_LINE_QTY); không xóa dòng. */
+	setQty: (key: string, qty: number) => void;
 	remove: (key: string) => void;
 	removeLine: (key: string) => void;
 	/** Đổi tùy chọn của dòng; trả khóa mới (trùng dòng khác thì gộp qty). */
@@ -23,6 +25,9 @@ interface CartState {
 	redeemPoints: number;
 	setRedeemPoints: (points: number) => void;
 }
+
+/** Số lượng tối đa mỗi dòng khi gõ trực tiếp trong giỏ. */
+export const MAX_LINE_QTY = 999;
 
 // Dòng giỏ phân biệt theo item_code (variant đã gồm size) + tổ hợp tùy chọn đã chuẩn hóa:
 // cùng món khác tùy chọn là dòng khác nhau. key = `${item_code}|${group=value;...}`.
@@ -74,6 +79,14 @@ export const useCart = create<CartState>((set, get) => ({
 				)
 				.filter((line) => line.qty > 0),
 		})),
+
+	setQty: (key, qty) => {
+		const value = Math.min(MAX_LINE_QTY, Math.max(1, Math.floor(qty)));
+		if (!Number.isFinite(value)) return;
+		set((state) => ({
+			lines: state.lines.map((line) => (cartLineKey(line) === key ? { ...line, qty: value } : line)),
+		}));
+	},
 
 	remove: (key) =>
 		set((state) => ({

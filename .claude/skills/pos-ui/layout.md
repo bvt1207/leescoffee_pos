@@ -43,15 +43,16 @@
   bo 12px; ảnh khung vuông 110px (`object-fit: cover`, `loading="lazy"`, `decoding="async"`) trên nền trung tính, không ảnh = chữ cái đầu;
   tên 14px semibold tối đa 2 dòng (`title` đủ tên); badge `xN`; chấm `.pos-menu-card__dot` khi có size hoặc tùy chọn. **Không hiển thị giá.**
   `content-visibility: auto` cho danh sách dài. Hover / nhấn / focus: viền `--pos-primary`.
-- Bấm thẻ: nhiều size → `SizeModal` (bấm hàng size = thêm ngay, tùy chọn mặc định); 1 size có `option_groups` → `OptionModal` (chọn
-  tùy chọn, giá ở chân, "Thêm vào giỏ"); 1 size không tùy chọn → thêm thẳng; 1 size `rate=null` → thẻ mờ.
-- Bảng chọn món dùng chung `ItemModalFrame` (đầu ảnh + tên + ×, thân cuộn, chân cố định); giá luôn ở cột phải
-  (`.pos-size-row__price` / `.pos-item-modal__price`, `tabular-nums`).
+- Bấm thẻ: nhiều size → `SizeModal` (bấm hàng size = thêm ngay, tùy chọn mặc định); 1 size (có hoặc không tùy chọn) → thêm thẳng
+  giỏ với giá trị mặc định, dòng vừa thêm (có nhóm) tự mở khu chip trong giỏ; 1 size `rate=null` → thẻ mờ.
+  **Đã bỏ `OptionModal` (2026-11-19, quyết định Van):** thêm 1 bước bấm cho món phổ biến nhất; chỉnh tùy chọn ở accordion giỏ nhanh
+  hơn và giữ một chỗ duy nhất để sửa tùy chọn. Nhóm bắt buộc không có mặc định vẫn được nhắc + chặn Tạo đơn ở giỏ.
+- `SizeModal` dùng `ItemModalFrame` (đầu ảnh + tên + ×, thân cuộn); giá cột phải `.pos-size-row__price` (`tabular-nums`).
 - Giỏ hàng (làm gọn 2026-11-19):
   - Cột phải `.pos-page__side` cao `calc(100dvh - 98px)` (header 64 + đệm), sticky; `.pos-order-setup` cố định, `.pos-cart` flex 1.
     Trong giỏ chỉ `.pos-cart__lines` cuộn (**một vùng cuộn duy nhất**); header giỏ (có "Xoá giỏ") và `.pos-cart__footer` không cuộn.
   - Dòng món thu gọn (`.pos-cart-line__row`, grid `main | price` / `main | qty`): tên+size, tóm tắt tùy chọn 1 dòng (ellipsis,
-    `title` đầy đủ) + nhãn CTKM ngắn "−10%"; giá; stepper (vùng chạm 44px, mặt nút 32px). Bấm vùng tên mở chip (chỉ 1 dòng mở).
+    `title` đầy đủ) + nhãn CTKM ngắn "−10%"; giá; stepper −/ô số/+ (vùng chạm 44px, mặt nút 32px; ô số gõ trực tiếp, `QtyInput`). Bấm vùng tên mở chip (chỉ 1 dòng mở).
   - Khu chip: nhãn nhóm cùng hàng với chip (grid 64px | chips), chip mặt 30px trong nút 44px, "Xoá món" ở cuối khu chip.
   - Chân giỏ: hàng gập "Ghi chú đơn hàng" (bấm mới hiện textarea) và "Dùng điểm" (bấm mới hiện stepper); Tạm tính / Khuyến mãi /
     Phụ thu / Đổi điểm / Tổng cộng luôn hiện; cảnh báo + `pos-create-bar` do `POS.tsx` truyền qua `children`.
@@ -123,10 +124,9 @@ src/
 │   └── search.ts          # zustand: keyword để phân trang / lọc món
 ├── components/
 │   ├── AppHeader.tsx      # Header + NavLink pha chế + ô tìm trang (đổi theo trang)
-│   ├── MenuGrid.tsx       # Tab nhóm (Item Group) + lưới món (MenuCard → SizeModal / OptionModal)
-│   ├── ItemModalFrame.tsx # Khung chung bảng chọn món (đầu, thân cuộn, chân giá)
-│   ├── OptionModal.tsx    # Món 1 size có tùy chọn: chip + giá + Thêm vào giỏ
-│   ├── OptionChips.tsx    # Chip tùy chọn dùng chung (giỏ + OptionModal)
+│   ├── MenuGrid.tsx       # Tab nhóm (Item Group) + lưới món (MenuCard → thêm thẳng / SizeModal)
+│   ├── ItemModalFrame.tsx # Khung bảng chọn size (đầu, thân cuộn)
+│   ├── OptionChips.tsx    # Chip tùy chọn trong giỏ
 │   ├── CartPanel.tsx      # Giỏ hàng: lines, chip tùy chọn (lib/options.ts), ghi chú, tổng
 │   ├── CustomerPicker.tsx # Tìm khách + tạo mới (debounced search, dropdown)
 │   ├── QrModal.tsx        # Hiển thị QR thanh toán
@@ -169,7 +169,7 @@ Routes:
 1. Page load → fetch `get_pos_config` + `get_menu_items` (qua PosContext)
 2. User chọn loại đơn (segmented: Tại quán / Mang đi)
 3. User gõ tìm kiếm (toàn bộ món) hoặc chọn tab nhóm → lọc món
-4. User bấm thẻ món → 1 size không tùy chọn: thêm thẳng giỏ; nhiều size: SizeModal; 1 size có tùy chọn: OptionModal
+4. User bấm thẻ món → 1 size: thêm thẳng giỏ (tùy chọn mặc định, dòng tự mở chip); nhiều size: SizeModal
 5. User chọn size → thêm vào cart
 6. Ở giỏ: chọn chip tùy chọn (mặc định chọn sẵn; nhóm bắt buộc chưa chọn chặn Tạo đơn), nhập ghi chú đơn (footer × `orderNote` → lưu `order_note`) — đã triển khai trên backend.
 7. User bấm "Tạo đơn" → `create_draft_order({price_list})` → chuyển `/pos/orders?draft=<name>` + xóa cart

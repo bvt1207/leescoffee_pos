@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useCart, cartLineKey, cartTotal, cartCount, formatMoney } from "../store/cart";
+import { useCart, cartLineKey, cartTotal, cartCount, formatMoney, MAX_LINE_QTY } from "../store/cart";
 import { usePos } from "../lib/pos-context";
 import { cartUnitSurcharge, formatCartOptions, missingRequired } from "../lib/options";
 import OptionChips from "./OptionChips";
@@ -27,6 +27,81 @@ const promoLabel = (p: PricingPreviewItem) => {
 const promoShort = (p: PricingPreviewItem) =>
 	p.discount_percentage > 0 ? `−${p.discount_percentage}%` : "Khuyến mãi";
 
+/**
+ * Ô số lượng gõ trực tiếp giữa −/+. Khi đang gõ chỉ giữ bản nháp cục bộ (không ghi store -> không gọi
+ * preview_pricing). Enter / rời ô: số nguyên >= 1 thì áp dụng (vượt MAX_LINE_QTY thì cắt + báo nhẹ);
+ * rỗng, 0, chữ, số âm -> quay về số cũ, không xóa dòng. Esc -> hủy, giữ số cũ.
+ */
+function QtyInput({ value, onCommit }: { value: number; onCommit: (qty: number) => void }) {
+	const [draft, setDraft] = useState<string | null>(null);
+	const [note, setNote] = useState("");
+	const cancelRef = useRef(false);
+
+	useEffect(() => {
+		if (!note) return;
+		const timer = window.setTimeout(() => setNote(""), 2500);
+		return () => window.clearTimeout(timer);
+	}, [note]);
+
+	const apply = (raw: string) => {
+		const text = raw.trim();
+		if (!/^\d+$/.test(text)) {
+			if (text) setNote("Chỉ nhập số nguyên từ 1");
+			return;
+		}
+		const n = parseInt(text, 10);
+		if (n < 1) return;
+		if (n > MAX_LINE_QTY) {
+			setNote(`Tối đa ${MAX_LINE_QTY}`);
+			onCommit(MAX_LINE_QTY);
+			return;
+		}
+		if (n !== value) onCommit(n);
+	};
+
+	return (
+		<span className="pos-qty">
+			<input
+				type="text"
+				inputMode="numeric"
+				className="pos-qty__input"
+				aria-label="Số lượng"
+				maxLength={6}
+				value={draft ?? String(value)}
+				onFocus={(event) => {
+					cancelRef.current = false;
+					setDraft(String(value));
+					event.currentTarget.select();
+				}}
+				onChange={(event) => setDraft(event.target.value)}
+				onKeyDown={(event) => {
+					if (event.key === "Enter") {
+						event.currentTarget.blur();
+					} else if (event.key === "Escape") {
+						event.stopPropagation();
+						cancelRef.current = true;
+						event.currentTarget.blur();
+					}
+				}}
+				onBlur={(event) => {
+					const raw = event.currentTarget.value;
+					setDraft(null);
+					if (cancelRef.current) {
+						cancelRef.current = false;
+						return;
+					}
+					apply(raw);
+				}}
+			/>
+			{note ? (
+				<span className="pos-qty__note" role="status">
+					{note}
+				</span>
+			) : null}
+		</span>
+	);
+}
+
 export default function CartPanel({
 	loyalty = null,
 	preview = null,
@@ -37,6 +112,7 @@ export default function CartPanel({
 	const lines = useCart((state) => state.lines);
 	const increment = useCart((state) => state.increment);
 	const decrement = useCart((state) => state.decrement);
+	const setQty = useCart((state) => state.setQty);
 	const removeLine = useCart((state) => state.removeLine);
 	const setLineOptions = useCart((state) => state.setLineOptions);
 	const orderNote = useCart((state) => state.orderNote);
@@ -203,7 +279,7 @@ export default function CartPanel({
 										>
 											−
 										</button>
-										<span className="pos-cart-line__qty-value">{line.qty}</span>
+										<QtyInput value={line.qty} onCommit={(n) => setQty(key, n)} />
 										<button
 											type="button"
 											className="pos-step"

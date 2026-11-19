@@ -3,7 +3,13 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0b. Lưới món /pos + tab Item Group (2026-11-19) — CHỜ VAN TEST
+## 0c. Bỏ OptionModal + nhập số lượng trực tiếp trong giỏ (2026-11-19, chỉ frontend) — CHỜ VAN TEST
+- Món 1 size có tùy chọn: thêm thẳng giỏ (mặc định), dòng tự mở chip; xóa `components/OptionModal.tsx` (**xóa tay trên bench**).
+  Lý do: thêm 1 bước bấm; chỉnh tùy chọn ở một chỗ (giỏ). `ItemModalFrame` chỉ còn SizeModal dùng (bỏ `footer` + CSS chân giá).
+- Giỏ: `QtyInput` gõ số lượng (1–999, Enter/rời ô áp dụng, Esc hủy, sai → về số cũ); `store/cart.ts` thêm `setQty`, `MAX_LINE_QTY`.
+- `npx tsc --noEmit` sạch; chưa thử trên trình duyệt.
+
+## 0b. Lưới món /pos + tab Item Group (2026-11-19) — CHỜ VAN TEST (hành vi OptionModal đã thay ở 0c)
 - Backend tối thiểu (Van duyệt): `mypos_menu.py` thêm khóa `item_group` vào payload món (cùng truy vấn Item đã có). /order không nhận khóa này (`_public_menu`).
 - Frontend: `MenuGrid.tsx` (tab nhóm sticky, tìm toàn bộ, thẻ ảnh + tên + chấm), `SizeModal.tsx` (hàng giá), mới `ItemModalFrame.tsx`,
   `OptionModal.tsx`, `OptionChips.tsx` (CartPanel dùng chung), `store/menuFilter.ts`; `types.ts`, `global.css`.

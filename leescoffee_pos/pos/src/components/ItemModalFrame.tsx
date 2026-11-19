@@ -8,16 +8,13 @@ interface Props {
 	onClose: () => void;
 	/** Thân cuộn được. */
 	children: ReactNode;
-	/** Chân cố định (giá + nút); bỏ trống nếu không có. */
-	footer?: ReactNode;
 }
 
 /**
- * Khung chung cho bảng chọn món (SizeModal, OptionModal): đầu = ảnh + tên + nút đóng,
- * thân cuộn, chân cố định. Esc / bấm nền để đóng, khóa cuộn trang khi mở.
+ * Khung bảng chọn món (hiện chỉ SizeModal dùng): đầu = ảnh + tên + nút đóng, thân cuộn. Esc / bấm nền để đóng, khóa cuộn trang khi mở.
  * Chỉ render khi mở (component cha quyết định).
  */
-export default function ItemModalFrame({ item, hint, onClose, children, footer }: Props) {
+export default function ItemModalFrame({ item, hint, onClose, children }: Props) {
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const name = item.name || item.item_name;
 	// onClose của cha thường là hàm inline: giữ trong ref để effect chỉ chạy 1 lần khi mở
@@ -72,8 +69,6 @@ export default function ItemModalFrame({ item, hint, onClose, children, footer }
 				</div>
 
 				<div className="pos-item-modal__body">{children}</div>
-
-				{footer ? <div className="pos-item-modal__foot">{footer}</div> : null}
 			</div>
 		</div>
 	);

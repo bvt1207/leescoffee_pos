@@ -4,8 +4,7 @@ import { usePos } from "../lib/pos-context";
 import { useCart } from "../store/cart";
 import { ALL_GROUPS, NO_GROUP, useMenuFilter } from "../store/menuFilter";
 import { useSearch } from "../store/search";
-import type { CartOption, MenuItem, MenuSize } from "../types";
-import OptionModal from "./OptionModal";
+import type { MenuItem, MenuSize } from "../types";
 import SizeModal from "./SizeModal";
 
 const itemName = (item: MenuItem) => item.name || item.item_name || item.item_code || "";
@@ -28,9 +27,10 @@ function MenuCard({ item }: { item: MenuItem }) {
 			.reduce((sum, line) => sum + line.qty, 0)
 	);
 
-	const addSize = (size: MenuSize, options?: CartOption[]) => {
+	const addSize = (size: MenuSize) => {
 		if (size.rate == null) return; // chưa có giá: không chọn được
-		// Tùy chọn: dùng option_groups của món (variant kế thừa template); mặc định nếu chưa chọn.
+		// Tùy chọn: option_groups của món (variant kế thừa template), chọn sẵn giá trị mặc định;
+		// cashier chỉnh trong giỏ (dòng vừa thêm tự mở khu chip).
 		add({
 			item_code: size.item_code,
 			item_name: name,
@@ -38,13 +38,13 @@ function MenuCard({ item }: { item: MenuItem }) {
 			price: size.rate,
 			size: size.label || null,
 			option_groups: groups,
-			options: options ?? defaultOptions(groups),
+			options: defaultOptions(groups),
 		});
 	};
 
-	// Nhiều size -> SizeModal; 1 size có tùy chọn -> OptionModal; 1 size không tùy chọn -> thêm thẳng.
+	// 1 size (có hoặc không tùy chọn) -> thêm thẳng giỏ; nhiều size -> SizeModal.
 	const handleClick = () => {
-		if (isSingle && !hasOptions) addSize(sizes[0]);
+		if (isSingle) addSize(sizes[0]);
 		else setOpen(true);
 	};
 
@@ -94,17 +94,6 @@ function MenuCard({ item }: { item: MenuItem }) {
 				/>
 			) : null}
 
-			{open && isSingle && hasOptions ? (
-				<OptionModal
-					item={item}
-					size={sizes[0]}
-					onClose={() => setOpen(false)}
-					onAdd={(options) => {
-						setOpen(false);
-						addSize(sizes[0], options);
-					}}
-				/>
-			) : null}
 		</>
 	);
 }

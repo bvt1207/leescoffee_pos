@@ -893,10 +893,51 @@ button.pos-cart-line__main:hover {
 	isolation: isolate;
 }
 
-.pos-cart-line__qty-value {
-	min-width: 24px;
-	text-align: center;
+/* Ô số lượng gõ trực tiếp (QtyInput): 44×44px, đủ 3 chữ số. */
+.pos-qty {
+	position: relative;
+	display: inline-flex;
+}
+
+.pos-qty__input {
+	width: 44px;
+	height: 44px;
+	padding: 0 2px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--pos-text);
+	font: inherit;
+	font-size: 15px;
 	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	cursor: text;
+}
+
+.pos-qty__input:hover {
+	border-color: var(--pos-border);
+}
+
+.pos-qty__input:focus {
+	outline: none;
+	border-color: var(--pos-primary);
+	background: var(--pos-bg);
+}
+
+.pos-qty__note {
+	position: absolute;
+	top: calc(100% - 4px);
+	right: 0;
+	z-index: 2;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: var(--pos-warning-soft);
+	color: var(--pos-warning);
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	box-shadow: var(--pos-shadow);
 }
 
 .pos-cart-line__qty .pos-step {
@@ -1944,8 +1985,7 @@ button.pos-cart-line__main:hover {
 	color: var(--pos-text-muted);
 }
 
-/* Bảng chọn món (ItemModalFrame: SizeModal, OptionModal): đầu cố định, thân cuộn, chân cố định.
-   Giá luôn ở cột phải: hàng size và hàng giá ở chân thẳng một cột. */
+/* Bảng chọn size (ItemModalFrame + SizeModal): đầu cố định, thân cuộn; giá thẳng cột phải. */
 .pos-modal--item {
 	display: flex;
 	flex-direction: column;
@@ -2005,24 +2045,13 @@ button.pos-cart-line__main:hover {
 	overflow-y: auto;
 }
 
-.pos-item-modal__foot {
-	display: flex;
-	flex: none;
-	flex-direction: column;
-	gap: 10px;
-	padding: 12px 16px 16px;
-	border-top: 1px solid var(--pos-border);
-	background: var(--pos-surface);
-}
-
 /* Hàng size: nhãn trái, giá phải. */
 .pos-size-rows {
 	display: flex;
 	flex-direction: column;
 }
 
-.pos-size-row,
-.pos-item-modal__price-row {
+.pos-size-row {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -2062,8 +2091,7 @@ button.pos-cart-line__main:hover {
 	overflow-wrap: anywhere;
 }
 
-.pos-size-row__price,
-.pos-item-modal__price {
+.pos-size-row__price {
 	flex: none;
 	font-size: 16px;
 	font-weight: 700;
@@ -2080,33 +2108,6 @@ button.pos-cart-line__main:hover {
 	font-size: 13px;
 	font-weight: 600;
 	color: var(--pos-text-muted);
-}
-
-.pos-item-modal__price-row {
-	padding: 0 12px;
-}
-
-.pos-item-modal__hint {
-	min-width: 0;
-	font-size: 13px;
-	color: var(--pos-text-muted);
-}
-
-.pos-item-modal__hint.is-warn {
-	font-weight: 700;
-	color: var(--pos-warning);
-}
-
-.pos-item-modal__price {
-	font-size: 18px;
-}
-
-.pos-optgroups--modal {
-	margin-top: 0;
-}
-
-.pos-optgroups--modal .pos-optgroup {
-	grid-template-columns: 80px minmax(0, 1fr);
 }
 
 .pos-confirm {
