@@ -73,8 +73,7 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - Tab nhóm `.pos-menu-tab` (`role="tab"`, `aria-selected`, `.is-active`), khóa tab = `item_group`, `NO_GROUP` = "Khác",
   `ALL_GROUPS` = "Tất cả" (`store/menuFilter.ts`). Tab đã nhớ không còn trong menu → hiển thị "Tất cả". Không có tên nhóm cứng.
 - Có từ khóa tìm → lọc toàn bộ món, tab hiện "Tất cả"; bấm tab → `setSearch("")` rồi đổi tab.
-- `MenuCard`: toàn bộ thẻ là `button` (`title` = tên), ảnh/chữ cái đầu, tên 2 dòng, badge `xN`, chấm `.pos-menu-card__dot`
-  (`aria-label` "Có size" / "Có tùy chọn"). Không hiển thị giá.
+- `MenuCard`: toàn bộ thẻ là `button` (`title` = tên), ảnh/chữ cái đầu, tên 2 dòng, badge `xN`. Không hiển thị giá, không có chấm báo size/tùy chọn.
 - 1 size (có hoặc không `option_groups`): thêm thẳng giỏ với `defaultOptions`. Nhiều size: `SizeModal`. 1 size `rate=null`: thẻ mờ.
   (OptionModal đã bỏ 2026-11-19 — xem layout.md.)
 - `ItemModalFrame`: `role="dialog"`, `aria-modal`, Esc / nền để đóng, khóa cuộn trang, focus nút ×; `onClose` giữ trong ref (effect chạy 1 lần).
@@ -83,7 +82,11 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - `OptionChips`: khu chip trong giỏ (nhãn nhóm cùng hàng, mặt chip 30px trong vùng chạm 44px, "+giá", "chưa chọn").
 
 #### CartPanel.tsx (CartPanel)
-- Mỗi dòng (thu gọn): tên + size, tóm tắt tùy chọn 1 dòng + CTKM ngắn, giá, stepper −/+ (vùng chạm 44px). Nút "Xoá món" nằm trong khu chip khi mở; thu gọn thì `−` ở qty 1 xóa dòng (store).
+- **CTKM hiện sẵn** (không dựa vào tooltip): `PromoChip` trong `.pos-cart-line__promos` dưới tóm tắt — "Giảm {discount_percentage}% · {title luật đầu}"
+  (không có % → "Khuyến mãi"), nhiều luật → "+N" (`.pos-promo-chip__more`), `title` = nhãn đầy đủ. Dòng tặng (`is_free_item`) → "Tặng · {title}".
+  Không CTKM → không render (không tăng chiều cao). Dữ liệu nguyên từ `preview_pricing` (`rules[].title`, `discount_percentage`), không tính lại.
+  Chân giỏ: `.pos-cart__promo-names` dưới "Khuyến mãi" = `rules[].title` không trùng của mọi dòng preview, 1 dòng ellipsis.
+- Mỗi dòng (thu gọn): tên + size, tóm tắt tùy chọn 1 dòng, chip CTKM (nếu có), giá, stepper −/+ (vùng chạm 44px). Nút "Xoá món" nằm trong khu chip khi mở; thu gọn thì `−` ở qty 1 xóa dòng (store).
 - **Số lượng gõ trực tiếp** (`QtyInput` trong `CartPanel.tsx`, `.pos-qty__input` 44×44px, `inputMode="numeric"`): focus chọn hết; khi
   gõ chỉ giữ bản nháp cục bộ (không ghi store → không gọi `preview_pricing`); Enter / rời ô áp dụng qua `setQty` (store, kẹp
   1..`MAX_LINE_QTY` = 999); vượt 999 → cắt 999 + báo "Tối đa 999"; rỗng/0 → về số cũ; chữ/số âm → về số cũ + báo nhẹ; Esc → hủy.

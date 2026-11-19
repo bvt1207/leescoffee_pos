@@ -3,6 +3,12 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0d. Bỏ chấm thẻ món + CTKM hiện sẵn trong giỏ (2026-11-19, chỉ frontend) — CHỜ VAN TEST
+- `MenuGrid.tsx`: bỏ chấm `.pos-menu-card__dot`. `CartPanel.tsx`: chip CTKM dưới tóm tắt ("Giảm 5% · tên", "+N", dòng tặng "Tặng · tên"),
+  bỏ nhãn ngắn "−5%" + tooltip; chân giỏ thêm dòng tên chương trình dưới "Khuyến mãi". `global.css`.
+- [Unverified] Dòng tặng có `rules` hay không tùy ERPNext ghi `pricing_rules` trên dòng tặng; không có → chip chỉ "Tặng".
+- `npx tsc --noEmit` sạch; chưa thử trên trình duyệt.
+
 ## 0c. Bỏ OptionModal + nhập số lượng trực tiếp trong giỏ (2026-11-19, chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`3e9e7cd`)
 - Món 1 size có tùy chọn: thêm thẳng giỏ (mặc định), dòng tự mở chip; xóa `components/OptionModal.tsx` (**xóa tay trên bench**).
   Lý do: thêm 1 bước bấm; chỉnh tùy chọn ở một chỗ (giỏ). `ItemModalFrame` chỉ còn SizeModal dùng (bỏ `footer` + CSS chân giá).

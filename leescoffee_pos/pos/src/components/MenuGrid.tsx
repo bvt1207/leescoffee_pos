@@ -16,7 +16,6 @@ function MenuCard({ item }: { item: MenuItem }) {
 	const name = itemName(item);
 	// Món 1 size: label rỗng -> không mở SizeModal.
 	const isSingle = sizes.length === 1 && !sizes[0].label;
-	const hasOptions = groups.length > 0;
 	const add = useCart((state) => state.addVariant);
 	const [open, setOpen] = useState(false);
 
@@ -50,7 +49,6 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 	// Món 1 size chưa có giá: làm mờ, không bấm được.
 	const unavailable = isSingle && sizes[0].rate == null;
-	const hasChoices = !isSingle || hasOptions;
 
 	return (
 		<>
@@ -69,13 +67,6 @@ function MenuCard({ item }: { item: MenuItem }) {
 							{name.slice(0, 1).toUpperCase()}
 						</span>
 					)}
-					{hasChoices ? (
-						<span
-							className="pos-menu-card__dot"
-							role="img"
-							aria-label={isSingle ? "Có tùy chọn" : "Có size"}
-						/>
-					) : null}
 					{qty > 0 ? <span className="pos-menu-card__qty">x{qty}</span> : null}
 				</span>
 				<span className="pos-menu-card__name">{name}</span>

@@ -17,15 +17,28 @@ interface Props {
 const hasPromo = (p?: PricingPreviewItem) =>
 	!!p && !p.is_free_item && (p.discount_percentage > 0 || p.rate < p.price_list_rate);
 
+/** Tên chương trình (Pricing Rule title) của dòng preview, không trùng, giữ thứ tự server trả. */
+const ruleTitles = (p: PricingPreviewItem) =>
+	Array.from(new Set((p.rules || []).map((r) => r.title || r.name).filter(Boolean)));
+
 const promoLabel = (p: PricingPreviewItem) => {
 	const pct = p.discount_percentage > 0 ? `Giảm ${p.discount_percentage}%` : "Khuyến mãi";
-	const titles = p.rules.map((r) => r.title).filter(Boolean).join(", ");
+	const titles = ruleTitles(p).join(", ");
 	return titles ? `${pct} · ${titles}` : pct;
 };
 
-/** Nhãn CTKM ngắn trên dòng thu gọn; nhãn đầy đủ nằm ở title. */
-const promoShort = (p: PricingPreviewItem) =>
-	p.discount_percentage > 0 ? `−${p.discount_percentage}%` : "Khuyến mãi";
+/**
+ * Chip CTKM hiện sẵn dưới tóm tắt tùy chọn: "Giảm 5% · {luật đầu}" + "+N" nếu nhiều luật.
+ * Số liệu lấy nguyên từ preview_pricing (không tính lại); title của chip = nhãn đầy đủ.
+ */
+function PromoChip({ prefix, titles, full }: { prefix: string; titles: string[]; full: string }) {
+	return (
+		<span className="pos-promo-chip pos-promo-chip--line" title={full}>
+			<span className="pos-promo-chip__text">{titles[0] ? `${prefix} · ${titles[0]}` : prefix}</span>
+			{titles.length > 1 ? <span className="pos-promo-chip__more">+{titles.length - 1}</span> : null}
+		</span>
+	);
+}
 
 /**
  * Ô số lượng gõ trực tiếp giữa −/+. Khi đang gõ chỉ giữ bản nháp cục bộ (không ghi store -> không gọi
@@ -141,6 +154,10 @@ export default function CartPanel({
 			: undefined;
 	};
 	const freeItems = (preview?.items || []).filter((p) => p.is_free_item);
+	// Tên các chương trình đang áp dụng cho đơn (mọi dòng preview, kể cả dòng tặng), không trùng.
+	const promoNames = lines.length
+		? Array.from(new Set((preview?.items || []).flatMap((p) => ruleTitles(p)))).join(", ")
+		: "";
 
 	// Chỉ mở chip tùy chọn của MỘT dòng. Món vừa thêm: mở nếu có nhóm tùy chọn, không thì thu dòng đang mở.
 	const [expanded, setExpanded] = useState<string | null>(null);
@@ -207,7 +224,7 @@ export default function CartPanel({
 									<span className="pos-cart-line__name-text">{line.item_name}</span>
 									{line.size ? <span className="pos-cart-line__size">{line.size}</span> : null}
 								</span>
-								{metaText || promo ? (
+								{metaText ? (
 									<span className="pos-cart-line__meta">
 										{metaText ? (
 											<span
@@ -216,16 +233,20 @@ export default function CartPanel({
 												{metaText}
 											</span>
 										) : null}
-										{promo ? (
-											<span className="pos-cart-line__promo" title={promoLabel(promo)}>
-												{promoShort(promo)}
-											</span>
-										) : null}
 										{groups.length ? (
 											<span className="pos-cart-line__caret" aria-hidden>
 												{isOpen ? "▴" : "▾"}
 											</span>
 										) : null}
+									</span>
+								) : null}
+								{promo ? (
+									<span className="pos-cart-line__promos">
+										<PromoChip
+											prefix={promo.discount_percentage > 0 ? `Giảm ${promo.discount_percentage}%` : "Khuyến mãi"}
+											titles={ruleTitles(promo)}
+											full={promoLabel(promo)}
+										/>
 									</span>
 								) : null}
 							</>
@@ -243,18 +264,13 @@ export default function CartPanel({
 											type="button"
 											className="pos-cart-line__main"
 											aria-expanded={isOpen}
-											title={[summary, promo ? promoLabel(promo) : ""].filter(Boolean).join(" · ")}
+											title={summary || undefined}
 											onClick={() => setExpanded(isOpen ? null : key)}
 										>
 											{main}
 										</button>
 									) : (
-										<div
-											className="pos-cart-line__main"
-											title={promo ? promoLabel(promo) : undefined}
-										>
-											{main}
-										</div>
+										<div className="pos-cart-line__main">{main}</div>
 									)}
 
 									<div className="pos-cart-line__price">
@@ -324,7 +340,13 @@ export default function CartPanel({
 									<div className="pos-cart-line__main">
 										<span className="pos-cart-line__name">
 											<span className="pos-cart-line__name-text">{p.item_code}</span>
-											<span className="pos-promo-chip">Tặng</span>
+										</span>
+										<span className="pos-cart-line__promos">
+											<PromoChip
+												prefix="Tặng"
+												titles={ruleTitles(p)}
+												full={["Tặng", ...ruleTitles(p)].join(" · ")}
+											/>
 										</span>
 									</div>
 									<div className="pos-cart-line__price">
@@ -415,6 +437,11 @@ export default function CartPanel({
 							<div className="pos-redeem__row pos-redeem__row--discount">
 								<span>Khuyến mãi</span>
 								<span>−{formatMoney(preview.total_discount_rules, currency)}</span>
+							</div>
+						) : null}
+						{promoNames ? (
+							<div className="pos-cart__promo-names" title={promoNames}>
+								{promoNames}
 							</div>
 						) : null}
 						{(preview.total_surcharge ?? 0) > 0 ? (
