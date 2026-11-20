@@ -85,6 +85,8 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 		for f in ("sugar_level", "ice_level"):
 			df = meta.get_field(f)
 			ok(f"B {f}: không còn default", df is not None and not df.default, f"(default={getattr(df, 'default', None)!r})")
+			ok(f"B {f}: lựa chọn đầu là trống (Frappe không tự gán '50')", df is not None and (df.options or "").startswith(chr(10)),
+				f"(options={getattr(df, 'options', None)!r})")
 
 		profile = P._get_pos_profile(branch_name)
 		ctx["price_list"] = ctx["price_list"] or profile.get("selling_price_list")
