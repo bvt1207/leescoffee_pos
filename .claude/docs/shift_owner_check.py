@@ -7,7 +7,9 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	KHÔNG đụng ca thật: chép POS Profile thành profile tạm "ZZTEST Shift ..." (Applicable for Users = user tạm),
 	tạo user tạm A, B (POS CASHIER, trong danh sách), OUT (POS CASHIER, ngoài danh sách), K (POS KITCHEN), M (POS MANAGER).
 	Ghi dữ liệu bằng ignore_permissions=True để kiểm riêng quy tắc của hook (quyền DocType kiểm ở mục 7).
-	Cuối hàm ROLLBACK; nếu có commit ngầm thì tự dọn và in WARN.
+	Đầu và cuối hàm xóa mọi POS Profile "ZZTEST Shift ..." + user zz.test.shift.* còn sót (kèm ca / phiếu đóng ca / đơn
+	của profile tạm). Profile tạm: Applicable for Users = A, B, M với default = 0 (tránh validate_default_profile của ERPNext).
+	Cuối hàm ROLLBACK; nếu có commit ngầm thì tự dọn và in WARN; mục 9 kiểm tra DB không còn dữ liệu thử.
 	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest().
 	"""
 	import traceback
@@ -19,6 +21,7 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	from leescoffee_pos.leescoffee_pos.api import pos_api as P
 
 	PREFIX = "zz.test.shift"
+	PROFILE_PREFIX = "ZZTEST Shift "
 	ROLE_OF = {"A": "POS CASHIER", "B": "POS CASHIER", "OUT": "POS CASHIER", "K": "POS KITCHEN", "M": "POS MANAGER"}
 	results, users, made = [], {}, {"profile": None, "openings": [], "closings": [], "invoices": []}
 
@@ -66,6 +69,34 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		closing.submit()
 		return closing
 
+	def purge_leftovers():
+		"""Xóa mọi POS Profile "ZZTEST Shift ..." (kèm phiếu đóng ca, đơn, ca của nó) và user tạm còn trong DB
+		(do lần chạy trước có commit ngầm). Chỉ đụng dữ liệu thử có tiền tố. Trả danh sách đã xóa (đã commit)."""
+		removed = []
+		for prof_name in frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name"):
+			for dt in ("POS Closing Entry", "POS Invoice", "POS Opening Entry"):
+				for n in frappe.get_all(dt, filters={"pos_profile": prof_name}, pluck="name"):
+					try:
+						doc = frappe.get_doc(dt, n)
+						if doc.docstatus == 1:
+							doc.flags.ignore_permissions = True
+							doc.cancel()
+						frappe.delete_doc(dt, n, force=1, ignore_permissions=True)
+						removed.append(f"{dt} {n}")
+					except Exception as ex:  # noqa: BLE001
+						print(f"WARN không dọn được {dt} {n}: {ex} (xóa tay trên Desk)")
+			try:
+				frappe.delete_doc("POS Profile", prof_name, force=1, ignore_permissions=True)
+				removed.append(f"POS Profile {prof_name}")
+			except Exception as ex:  # noqa: BLE001
+				print(f"WARN không xóa được POS Profile {prof_name}: {ex}")
+		for u in frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name"):
+			frappe.delete_doc("User", u, force=1, ignore_permissions=True)
+			removed.append(f"User {u}")
+		if removed:
+			frappe.db.commit()
+		return removed
+
 	def comments(doctype, name):
 		return frappe.get_all("Comment", filters={"reference_doctype": doctype, "reference_name": name,
 			"comment_type": "Info"}, pluck="content")
@@ -78,6 +109,9 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		price_list = price_list or src.get("selling_price_list")
 		balance_modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
 
+		print("== 0. Dọn dữ liệu thử còn sót từ lần chạy trước ==")
+		purge_leftovers()
+
 		print("== 1. Dữ liệu tạm ==")
 		for key, role in ROLE_OF.items():
 			email = f"{PREFIX}.{key.lower()}@example.com"
@@ -88,11 +122,13 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 				"roles": [{"role": role}]}).insert(ignore_permissions=True)
 			users[key] = email
 		prof = frappe.copy_doc(src)
-		prof.set("__newname", f"ZZTEST Shift {frappe.generate_hash(length=6)}")
+		prof.set("__newname", f"{PROFILE_PREFIX}{frappe.generate_hash(length=6)}")
 		prof.disabled = 0
+		# copy_doc kéo theo dòng Applicable for Users của profile thật -> xóa hết rồi thêm user tạm.
+		# default = 0: validate_default_profile của ERPNext chặn khi user đã là default ở profile khác.
 		prof.set("applicable_for_users", [])
 		for key in ("A", "B", "M"):
-			prof.append("applicable_for_users", {"user": users[key], "default": 1})
+			prof.append("applicable_for_users", {"user": users[key], "default": 0})
 		prof.insert(ignore_permissions=True)
 		made["profile"] = prof.name
 		print(f"INFO profile tạm {prof.name} (chép từ {pos_profile}); user {users}")
@@ -169,32 +205,17 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	finally:
 		frappe.set_user("Administrator")
 		frappe.db.rollback()
-		left = [("POS Closing Entry", n) for n in made["closings"]] + [("POS Invoice", n) for n in made["invoices"]] \
-			+ [("POS Opening Entry", n) for n in made["openings"]]
-		left = [(dt, n) for dt, n in left if frappe.db.exists(dt, n)]
-		for dt, n in left:
-			try:
-				doc = frappe.get_doc(dt, n)
-				if doc.docstatus == 1:
-					doc.flags.ignore_permissions = True
-					doc.cancel()
-				frappe.delete_doc(dt, n, force=1, ignore_permissions=True)
-			except Exception as ex:  # noqa: BLE001
-				print(f"WARN không dọn được {dt} {n}: {ex} (xóa tay trên Desk)")
-		extra = []
-		if made["profile"] and frappe.db.exists("POS Profile", made["profile"]):
-			frappe.delete_doc("POS Profile", made["profile"], force=1, ignore_permissions=True)
-			extra.append(made["profile"])
 		for u in users.values():
 			frappe.clear_cache(user=u)
-			if frappe.db.exists("User", u):
-				frappe.delete_doc("User", u, force=1, ignore_permissions=True)
-				extra.append(u)
-		if left or extra:
-			frappe.db.commit()
-			print(f"WARN có commit ngầm, đã dọn {left + extra}")
+		removed = purge_leftovers()
+		if removed:
+			print(f"WARN có commit ngầm, đã dọn: {removed}")
 		else:
-			print("Đã rollback: không còn profile / ca / đơn / user thử")
+			print("Đã rollback: không còn dữ liệu thử")
+		left_profiles = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name")
+		left_users = frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name")
+		ok("9 Dọn dữ liệu: không còn POS Profile ZZTEST Shift / user tạm trong DB", not left_profiles and not left_users,
+			f"(profile {left_profiles}, user {left_users})")
 		frappe.set_user(admin)
 
 	failed = [c for c, passed in results if not passed]
