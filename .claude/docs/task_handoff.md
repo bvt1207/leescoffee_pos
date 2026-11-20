@@ -6,7 +6,7 @@
 ## 0e. Orders: ngày giờ + mã ngắn (bước A) và "Ca hiện tại" / "Lịch sử" (bước B) — 2026-11-20
 - **Bước A (chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`d1cac1f`)**: `lib/format.ts` (formatOrderTime, formatStamp/nowStamp, shortOrderNo,
   orderMatches), Orders bỏ gọi `get_status_board`, ReceiptModal dùng hàm chung.
-- **Bước B (backend + frontend) — CHỜ VAN TEST.** `pos_api.get_orders` thêm `scope/from_date/to_date/search/start` (mặc định `scope="shift"`),
+- **Bước B (backend + frontend) — ĐÃ TEST PASS trên bench DEV (`f26c753`; script `check_orders_shift` PASS sau sửa `aa6cba8`).** `pos_api.get_orders` thêm `scope/from_date/to_date/search/start` (mặc định `scope="shift"`),
   `_require_sale_role`; mới `get_orders_summary`; `get_pos_config` thêm `time_zone`. Frontend: `store/orderFilter.ts`, Orders 2 chế độ.
   - Đơn thuộc ca: POS Invoice **không có** link Opening Entry (đã đọc ERPNext trên bench DEV) → cùng POS Profile +
     `Timestamp(posting_date, posting_time)` ≥ `period_start_date` của ca Open (giống `pos_closing_entry.build_invoice_query`).
