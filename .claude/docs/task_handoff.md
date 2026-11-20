@@ -3,6 +3,14 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0i. Đóng ca chặn đơn đã thanh toán chưa giao + trạng thái kết thúc có lý do (2026-11-20, backend) — CHỜ VAN TEST
+- Mới: `doctype/pos_invoice_hooks/kitchen_status.py` (hằng trạng thái, `shift_open_orders`, `set_terminal`), patch `v1_kitchen_outcomes`.
+- Sửa: fixtures (options `custom_kitchen_status` + 6 Custom Field), `pos_api` (`set_kitchen_status` ghi người/giờ, `resolve_open_order(s)`,
+  `force_close_shift` chuyển đơn dở, `get_order_detail` thêm khóa, giữ thẻ theo trạng thái kết thúc), `pos_invoice_hooks` (nhả thẻ),
+  `pos_shift_hooks` (chặn đóng ca), `customer_order_api` (stage). Không đổi frontend.
+- Chi tiết: `rules/leescoffee_pos/pos_invoice_hooks.md` §2.1, `roles.md` §2d. Kiểm tra: `.claude/docs/open_orders_check.py`.
+- UI đợt sau: Kitchen/Orders hiển thị + nút kết thúc đơn có lý do; khách QR phân biệt trạng thái.
+
 ## 0h. Chặn đóng ca khi còn Draft + tự hủy Draft quá hạn + lý do hủy (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`c892469`)
 - Mới: DocType `MYPOS Order Cancel Log` (+ `order_cancel.py`: 3 mốc QR 15 / đệm 5 / POS 120 phút, hàm hủy + log, job, giao dịch mồ côi).
 - Sửa: `pos_api` (`cancel_draft_order` có lý do, `force_close_shift`, config `pos_draft_auto_cancel_minutes`), `customer_order_api` (bỏ mốc 60 phút),

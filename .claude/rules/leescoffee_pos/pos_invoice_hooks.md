@@ -22,11 +22,27 @@
 
 - **Chỉ được set khi `status == "Paid"`** (kiểm tra trong `on_submit`).
 - Vòng đời: `(trống)` → `Chưa làm` → `Đã làm` → `Đã hoàn thành`.
+- **Trạng thái kết thúc có lý do (2026-11-20, CHỜ VAN TEST)** — hằng ở MỘT nơi `doctype/pos_invoice_hooks/kitchen_status.py`:
+  `Khách không nhận`, `Không thực hiện được` (thu ngân / quản lý qua `pos_api.resolve_open_order(s)`), `Đã đóng ca chưa xử lý`
+  (đóng ca bắt buộc). Thêm vào options của Select (giá trị cũ giữ nguyên; fixture + patch `v1_kitchen_outcomes`).
+  - `KITCHEN_FLOW` (bước tiến của `set_kitchen_status`) không đổi; `KITCHEN_BLOCK_STATUSES` = Chưa làm, Đã làm (chặn đóng ca);
+    `KITCHEN_TERMINAL_STATUSES` = Đã hoàn thành + 3 trạng thái mới (không giữ thẻ rung, không chặn đóng ca);
+    `NEEDS_REVIEW_STATUSES` = 3 trạng thái mới → `needs_review = 1`.
+  - Custom Field POS Invoice (read only, allow_on_submit): `kitchen_done_by/at` (Chưa làm→Đã làm), `kitchen_completed_by/at` (kết thúc),
+    `kitchen_outcome_reason`, `needs_review`. Dữ liệu cũ để trống.
+  - `resolve_open_order(invoice_name, outcome, reason, note)`: CASHIER/MANAGER; đơn Paid đang Chưa làm/Đã làm; lý do bắt buộc trừ
+    Đã làm → Đã hoàn thành; ghi người/giờ, comment trên đơn (đơn không bị xóa nên comment là log). `resolve_open_orders`: cả lô một savepoint.
+  - `set_kitchen_status` trên đơn đã kết thúc → lỗi "đã kết thúc".
+  - `shift_open_orders(pos_profile, period_start)` → `{drafts, unprepared, undelivered}` (đơn Paid của ca: cùng profile + giờ ghi sổ ≥ giờ
+    mở ca, chưa gộp; trạng thái rỗng tính là Chưa làm) — dùng cho chặn đóng ca, đóng ca bắt buộc, UI sau.
+  - Khách QR: trạng thái kết thúc mới hiện như "done" (UI khách chưa phân biệt). Kitchen: trạng thái mới không vào tab nào (UI đợt sau).
 - `on_submit` tự động set `Chưa làm` khi Paid và chưa có kitchen status.
 - **Sử dụng `doc.db_set()`** để update DB ngay trong transaction (tránh race condition).
 - Dùng để khởi tạo vòng đời pha chế sau khi thanh toán thành công.
 
 ### 2.2 Buzzer Lifecycle (Dine In only)
+
+> 2026-11-20: mọi chỗ "khác Đã hoàn thành" (đang giữ thẻ, nhả thẻ, lọc đơn khác) đổi thành "không thuộc `KITCHEN_TERMINAL_STATUSES`" — kết thúc có lý do cũng nhả thẻ.
 
 **Quy tắc (quyết định của Van, 2026-10-27): mỗi thẻ chỉ giữ cho MỘT đơn chưa hoàn thành, không dùng chung.**
 

@@ -76,6 +76,15 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Mọi đường hủy (tay, job, đóng ca) qua `order_cancel.cancel_draft_with_log` → `MYPOS Order Cancel Log` (đơn bị xóa nên Comment không giữ được).
 - Kiểm tra: `.claude/docs/draft_cancel_check.py` (`check_draft_cancel(...)`).
 
+### 2d. Đóng ca chặn đơn đã thanh toán chưa giao (2026-11-20, CHỜ VAN TEST)
+
+- Chặn đóng ca thêm đơn Paid của ca còn "Chưa làm" (chưa pha chế) / "Đã làm" (chưa giao) — `kitchen_status.shift_open_orders`,
+  thông báo theo nhóm (tối đa 10 mã + "và N đơn khác").
+- `force_close_shift`: ngoài hủy Draft, đơn dở → "Đã đóng ca chưa xử lý" (`needs_review`, comment, không xóa); savepoint, lỗi trước khi gộp
+  hóa đơn → hoàn tác. Lưu ý: ERPNext `create_merge_logs` tự commit khi submit phiếu đóng ca và tự rollback toàn bộ nếu gộp lỗi.
+- `resolve_open_order(s)`: CASHIER / MANAGER / System Manager / Administrator (`_require_sale_role`); KITCHEN bị chặn.
+- Kiểm tra: `.claude/docs/open_orders_check.py` (`check_open_orders(...)`).
+
 ## 3. Cơ chế cài đặt
 
 - **Role**: fixture `fixtures/role.json` (filter `name in [3 role]`) **và** patch tự tạo nếu
@@ -162,7 +171,9 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `pos_api.confirm_pickup` | CASHIER, MANAGER |
 | `pos_api.get_status_board` | KITCHEN, CASHIER, MANAGER |
 | `pos_api.get_kitchen_orders` | ĐÃ LÀM (§7) — lọc theo `KITCHEN_TABS_BY_ROLE` |
-| `pos_api.set_kitchen_status` | ĐÃ LÀM (§7) — theo `KITCHEN_TRANSITIONS_BY_ROLE` |
+| `pos_api.set_kitchen_status` | ĐÃ LÀM (§7) — theo `KITCHEN_TRANSITIONS_BY_ROLE`; đơn đã kết thúc → từ chối (2026-11-20) |
+| `pos_api.resolve_open_order(s)` | **ĐÃ LÀM** (2026-11-20): `_require_sale_role` (§2d) |
+| `pos_api.force_close_shift` | **ĐÃ LÀM** (2026-11-20): chỉ manager (§2c, §2d) |
 | `pos_invoice_hooks.get_status_board_orders` | KITCHEN, CASHIER, MANAGER |
 | `sepay.generate_qr_for_invoice` | CASHIER, MANAGER |
 | `sepay.sepay_webhook` | Guest (giữ) — đã xác thực API key Branch (2026-11-14, `order-qr.md` §3) |

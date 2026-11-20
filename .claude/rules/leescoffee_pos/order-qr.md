@@ -17,7 +17,8 @@
 3. `get_menu` → `preview` → `create_order(order_type)` → `create_payment_qr` → khách chuyển khoản
    → `sepay_webhook` (đã xác thực API key) submit đơn → hook `on_submit` đặt `Chưa làm` → Kitchen.
 4. Khách poll `get_my_orders` (5 giây, chỉ khi còn đơn đang xử lý) / `get_order` (3 giây ở màn thanh toán): `stage` = `awaiting_payment` | `expired` | `queued`
-   (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận") | `done`.
+   (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận") | `done` (Đã hoàn thành; từ 2026-11-20 cả "Khách không nhận",
+   "Không thực hiện được", "Đã đóng ca chưa xử lý" — UI khách chưa phân biệt).
 
 ## 2. Quyết định đã chốt (Van, 2026-11-14)
 
