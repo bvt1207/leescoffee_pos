@@ -24,7 +24,8 @@ CACHE_KEY = "mypos_option_config_v2"  # v2: cấu hình có extra_price (khóa m
 LEGACY_FIELDS = ("sugar_level", "ice_level")
 LEGACY_VALUES = ("50", "70", "100")  # options của Custom Field Select cũ
 
-# Nhãn hiển thị cho ĐƠN CŨ chỉ có cột sugar_level/ice_level (không có JSON options).
+# Nhãn hiển thị cho ĐƠN CŨ chỉ có cột sugar_level/ice_level: cột `options` NULL/rỗng (chưa từng ghi JSON).
+# `options = '[]'` = đã xử lý, món không có tùy chọn -> KHÔNG dựng từ cột cũ (read_line_options).
 # TẠM THỜI — bỏ khi không còn đơn cũ cần hiển thị.
 LEGACY_OPTION_LABELS = {"sugar_level": "Đường", "ice_level": "Đá"}
 
@@ -350,14 +351,20 @@ def line_surcharge(options_json):
 
 
 def read_line_options(options_json, sugar_level=None, ice_level=None):
-	"""options đã lưu; JSON rỗng mà cột cũ có giá trị thì dựng từ cột cũ (chỉ đọc)."""
-	parsed = []
-	if options_json:
-		try:
-			parsed = json.loads(options_json) or []
-		except Exception:
-			parsed = []
-	if parsed:
+	"""Tùy chọn của một dòng đơn để hiển thị (chỉ đọc) — hàm DUY NHẤT dựng tùy chọn cho mọi API.
+
+	- `options_json` NULL hoặc chuỗi rỗng (đơn cũ, chưa từng ghi JSON) -> dựng từ cột cũ
+	  sugar_level / ice_level nếu có giá trị (LEGACY_OPTION_LABELS).
+	- Có JSON (kể cả '[]' = đã xử lý, món không có tùy chọn) -> chỉ đọc JSON, không dựng từ cột cũ.
+	- JSON hỏng -> [] (không đoán từ cột cũ).
+	"""
+	if options_json is None or not str(options_json).strip():
+		return _legacy_line_options(sugar_level, ice_level)
+	try:
+		parsed = json.loads(options_json) or []
+	except Exception:
+		return []
+	if isinstance(parsed, list):
 		return [
 			{
 				"group": o.get("group"),
@@ -368,6 +375,11 @@ def read_line_options(options_json, sugar_level=None, ice_level=None):
 			for o in parsed
 			if isinstance(o, dict)
 		]
+	return []
+
+
+def _legacy_line_options(sugar_level=None, ice_level=None):
+	"""Đơn cũ (chưa có JSON options): dựng tùy chọn từ cột sugar_level / ice_level."""
 	out = []
 	for field, value in (("sugar_level", sugar_level), ("ice_level", ice_level)):
 		if value:
