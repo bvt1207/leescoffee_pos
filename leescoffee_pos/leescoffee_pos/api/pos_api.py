@@ -566,7 +566,15 @@ def get_pos_config(branch_name=None):
 		"kitchen_transitions": [{"from": a, "to": b} for a, b in _kitchen_transitions(roles)],
 		# Múi giờ site (System Settings): frontend so "Hôm nay/Hôm qua" theo múi này.
 		"time_zone": get_system_timezone(),
+		# Draft kênh khác QR tự hủy sau số phút này (order_cancel.POS_DRAFT_AUTO_CANCEL_MINUTES) — Orders hiện giờ tự hủy.
+		"pos_draft_auto_cancel_minutes": _pos_draft_auto_cancel_minutes(),
 	}
+
+
+def _pos_draft_auto_cancel_minutes():
+	from ..doctype.mypos_order_cancel_log.order_cancel import POS_DRAFT_AUTO_CANCEL_MINUTES
+
+	return POS_DRAFT_AUTO_CANCEL_MINUTES
 
 
 @frappe.whitelist()
@@ -1361,15 +1369,27 @@ def pay_cash(invoice_name):
 	}
 
 @frappe.whitelist()
-def cancel_draft_order(invoice_name, force=0):
-	"""Hủy (xóa hẳn) đơn Draft chưa thanh toán.
+def cancel_draft_order(invoice_name, force=0, reason=None, note=None):
+	"""Hủy (xóa hẳn) đơn Draft chưa thanh toán, ghi MYPOS Order Cancel Log (order_cancel.cancel_draft_with_log).
 
 	- Chỉ cho docstatus = 0. Đơn đã thanh toán không hủy được tại POS.
 	- Đơn đã sinh QR (đang chờ chuyển khoản) cần force=1 để tránh xóa nhầm
 	  đơn khách đã chuyển tiền.
 	- Thẻ rung tự được nhả vì _assign_buzzer chỉ xét các POS Invoice còn tồn tại.
+	- reason: giao diện Orders luôn gửi; phải thuộc order_cancel.MANUAL_REASONS, "Khác" bắt buộc note.
+	  reason=None (giao diện cũ chưa gửi) -> vẫn hủy, log ghi REASON_LEGACY.
 	"""
+	from ..doctype.mypos_order_cancel_log import order_cancel as OC
+
 	_require_sale_role()
+	if reason is None:
+		reason = OC.REASON_LEGACY
+	else:
+		reason = str(reason).strip()
+		if reason not in OC.MANUAL_REASONS:
+			frappe.throw(_("Chọn lý do hủy đơn: {0}.").format(", ".join(OC.MANUAL_REASONS)))
+		if reason == OC.REASON_OTHER and not (note or "").strip():
+			frappe.throw(_("Lý do \"Khác\": nhập ghi chú."))
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 
 	if invoice.docstatus != 0:
@@ -1384,13 +1404,53 @@ def cancel_draft_order(invoice_name, force=0):
 		)
 
 	buzzer_number = _buzzer_number(invoice.buzzer)
-	frappe.delete_doc("POS Invoice", invoice_name, ignore_permissions=True)
+	result = OC.cancel_draft_with_log(invoice_name, reason, OC.SOURCE_MANUAL, note=note)
 
 	return {
 		"invoice_name": invoice_name,
 		"buzzer_number": buzzer_number,
+		"log": result["log"],
 		"message": _("Đã hủy đơn {0}.").format(invoice_name),
 	}
+
+
+@frappe.whitelist()
+def force_close_shift(opening_entry, reason=None):
+	"""Đóng ca bắt buộc (chỉ POS MANAGER / System Manager / Administrator).
+
+	Hủy MỌI đơn Draft của POS Profile của ca (log nguồn "Đóng ca", lý do "Hủy khi đóng ca", ghi chú = lý do nhập),
+	rồi tạo + submit POS Closing Entry (đi qua pos_shift_hooks như đóng ca thường). Một giao dịch: lỗi ở bất kỳ bước
+	nào -> Frappe rollback, không đơn nào bị hủy.
+	"""
+	from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import make_closing_entry_from_opening
+
+	from ..doctype.mypos_order_cancel_log import order_cancel as OC
+
+	if not _pos_roles()["manager"]:
+		frappe.throw(_("Chỉ quản lý (POS MANAGER) được đóng ca bắt buộc."), frappe.PermissionError)
+	reason = (reason or "").strip()
+	if len(reason) < 3:
+		frappe.throw(_("Nhập lý do đóng ca bắt buộc (ít nhất 3 ký tự)."))
+
+	opening = frappe.get_doc("POS Opening Entry", opening_entry)
+	if opening.docstatus != 1 or opening.status != "Open":
+		frappe.throw(_("Ca {0} không còn mở.").format(opening_entry))
+
+	cancelled = []
+	for name in OC.all_drafts(opening.pos_profile):
+		OC.cancel_draft_with_log(name, OC.REASON_CLOSE, OC.SOURCE_CLOSE, note=reason)
+		cancelled.append(name)
+
+	closing = make_closing_entry_from_opening(opening)
+	closing.insert()
+	closing.submit()
+	closing.add_comment(
+		"Info",
+		_("Đóng ca bắt buộc bởi {0}. Lý do: {1}. Đã hủy {2} đơn chưa thanh toán{3}.").format(
+			frappe.session.user, reason, len(cancelled), (": " + ", ".join(cancelled)) if cancelled else ""
+		),
+	)
+	return {"closing_entry": closing.name, "cancelled": cancelled}
 
 @frappe.whitelist()
 def generate_qr(invoice_name):

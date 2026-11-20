@@ -58,6 +58,28 @@ export function formatOrderTime(value: string, timeZone = SITE_TZ): string {
 	return p.y === now.y ? `${p.d}/${p.m} ${time}` : `${p.d}/${p.m}/${p.y} ${time}`;
 }
 
+/** Mốc phút "giờ site" của chuỗi server / thời điểm hiện tại (Date.UTC dùng như đồng hồ giờ site, không đổi múi). */
+const siteEpoch = (p: Parts) => Date.UTC(Number(p.y), Number(p.m) - 1, Number(p.d), Number(p.hh), Number(p.mm));
+
+/**
+ * Hạn tự hủy của đơn Draft tạo lúc `created`, sau `minutes` phút: số phút còn lại (âm = đã quá hạn) và giờ hủy
+ * "HH:MM" (khác ngày thì kèm "dd/mm"). Chuỗi không hợp lệ -> null.
+ */
+export function autoCancelInfo(created: string, minutes: number, timeZone = SITE_TZ): { remaining: number; at: string } | null {
+	const p = parse(created);
+	if (!p || !(minutes > 0)) return null;
+	const due = siteEpoch(p) + minutes * 60000;
+	const now = nowParts(timeZone);
+	const d = new Date(due);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+	const sameDay = d.toISOString().slice(0, 10) === isoDay(now);
+	return {
+		remaining: Math.floor((due - siteEpoch(now)) / 60000),
+		at: sameDay ? time : `${time} ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`,
+	};
+}
+
 /** Ngày giờ tuyệt đối "20/11/2026 11:38" — dùng cho bản in (giấy in không ghi "Hôm nay"). */
 export function formatStamp(value: string): string {
 	const p = parse(value);

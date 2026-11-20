@@ -28,15 +28,16 @@ from frappe import _
 from frappe.utils import add_to_date, cint, flt, get_datetime, now_datetime
 
 from ..doctype.branch_config.branch_config import get_brand_info
+from ..doctype.mypos_order_cancel_log.order_cancel import QR_PAY_WINDOW_MINUTES
 from . import pos_api as P
 
 CHANNEL_QR = "QR"
 DEFAULT_SESSION_TTL_SECONDS = 12 * 3600
 SESSION_TTL_SECONDS = DEFAULT_SESSION_TTL_SECONDS
-# Sau PAY_WINDOW_MINUTES: khách không thấy/không sinh QR nữa (đơn "Hết hạn").
-PAY_WINDOW_MINUTES = 15
-# Sau DRAFT_DELETE_MINUTES: job xóa đơn Draft (để webhook chuyển khoản trễ vẫn khớp đơn).
-DRAFT_DELETE_MINUTES = 60
+# Sau PAY_WINDOW_MINUTES: khách không thấy/không sinh QR nữa (đơn "Hết hạn"). Mốc khai ở MỘT nơi:
+# doctype/mypos_order_cancel_log/order_cancel.py (QR_PAY_WINDOW_MINUTES, QR_CLEANUP_GRACE_MINUTES).
+# Sau hạn + đệm, job order_cancel.auto_cancel_stale_drafts hủy đơn + ghi log (thay mốc xóa 60 phút cũ).
+PAY_WINDOW_MINUTES = QR_PAY_WINDOW_MINUTES
 MAX_OPEN_DRAFTS = 2  # đơn chờ thanh toán còn hạn tối đa mỗi phiên
 MAX_LINES = 30
 MAX_QTY_PER_LINE = 20
@@ -739,32 +740,11 @@ def get_order(session_token, invoice_name):
 
 
 def cleanup_expired_qr_orders(older_than_minutes=None):
-	"""Xóa đơn QR Draft chưa thanh toán quá DRAFT_DELETE_MINUTES. Idempotent.
+	"""Hủy + ghi log đơn QR Draft chưa thanh toán quá QR_PAY_WINDOW_MINUTES + QR_CLEANUP_GRACE_MINUTES. Idempotent.
 
-	Chỉ: docstatus = 0, order_channel = QR, payment_status khác "Đã thanh toán".
-	Không bao giờ đụng đơn đã submit. Xóa đơn = giải phóng payment_code.
+	Giữ tên hàm để tương thích (self-test cũ). Job định kỳ gọi order_cancel.auto_cancel_stale_drafts (gồm cả phần này).
+	Chỉ: docstatus = 0, order_channel = QR, không phải trả hàng, payment_status khác "Đã thanh toán".
 	"""
-	minutes = DRAFT_DELETE_MINUTES if older_than_minutes is None else cint(older_than_minutes)
-	cutoff = add_to_date(now_datetime(), minutes=-minutes)
-	rows = frappe.get_all(
-		"POS Invoice",
-		filters={"docstatus": 0, "order_channel": CHANNEL_QR, "creation": ["<", cutoff]},
-		fields=["name", "payment_status"],
-		order_by="creation asc",
-		limit=500,
-	)
-	deleted = 0
-	for row in rows:
-		if (row.payment_status or "") == "Đã thanh toán":
-			continue
-		try:
-			# Đọc lại ngay trước khi xóa (webhook có thể vừa submit).
-			if frappe.db.get_value("POS Invoice", row.name, "docstatus") != 0:
-				continue
-			frappe.delete_doc("POS Invoice", row.name, ignore_permissions=True)
-			frappe.db.commit()
-			deleted += 1
-		except Exception:
-			frappe.db.rollback()
-			frappe.log_error(title="Order QR: lỗi dọn đơn hết hạn", message=frappe.get_traceback())
-	return deleted
+	from ..doctype.mypos_order_cancel_log.order_cancel import auto_cancel_qr_drafts
+
+	return auto_cancel_qr_drafts(None if older_than_minutes is None else cint(older_than_minutes))

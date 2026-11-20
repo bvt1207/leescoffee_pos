@@ -78,6 +78,8 @@ PERMS = {
 		"Branch": _MASTER_RW,
 		"MYPOS Option Group": ["read", "write", "create"],
 		"MYPOS Order QR": _MASTER_RW,
+		# Nhật ký hủy đơn (2026-11-20): xem + bỏ cờ "Cần đối soát". Không tạo/xóa (log do hệ thống ghi).
+		"MYPOS Order Cancel Log": ["select", "read", "write"],
 	},
 }
 

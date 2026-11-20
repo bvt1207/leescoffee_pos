@@ -166,6 +166,21 @@ def sepay_webhook():
         matched_invoice = _find_invoice_by_code(content, normalized_content)
 
         if not matched_invoice:
+            # Đơn đã bị hủy (Orders / job hết hạn / đóng ca bắt buộc) -> ghi giao dịch mồ côi vào
+            # MYPOS Order Cancel Log + cảnh báo MANAGER (đã xác thực API key theo Branch của log).
+            from ..mypos_order_cancel_log.order_cancel import record_orphan_payment
+
+            orphan = record_orphan_payment(
+                content,
+                normalized_content,
+                payload,
+                transaction_id,
+                amount,
+                lambda branch: verify_sepay_key_for_branch(branch, _received_sepay_key()),
+            )
+            if orphan:
+                return orphan
+
             frappe.log_error(
                 title="SePay POS Invoice Not Found",
                 message=(

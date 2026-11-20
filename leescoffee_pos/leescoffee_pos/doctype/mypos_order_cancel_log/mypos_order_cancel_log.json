@@ -1,0 +1,227 @@
+{
+  "doctype": "DocType",
+  "name": "MYPOS Order Cancel Log",
+  "module": "Leescoffee POS",
+  "modified": "2026-11-20 18:00:00.000000",
+  "istable": 0,
+  "issingle": 0,
+  "in_create": 1,
+  "autoname": "MYPOS-HUY-.YYYY.-.#####",
+  "title_field": "invoice_name",
+  "search_fields": "invoice_name,customer_name,source,reason",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "description": "Nhật ký hủy đơn Draft (đơn bị xóa khỏi POS Invoice): ai hủy, vì sao, lúc nào; và tiền chuyển khoản đến sau khi đơn đã hủy.",
+  "fields": [
+    {
+      "fieldname": "invoice_name",
+      "label": "Mã đơn",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "cancelled_at",
+      "label": "Thời điểm hủy",
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source",
+      "label": "Nguồn",
+      "fieldtype": "Select",
+      "options": "Thủ công\nTự động\nĐóng ca",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "reason",
+      "label": "Lý do",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "note",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancelled_by",
+      "label": "Người hủy",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_main",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "pos_profile",
+      "label": "POS Profile",
+      "fieldtype": "Link",
+      "options": "POS Profile",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "branch",
+      "label": "Chi nhánh",
+      "fieldtype": "Link",
+      "options": "Branch",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "pos_opening_entry",
+      "label": "Ca",
+      "fieldtype": "Link",
+      "options": "POS Opening Entry",
+      "read_only": 1
+    },
+    {
+      "fieldname": "invoice_creation",
+      "label": "Thời điểm tạo đơn",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_order",
+      "label": "Đơn đã hủy",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "customer",
+      "label": "Khách hàng",
+      "fieldtype": "Link",
+      "options": "Customer",
+      "read_only": 1
+    },
+    {
+      "fieldname": "customer_name",
+      "label": "Tên khách",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "order_type",
+      "label": "Loại đơn",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "order_channel",
+      "label": "Kênh",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "buzzer",
+      "label": "Thẻ rung",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_order",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "grand_total",
+      "label": "Tổng tiền",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "currency",
+      "label": "Tiền tệ",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "payment_code",
+      "label": "Mã thanh toán",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "payment_status",
+      "label": "Trạng thái thanh toán lúc hủy",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "items_summary",
+      "label": "Món",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "section_orphan",
+      "label": "Giao dịch mồ côi (tiền đến sau khi đơn đã hủy)",
+      "fieldtype": "Section Break",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "needs_review",
+      "label": "Cần đối soát",
+      "fieldtype": "Check",
+      "default": "0",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "Có tiền chuyển khoản đến sau khi đơn đã hủy. Quản lý xử lý (hoàn tiền / tạo đơn) rồi bỏ chọn."
+    },
+    {
+      "fieldname": "orphan_transaction_ref",
+      "label": "Mã giao dịch",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "orphan_amount",
+      "label": "Số tiền nhận",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "orphan_received_at",
+      "label": "Thời điểm nhận",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "orphan_payload",
+      "label": "Dữ liệu webhook",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "select": 1,
+      "read": 1,
+      "write": 1,
+      "create": 0,
+      "delete": 0,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

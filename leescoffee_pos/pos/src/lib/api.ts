@@ -143,10 +143,11 @@ export const api = {
 	createCustomer: (customer_name: string, mobile_no?: string) =>
 		call<CustomerOption>("create_customer", { customer_name, mobile_no }),
 	getStatusBoard: () => call<StatusBoardRow[]>("get_status_board"),
-	cancelDraftOrder: (invoice_name: string, force = 0) =>
-	call<{ invoice_name: string; buzzer_number: string | null; message: string }>(
+	/** reason: một trong CANCEL_REASONS (Orders); "Khác" bắt buộc note. Server ghi MYPOS Order Cancel Log. */
+	cancelDraftOrder: (invoice_name: string, force = 0, reason?: string, note?: string) =>
+	call<{ invoice_name: string; buzzer_number: string | null; log?: string; message: string }>(
 		"cancel_draft_order",
-		{ invoice_name, force }
+		{ invoice_name, force, reason, note }
 	),
 	getKitchenOrders: () => call<KitchenOrder[]>("get_kitchen_orders"),
 	setKitchenStatus: (invoice_name: string, status: KitchenStep) =>

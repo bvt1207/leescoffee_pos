@@ -4,7 +4,7 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
-import { addDaysIso, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
+import { addDaysIso, autoCancelInfo, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { formatMoney } from "../store/cart";
@@ -20,6 +20,11 @@ const SHIFT_LIMIT = 200;
 const HISTORY_PAGE = 100;
 /** Chờ người dùng gõ xong ô tìm kiếm trước khi hỏi server (chế độ Lịch sử). */
 const SEARCH_DEBOUNCE_MS = 350;
+/** Lý do hủy đơn Draft — khớp order_cancel.MANUAL_REASONS ở backend. "Khác" bắt buộc ghi chú. */
+const CANCEL_REASONS = ["Khách đổi ý", "Đặt nhầm", "Khách không lấy", "Khác"] as const;
+const REASON_OTHER = "Khác";
+/** Thẻ đơn hiện nhãn "Tự hủy sau …" khi còn ít hơn số phút này. */
+const AUTO_CANCEL_WARN_MINUTES = 30;
 
 // Món có CTKM: giá gốc (price_list_rate) cao hơn giá bán (rate) do server trả.
 const itemPromo = (it: OrderDetail["items"][number]) =>
@@ -59,6 +64,8 @@ export default function Orders() {
 	const [detail, setDetail] = useState<OrderDetail | null>(null);
 	const [qr, setQr] = useState<QrInfo | null>(null);
 	const [confirmCancel, setConfirmCancel] = useState(false);
+	const [cancelReason, setCancelReason] = useState("");
+	const [cancelNote, setCancelNote] = useState("");
 	const [receipt, setReceipt] = useState<{ order: OrderDetail; forced: boolean } | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [loading, setLoading] = useState(true);
@@ -252,11 +259,18 @@ export default function Orders() {
 			await refresh(detail.name);
 		});
 
+	const openCancel = () => {
+		setCancelReason("");
+		setCancelNote("");
+		setConfirmCancel(true);
+	};
+	const canCancel = !!cancelReason && (cancelReason !== REASON_OTHER || cancelNote.trim().length > 0);
+
 	const cancelOrder = () =>
 		run(async () => {
-			if (!detail) return;
+			if (!detail || !canCancel) return;
 			const waiting = detail.payment_status === "Đang chờ";
-			await api.cancelDraftOrder(detail.name, waiting ? 1 : 0);
+			await api.cancelDraftOrder(detail.name, waiting ? 1 : 0, cancelReason, cancelNote.trim());
 			if (awaitingQr.current === detail.name) awaitingQr.current = null;
 			setConfirmCancel(false);
 			setSelected(null);
@@ -266,6 +280,11 @@ export default function Orders() {
 
 	const isDraft = detail?.docstatus === 0;
 	const waitingQr = detail?.payment_status === "Đang chờ";
+	// Draft kênh khác QR tự hủy sau pos_draft_auto_cancel_minutes (job backend); QR có hạn riêng.
+	const autoCancelMinutes = config?.pos_draft_auto_cancel_minutes ?? 0;
+	const autoCancelOf = (o: { docstatus: number; order_channel?: string; creation: string }) =>
+		o.docstatus === 0 && !isQrOrder(o.order_channel) ? autoCancelInfo(o.creation, autoCancelMinutes, tz) : null;
+	const detailAutoCancel = detail ? autoCancelOf(detail) : null;
 
 		return (
 		<div className="pos-orders-page">
@@ -379,6 +398,15 @@ export default function Orders() {
 										{o.payment_status === "Đang chờ" ? <span className="pos-tag pos-tag--warn">Chờ QR</span> : null}
 										{o.custom_kitchen_status ? <span className="pos-status__badge">{o.custom_kitchen_status}</span> : null}
 										{o.status === "Consolidated" ? <span className="pos-tag">Đã đóng ca</span> : null}
+										{(() => {
+											const ac = autoCancelOf(o);
+											if (!ac || ac.remaining > AUTO_CANCEL_WARN_MINUTES) return null;
+											return (
+												<span className="pos-tag pos-tag--warn" title={`Tự hủy lúc ${ac.at} nếu chưa thanh toán`}>
+													{ac.remaining > 0 ? `Tự hủy sau ${ac.remaining} phút` : "Sắp tự hủy"}
+												</span>
+											);
+										})()}
 										<span className="pos-order-card__time">{formatOrderTime(o.creation, tz)}</span>
 									</div>
 								</button>
@@ -493,6 +521,14 @@ export default function Orders() {
 								<div className="pos-order-detail__kitchen">Bếp: {detail.custom_kitchen_status}</div>
 							) : null}
 
+							{isDraft && detailAutoCancel ? (
+								<div className="pos-order-detail__auto">
+									{detailAutoCancel.remaining > 0
+										? `Tự hủy lúc ${detailAutoCancel.at} nếu chưa thanh toán`
+										: "Đơn đã quá hạn, sẽ tự hủy trong vài phút nếu chưa thanh toán"}
+								</div>
+							) : null}
+
 							<div className="pos-order-detail__actions">
 								{isDraft ? (
 									<>
@@ -502,7 +538,7 @@ export default function Orders() {
 										<button type="button" className="pos-btn" disabled={busy} onClick={genQr}>
 											Thanh toán QR
 										</button>
-										<button type="button" className="pos-btn pos-btn--danger" disabled={busy} onClick={() => setConfirmCancel(true)}>
+										<button type="button" className="pos-btn pos-btn--danger" disabled={busy} onClick={openCancel}>
 											Hủy đơn
 										</button>
 									</>
@@ -543,9 +579,35 @@ export default function Orders() {
 						</div>
 						<div className="pos-confirm">
 							<p>
-								Đơn sẽ bị xóa hẳn và không khôi phục được.
+								Đơn sẽ bị xóa hẳn và không khôi phục được (lý do được lưu vào nhật ký hủy).
 								{detail.order_type === "Dine In" ? " Thẻ rung sẽ được trả về." : ""}
 							</p>
+							<fieldset className="pos-reason">
+								<legend className="pos-reason__legend">Lý do hủy</legend>
+								{CANCEL_REASONS.map((r) => (
+									<label key={r} className={`pos-reason__option${cancelReason === r ? " is-active" : ""}`}>
+										<input
+											type="radio"
+											name="cancel-reason"
+											value={r}
+											checked={cancelReason === r}
+											onChange={() => setCancelReason(r)}
+										/>
+										<span>{r}</span>
+									</label>
+								))}
+							</fieldset>
+							{cancelReason === REASON_OTHER ? (
+								<textarea
+									className="pos-input pos-textarea"
+									rows={2}
+									placeholder="Ghi chú lý do (bắt buộc)"
+									aria-label="Ghi chú lý do hủy"
+									value={cancelNote}
+									onChange={(event) => setCancelNote(event.target.value)}
+									autoFocus
+								/>
+							) : null}
 							{waitingQr ? (
 								<div className="pos-alert pos-alert--error">
 									Đơn đang chờ thanh toán QR. Hãy chắc chắn khách chưa chuyển tiền.
@@ -555,7 +617,7 @@ export default function Orders() {
 								<button type="button" className="pos-btn" onClick={() => setConfirmCancel(false)}>
 									Giữ đơn
 								</button>
-								<button type="button" className="pos-btn pos-btn--danger-solid" disabled={busy} onClick={cancelOrder}>
+								<button type="button" className="pos-btn pos-btn--danger-solid" disabled={busy || !canCancel} onClick={cancelOrder}>
 									{busy ? "Đang hủy…" : "Hủy đơn"}
 								</button>
 							</div>

@@ -389,12 +389,18 @@ def run_order_qr_selftest(branch=None):
 		check("10a Quá 15 phút: stage expired", guest(C.get_order, tok_a, di["invoice_name"])["stage"] == "expired")
 		expect_error("10b Quá 15 phút: không sinh QR", C.create_payment_qr, tok_a, di["invoice_name"], contains="hết hạn")
 		pos_drafts = frappe.db.count("POS Invoice", {"docstatus": 0, "order_channel": "POS"})
-		C.cleanup_expired_qr_orders()
-		check("10c 20 phút: chưa xóa (chờ webhook trễ)", frappe.db.exists("POS Invoice", di["invoice_name"]))
-		frappe.db.set_value("POS Invoice", di["invoice_name"], "creation", add_to_date(now_datetime(), minutes=-61),
+		# 2026-11-20: hạn 15 phút + đệm webhook 5 phút (order_cancel), quá mốc -> hủy + ghi MYPOS Order Cancel Log.
+		frappe.db.set_value("POS Invoice", di["invoice_name"], "creation", add_to_date(now_datetime(), minutes=-19),
 			update_modified=False)
 		C.cleanup_expired_qr_orders()
-		check("10d 61 phút: đơn Draft QR bị xóa", not frappe.db.exists("POS Invoice", di["invoice_name"]))
+		check("10c 19 phút: chưa hủy (đệm cho webhook trễ)", frappe.db.exists("POS Invoice", di["invoice_name"]))
+		frappe.db.set_value("POS Invoice", di["invoice_name"], "creation", add_to_date(now_datetime(), minutes=-21),
+			update_modified=False)
+		C.cleanup_expired_qr_orders()
+		check("10d 21 phút: đơn Draft QR bị hủy + có log 'QR hết hạn không thanh toán'",
+			not frappe.db.exists("POS Invoice", di["invoice_name"])
+			and frappe.db.exists("MYPOS Order Cancel Log", {"invoice_name": di["invoice_name"],
+				"reason": "QR hết hạn không thanh toán", "source": "Tự động"}))
 		check("10e Đơn đã thanh toán không bị xóa", frappe.db.exists("POS Invoice", ta["invoice_name"]))
 		check("10f Đơn Draft kênh POS không bị đụng",
 			frappe.db.count("POS Invoice", {"docstatus": 0, "order_channel": "POS"}) == pos_drafts)
@@ -416,6 +422,13 @@ def run_order_qr_selftest(branch=None):
 				frappe.delete_doc("POS Invoice", name, force=True, ignore_permissions=True)
 			except Exception as e:
 				print(f"Chưa dọn được đơn {name}: {e}")
+		# Log hủy do job hết hạn QR ghi (2026-11-20) cho đơn thử.
+		if made["invoices"] and frappe.db.exists("DocType", "MYPOS Order Cancel Log"):
+			for log in frappe.get_all("MYPOS Order Cancel Log", filters={"invoice_name": ["in", made["invoices"]]}, pluck="name"):
+				try:
+					frappe.delete_doc("MYPOS Order Cancel Log", log, force=True, ignore_permissions=True)
+				except Exception as e:
+					print(f"Chưa dọn được log hủy {log}: {e}")
 		for name in made["customers"]:
 			try:
 				if name and frappe.db.exists("Customer", name):

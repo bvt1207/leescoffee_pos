@@ -137,6 +137,17 @@ def _check_closing(doc):
 			frappe.PermissionError,
 		)
 
+	# Còn đơn Draft (QR chỉ tính đơn còn hạn thanh toán) -> chặn. Đơn đã thanh toán (kể cả pha chế chưa xong) không chặn.
+	# Quản lý: pos_api.force_close_shift hủy hết Draft (có lý do + log) rồi mới tạo phiếu đóng ca.
+	from leescoffee_pos.leescoffee_pos.doctype.mypos_order_cancel_log.order_cancel import (
+		closing_block_message,
+		closing_blockers,
+	)
+
+	blockers = closing_blockers(doc.pos_profile)
+	if blockers:
+		frappe.throw(closing_block_message(blockers), title=_("Còn đơn chưa thanh toán"))
+
 
 def closing_before_validate(doc, method=None):
 	_check_closing(doc)
