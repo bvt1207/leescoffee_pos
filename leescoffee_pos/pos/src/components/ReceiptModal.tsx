@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { isQrOrder, typeLabel } from "./OrderTypeChip";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
+import { formatStamp, nowStamp } from "../lib/format";
 import { printWithPage } from "../lib/print";
 import { formatMoney } from "../store/cart";
 import type { OrderDetail } from "../types";
@@ -23,20 +24,6 @@ interface Props {
 const RECEIPT_PAGE = "80mm auto";
 const DONE_MS = 2000;
 
-
-// "2026-10-31 14:05:12.123" -> "14:05 31/10/2026"
-function formatStamp(iso: string): string {
-	const s = String(iso || "");
-	if (s.length < 16) return s;
-	const [y, m, d] = s.slice(0, 10).split("-");
-	return `${s.slice(11, 16)} ${d}/${m}/${y}`;
-}
-
-function nowStamp(): string {
-	const n = new Date();
-	const p = (v: number) => String(v).padStart(2, "0");
-	return `${p(n.getHours())}:${p(n.getMinutes())} ${p(n.getDate())}/${p(n.getMonth() + 1)}/${n.getFullYear()}`;
-}
 
 const itemTitle = (name: string, size?: string) => (size ? `${name} (${size})` : name);
 

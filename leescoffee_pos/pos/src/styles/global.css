@@ -1597,8 +1597,16 @@ button.pos-cart-line__main:hover {
 	color: var(--pos-text-muted);
 }
 
+.pos-order-card__no {
+	font-weight: 600;
+	color: var(--pos-text);
+	font-variant-numeric: tabular-nums;
+}
+
 .pos-order-card__time {
 	margin-left: auto;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 
 .pos-order-detail {

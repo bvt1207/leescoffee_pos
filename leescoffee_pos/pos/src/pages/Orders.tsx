@@ -4,10 +4,11 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { formatOrderTime, orderMatches, shortOrderNo } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { formatMoney } from "../store/cart";
 import { useSearch } from "../store/search";
-import type { OrderDetail, OrderSummary, QrInfo, StatusBoardRow } from "../types";
+import type { OrderDetail, OrderSummary, QrInfo } from "../types";
 
 type Tab = "draft" | "paid" | "kitchen";
 
@@ -20,7 +21,6 @@ const promoTotal = (items: OrderDetail["items"]) =>
 		(sum, it) => sum + (itemPromo(it) ? ((it.price_list_rate ?? 0) - it.rate) * it.qty : 0),
 		0
 	);
-const timeLabel = (iso: string) => (iso ? String(iso).slice(11, 16) : "");
 
 export default function Orders() {
 	const [params] = useSearchParams();
@@ -30,7 +30,6 @@ export default function Orders() {
 	const [tab, setTab] = useState<Tab>("draft");
 	const [drafts, setDrafts] = useState<OrderSummary[]>([]);
 	const [paid, setPaid] = useState<OrderSummary[]>([]);
-	const [board, setBoard] = useState<StatusBoardRow[]>([]);
 	const [selected, setSelected] = useState<string | null>(draftParam || null);
 	const [detail, setDetail] = useState<OrderDetail | null>(null);
 	const [qr, setQr] = useState<QrInfo | null>(null);
@@ -69,14 +68,9 @@ export default function Orders() {
 
 	const loadData = useCallback(async () => {
 		try {
-			const [d, p, b] = await Promise.all([
-				api.getOrders("draft"),
-				api.getOrders("paid"),
-				api.getStatusBoard(),
-			]);
+			const [d, p] = await Promise.all([api.getOrders("draft"), api.getOrders("paid")]);
 			setDrafts((d || []).filter((o) => o.docstatus === 0));
 			setPaid(p || []);
-			setBoard(b || []);
 			setError("");
 
 			const waiting = awaitingQr.current;
@@ -109,10 +103,7 @@ export default function Orders() {
 		}
 	}, [draftParam]);
 
-	const matches = (o: OrderSummary) =>
-		!search ||
-		o.name.toLowerCase().includes(search) ||
-		(o.customer_name || "").toLowerCase().includes(search);
+	const matches = (o: OrderSummary) => orderMatches(o, search);
 
 	const list = useMemo(
 		() => (tab === "draft" ? drafts : paid).filter(matches),
@@ -207,13 +198,15 @@ export default function Orders() {
 										<span className="pos-order-card__price">{formatMoney(o.amount, o.currency)}</span>
 									</div>
 									<div className="pos-order-card__meta">
-										<span>{o.name}</span>
+										<span className="pos-order-card__no" title={o.name}>
+											{shortOrderNo(o.name)}
+										</span>
 										<OrderTypeChip type={o.order_type} />
 										<ChannelChip channel={o.order_channel} />
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 										{o.payment_status === "Đang chờ" ? <span className="pos-tag pos-tag--warn">Chờ QR</span> : null}
 										{o.custom_kitchen_status ? <span className="pos-status__badge">{o.custom_kitchen_status}</span> : null}
-										<span className="pos-order-card__time">{timeLabel(o.creation)}</span>
+										<span className="pos-order-card__time">{formatOrderTime(o.creation)}</span>
 									</div>
 								</button>
 							))}
@@ -232,7 +225,7 @@ export default function Orders() {
 								<div>
 									<div className="pos-order-detail__name">{detail.customer_name}</div>
 									<div className="pos-order-detail__sub">
-										{detail.name} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
+										{detail.name} · {formatOrderTime(detail.creation)} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
 										{detail.order_type === "Dine In" && !isQrOrder(detail.order_channel)
 											? ` · Thẻ #${detail.buzzer_number || "—"}`
 											: ""}
