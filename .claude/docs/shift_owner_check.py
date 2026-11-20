@@ -10,8 +10,13 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	Đầu và cuối hàm xóa mọi POS Profile "ZZTEST Shift ..." + user zz.test.shift.* còn sót (kèm ca / phiếu đóng ca / đơn
 	của profile tạm). Profile tạm: Applicable for Users = A, B, M với default = 0 (tránh validate_default_profile của ERPNext).
 	Cuối hàm ROLLBACK; nếu có commit ngầm thì tự dọn và in WARN; mục 9 kiểm tra DB không còn dữ liệu thử.
+	Dọn dữ liệu: commit trước mỗi lần xóa (làm mới snapshot), thử lại 3 lần khi QueryDeadlockError (MariaDB 1213/1020),
+	xóa Contact của user tạm TRƯỚC user (User.on_trash UPDATE tabContact). Contact chỉ được Frappe tạo nền sau commit
+	(User.on_update -> create_contact, enqueue_after_commit) nên lần chạy bình thường (rollback) không sinh Contact.
+	Lỗi khi dọn chỉ in WARN + lệnh xóa tay; dòng KẾT QUẢ luôn được in.
 	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest().
 	"""
+	import time
 	import traceback
 
 	import frappe
@@ -22,6 +27,8 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 
 	PREFIX = "zz.test.shift"
 	PROFILE_PREFIX = "ZZTEST Shift "
+	# Frappe v16: frappe.QueryDeadlockError (MariaDB 1213 / 1020). Không có thì không bắt riêng.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	ROLE_OF = {"A": "POS CASHIER", "B": "POS CASHIER", "OUT": "POS CASHIER", "K": "POS KITCHEN", "M": "POS MANAGER"}
 	results, users, made = [], {}, {"profile": None, "openings": [], "closings": [], "invoices": []}
 
@@ -69,33 +76,67 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		closing.submit()
 		return closing
 
-	def purge_leftovers():
-		"""Xóa mọi POS Profile "ZZTEST Shift ..." (kèm phiếu đóng ca, đơn, ca của nó) và user tạm còn trong DB
-		(do lần chạy trước có commit ngầm). Chỉ đụng dữ liệu thử có tiền tố. Trả danh sách đã xóa (đã commit)."""
-		removed = []
-		for prof_name in frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name"):
-			for dt in ("POS Closing Entry", "POS Invoice", "POS Opening Entry"):
-				for n in frappe.get_all(dt, filters={"pos_profile": prof_name}, pluck="name"):
-					try:
-						doc = frappe.get_doc(dt, n)
-						if doc.docstatus == 1:
-							doc.flags.ignore_permissions = True
-							doc.cancel()
-						frappe.delete_doc(dt, n, force=1, ignore_permissions=True)
-						removed.append(f"{dt} {n}")
-					except Exception as ex:  # noqa: BLE001
-						print(f"WARN không dọn được {dt} {n}: {ex} (xóa tay trên Desk)")
+	def delete_fresh(dt, name, removed, failed, cancel=False):
+		"""Xóa 1 bản ghi thử: commit trước (làm mới snapshot REPEATABLE READ), commit sau; QueryDeadlockError
+		(vd. 1020 "Record has changed since last read") -> rollback + chờ 1 giây + thử lại, tối đa 3 lần.
+		Lỗi khác -> ghi vào `failed`, không chặn bản ghi còn lại."""
+		last = None
+		for _attempt in range(3):
 			try:
-				frappe.delete_doc("POS Profile", prof_name, force=1, ignore_permissions=True)
-				removed.append(f"POS Profile {prof_name}")
+				frappe.db.commit()
+				if not frappe.db.exists(dt, name):
+					return
+				doc = frappe.get_doc(dt, name)
+				if cancel and doc.docstatus == 1:
+					doc.flags.ignore_permissions = True
+					doc.cancel()
+				frappe.delete_doc(dt, name, force=1, ignore_permissions=True)
+				frappe.db.commit()
+				removed.append(f"{dt} {name}")
+				return
+			except DEADLOCK as ex:
+				last = ex
+				frappe.db.rollback()
+				time.sleep(1)
 			except Exception as ex:  # noqa: BLE001
-				print(f"WARN không xóa được POS Profile {prof_name}: {ex}")
-		for u in frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name"):
-			frappe.delete_doc("User", u, force=1, ignore_permissions=True)
-			removed.append(f"User {u}")
-		if removed:
+				frappe.db.rollback()
+				frappe.clear_messages()
+				failed.append((dt, name, f"{type(ex).__name__}: {str(ex)[:150]}"))
+				return
+		failed.append((dt, name, f"{type(last).__name__} sau 3 lần thử: {str(last)[:150]}"))
+
+	def purge_leftovers():
+		"""Xóa dữ liệu thử còn trong DB (chỉ bản ghi có tiền tố): POS Profile "ZZTEST Shift ..." kèm phiếu đóng ca,
+		đơn, ca của nó; Contact do Frappe tự tạo cho user tạm (create_contact, chạy nền sau commit); user zz.test.shift.*.
+		Contact xóa TRƯỚC user: User.on_trash chạy UPDATE tabContact (gỡ liên kết) — đã xóa Contact thì không còn dòng
+		nào để khóa. Trả (removed, failed); không bao giờ ném lỗi."""
+		removed, failed = [], []
+		try:
 			frappe.db.commit()
-		return removed
+			for prof_name in frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name"):
+				for dt in ("POS Closing Entry", "POS Invoice", "POS Opening Entry"):
+					for n in frappe.get_all(dt, filters={"pos_profile": prof_name}, pluck="name"):
+						delete_fresh(dt, n, removed, failed, cancel=True)
+				delete_fresh("POS Profile", prof_name, removed, failed)
+			contacts = set(frappe.get_all("Contact", filters={"user": ["like", PREFIX + ".%"]}, pluck="name"))
+			contacts |= set(frappe.get_all("Contact", filters={"email_id": ["like", PREFIX + ".%"]}, pluck="name"))
+			for c in sorted(contacts):
+				delete_fresh("Contact", c, removed, failed)
+			for u in frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name"):
+				frappe.clear_cache(user=u)
+				delete_fresh("User", u, removed, failed)
+		except Exception as ex:  # noqa: BLE001
+			frappe.db.rollback()
+			failed.append(("(quét dữ liệu thử)", "", f"{type(ex).__name__}: {str(ex)[:150]}"))
+		return removed, failed
+
+	def report_cleanup(removed, failed, stage):
+		if removed:
+			print(f"WARN [{stage}] đã xóa dữ liệu thử còn trong DB: {removed}")
+		for dt, name, why in failed:
+			print(f"WARN [{stage}] KHÔNG dọn được {dt} {name}: {why}")
+			if name:
+				print(f'     Xóa tay (bench console): frappe.delete_doc("{dt}", "{name}", force=1, ignore_permissions=True); frappe.db.commit()')
 
 	def comments(doctype, name):
 		return frappe.get_all("Comment", filters={"reference_doctype": doctype, "reference_name": name,
@@ -110,7 +151,10 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		balance_modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
 
 		print("== 0. Dọn dữ liệu thử còn sót từ lần chạy trước ==")
-		purge_leftovers()
+		removed0, failed0 = purge_leftovers()
+		report_cleanup(removed0, failed0, "đầu")
+		if failed0:
+			raise RuntimeError("Còn dữ liệu thử của lần chạy trước không xóa được — xóa tay theo WARN rồi chạy lại.")
 
 		print("== 1. Dữ liệu tạm ==")
 		for key, role in ROLE_OF.items():
@@ -203,20 +247,27 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		ok("Lỗi ngoài dự kiến", False)
 		traceback.print_exc()
 	finally:
-		frappe.set_user("Administrator")
-		frappe.db.rollback()
-		for u in users.values():
-			frappe.clear_cache(user=u)
-		removed = purge_leftovers()
-		if removed:
-			print(f"WARN có commit ngầm, đã dọn: {removed}")
-		else:
-			print("Đã rollback: không còn dữ liệu thử")
-		left_profiles = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name")
-		left_users = frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name")
-		ok("9 Dọn dữ liệu: không còn POS Profile ZZTEST Shift / user tạm trong DB", not left_profiles and not left_users,
-			f"(profile {left_profiles}, user {left_users})")
-		frappe.set_user(admin)
+		# Phần dọn không được làm mất dòng KẾT QUẢ: mọi lỗi ở đây chỉ in WARN.
+		try:
+			frappe.set_user("Administrator")
+			frappe.db.rollback()
+			removed, failed = purge_leftovers()
+			report_cleanup(removed, failed, "cuối")
+			if not removed and not failed:
+				print("Đã rollback: không còn dữ liệu thử")
+			frappe.db.commit()
+			left_profiles = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name")
+			left_users = frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name")
+			ok("9 Dọn dữ liệu: không còn POS Profile ZZTEST Shift / user tạm trong DB", not left_profiles and not left_users,
+				f"(profile {left_profiles}, user {left_users})")
+		except Exception:  # noqa: BLE001
+			ok("9 Dọn dữ liệu (lỗi khi dọn — xem WARN / traceback)", False)
+			traceback.print_exc()
+		finally:
+			try:
+				frappe.set_user(admin)
+			except Exception:  # noqa: BLE001
+				pass
 
 	failed = [c for c, passed in results if not passed]
 	print("== KẾT QUẢ:", "PASS" if not failed else f"FAIL ({len(failed)})", f"— {len(results) - len(failed)}/{len(results)} ==")
