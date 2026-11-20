@@ -44,6 +44,8 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+# POS Opening Entry: tự điền Cashier = người đăng nhập, khóa với người không phải quản lý (server vẫn chặn).
+doctype_js = {"POS Opening Entry": "public/js/pos_opening_entry.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -145,6 +147,17 @@ doc_events = {
 		"before_save": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",
 		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
 		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_cancel",
+	},
+	# Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (pos_shift_hooks.py).
+	"POS Opening Entry": {
+		"before_validate": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_validate",
+		"before_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_submit",
+		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_on_submit",
+	},
+	"POS Closing Entry": {
+		"before_validate": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_validate",
+		"before_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_submit",
+		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_on_submit",
 	},
 	# MYPOS Buzzer: validate là native lifecycle method của Document →
 	# Frappe tự gọi, không cần đăng ký lại trong doc_events.

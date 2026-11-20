@@ -354,12 +354,16 @@ def _ensure_opening_entry(profile):
 		)
 		opening.insert(ignore_permissions=True)
 		opening.submit()
-	except Exception:
+	except Exception as e:
+		# Giữ lý do gốc (vd. "Ca của … chưa đóng", user không thuộc Applicable for Users — pos_shift_hooks).
+		reason = frappe.utils.strip_html(str(e)).strip()
+		frappe.clear_messages()
 		frappe.throw(
 			_(
 				"Không mở được phiên POS cho POS Profile {0}. "
 				"Vui lòng mở phiên POS (POS Opening Entry) trong Desk."
 			).format(profile.name)
+			+ (f" {_('Lý do')}: {reason}" if reason else "")
 		)
 
 	return opening.name

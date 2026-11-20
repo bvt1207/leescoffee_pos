@@ -31,14 +31,17 @@ ROLES = {
 }
 
 _SHIFT = ["select", "read", "write", "create", "submit"]
+# CASHIER chỉ thấy / sửa ca và phiếu đóng ca do chính mình tạo (Only If Creator, 2026-11-20).
+# Ca MANAGER mở thay thì Cashier không thấy trên Desk -> MANAGER đóng thay. Quy tắc mở/đóng: pos_shift_hooks.py.
+_SHIFT_CASHIER = _SHIFT + ["if_owner"]
 _INVOICE = ["select", "read", "write", "create", "submit"]
 _MASTER_RW = ["select", "read", "write", "create"]
 
 # role -> {doctype: [ptype, ...]}
 PERMS = {
 	CASHIER: {
-		"POS Opening Entry": _SHIFT,
-		"POS Closing Entry": _SHIFT,
+		"POS Opening Entry": _SHIFT_CASHIER,
+		"POS Closing Entry": _SHIFT_CASHIER,
 		"POS Profile": ["select", "read"],
 		"MYPOS Menu": ["read"],
 		"MYPOS Buzzer": ["read"],
