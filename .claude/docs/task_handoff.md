@@ -3,6 +3,11 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0l. Link Report "MYPOS Review Queue" vào workspace leescoffee_pos (2026-11-21) — CHỜ VAN TEST
+- Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link "Đơn cần xử lý" (Report) cuối card "MYPOS Setup",
+  `link_count` 8 → 9, `modified` 2026-11-21 09:00. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 10 dòng
+  (`workspace.md` §7).
+
 ## 0k. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21) — ĐÃ TEST PASS trên bench DEV (`660693e` + `b918bb7`) — máy POS KHÔNG đổi
 - Bản trước có UI POS (`b032383`, `280f190`) đã bỏ khỏi nhánh (lưu ở `backup/review-ui-280f190`); repo đặt lại về `ff960c4` rồi làm Desk-only.
 - Mới: Script Report `report/mypos_review_queue/` (+ `report/__init__.py`), `public/js/pos_invoice.js`, `.claude/docs/review_queue_check.py`.
