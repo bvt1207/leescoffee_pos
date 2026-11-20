@@ -4,6 +4,8 @@ import type {
 	CustomerOption,
 	OrderDetail,
 	OrderSummary,
+	OrdersQuery,
+	OrdersSummary,
 	PosConfig,
 	QrInfo,
 	StatusBoardRow,
@@ -130,7 +132,8 @@ export const api = {
 	}) => call<PricingPreview>("preview_pricing", p),
 	getCustomerLoyalty: (customer: string, order_total = 0) =>
 		call<LoyaltyInfo>("get_customer_loyalty", { customer, order_total }),
-	getOrders: (status: "all" | "draft" | "paid") => call<OrderSummary[]>("get_orders", { status }),
+	getOrders: (query: OrdersQuery = {}) => call<OrderSummary[]>("get_orders", { ...query }),
+	getOrdersSummary: (query: OrdersQuery = {}) => call<OrdersSummary>("get_orders_summary", { ...query }),
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
 	payCash: (invoice_name: string) => call<{ invoice_name: string; status: string; payment_status: string; amount: number; currency: string }>("pay_cash", { invoice_name }),
 	generateQr: (invoice_name: string) => call<QrInfo>("generate_qr", { invoice_name }),

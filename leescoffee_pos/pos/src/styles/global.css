@@ -1492,6 +1492,58 @@ button.pos-cart-line__main:hover {
 	gap: 8px;
 }
 
+/* Thanh trên màn Orders: chế độ (Ca hiện tại | Lịch sử, chỉ MANAGER) + tab trạng thái hoặc bộ lọc ngày. */
+.pos-orders-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.pos-orders-mode button {
+	min-height: 44px;
+}
+
+.pos-orders-filter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.pos-orders-filter__day {
+	padding-right: 8px;
+}
+
+.pos-orders-filter__date {
+	min-height: 32px;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+
+.pos-orders-filter__count {
+	margin-left: 4px;
+	font-size: 13px;
+	color: var(--pos-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.pos-orders-shift {
+	font-size: 13px;
+	color: var(--pos-text-muted);
+}
+
+.pos-orders-more {
+	display: block;
+	min-height: 44px;
+	margin: 14px auto 0;
+}
+
 .pos-tab {
 	display: inline-flex;
 	align-items: center;
@@ -2463,6 +2515,12 @@ button.pos-cart-line__main:hover {
 	background: var(--pos-error-soft);
 	color: var(--pos-error);
 	border: 1px solid var(--pos-error-border);
+}
+
+.pos-alert--warn {
+	background: var(--pos-warning-soft);
+	color: var(--pos-text);
+	border: 1px solid var(--pos-warning);
 }
 
 /* ===== Responsive ===== */

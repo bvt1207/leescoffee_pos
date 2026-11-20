@@ -35,10 +35,15 @@ function nowParts(timeZone = SITE_TZ): Parts {
 
 const isoDay = (p: Parts) => `${p.y}-${p.m}-${p.d}`;
 
-/** Ngày liền trước (YYYY-MM-DD), tính trên lịch, không phụ thuộc múi giờ máy. */
-function previousDay(p: Parts): string {
-	const date = new Date(Date.UTC(Number(p.y), Number(p.m) - 1, Number(p.d) - 1));
-	return date.toISOString().slice(0, 10);
+/** Cộng/trừ ngày trên chuỗi "YYYY-MM-DD" (tính trên lịch, không phụ thuộc múi giờ máy). */
+export function addDaysIso(day: string, days: number): string {
+	const [y, m, d] = day.split("-").map(Number);
+	return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** Hôm nay ("YYYY-MM-DD") theo múi giờ site. */
+export function todayIso(timeZone = SITE_TZ): string {
+	return isoDay(nowParts(timeZone));
 }
 
 /** "Hôm nay 11:38" · "Hôm qua 20:15" · "17/11 20:15" · khác năm "17/11/2025 20:15". */
@@ -49,7 +54,7 @@ export function formatOrderTime(value: string, timeZone = SITE_TZ): string {
 	const now = nowParts(timeZone);
 	const day = isoDay(p);
 	if (day === isoDay(now)) return `Hôm nay ${time}`;
-	if (day === previousDay(now)) return `Hôm qua ${time}`;
+	if (day === addDaysIso(isoDay(now), -1)) return `Hôm qua ${time}`;
 	return p.y === now.y ? `${p.d}/${p.m} ${time}` : `${p.d}/${p.m}/${p.y} ${time}`;
 }
 

@@ -52,6 +52,8 @@ export interface PosConfig {
 	nav?: NavKey[];
 	kitchen_tabs?: KitchenStep[];
 	kitchen_transitions?: KitchenTransition[];
+	/** Múi giờ site (System Settings), vd. "Asia/Ho_Chi_Minh". */
+	time_zone?: string;
 }
 
 export interface MenuSize {
@@ -144,6 +146,30 @@ export interface OrderItem {
 	qty: number;
 	rate: number;
 	amount: number;
+}
+
+/** Chế độ màn Orders: ca đang mở (mặc định) hoặc lịch sử theo ngày (chỉ MANAGER). */
+export type OrdersScope = "shift" | "history";
+
+/** Tham số get_orders / get_orders_summary (pos_api). */
+export interface OrdersQuery {
+	status?: "all" | "draft" | "paid";
+	scope?: OrdersScope;
+	from_date?: string;
+	to_date?: string;
+	search?: string;
+	limit?: number;
+	start?: number;
+}
+
+/** get_orders_summary: bộ đếm (COUNT cùng bộ lọc) + ca đang mở + đơn Draft ca trước (chỉ MANAGER). */
+export interface OrdersSummary {
+	scope: OrdersScope;
+	shift: { name: string; period_start_date: string } | null;
+	counts: { draft: number; paid: number };
+	old_drafts: number;
+	from_date: string | null;
+	to_date: string | null;
 }
 
 export interface OrderPayment {

@@ -13,7 +13,7 @@ Nguyên tắc (theo CLAUDE.md):
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, flt, get_system_timezone, getdate, now_datetime, nowdate
 
 from ..doctype.branch_config.branch_config import (
     get_brand_info,
@@ -560,6 +560,8 @@ def get_pos_config(branch_name=None):
 		"nav": _union_by_role(NAV_BY_ROLE, roles, NAV_ORDER),
 		"kitchen_tabs": _kitchen_tabs(roles),
 		"kitchen_transitions": [{"from": a, "to": b} for a, b in _kitchen_transitions(roles)],
+		# Múi giờ site (System Settings): frontend so "Hôm nay/Hôm qua" theo múi này.
+		"time_zone": get_system_timezone(),
 	}
 
 
@@ -1057,40 +1059,153 @@ def _apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list
 				row.rate = flt(row.price_list_rate)
 
 
+# ---------------------------------------------------------------------------
+# Màn Đơn hàng (Orders): "Ca hiện tại" (mặc định) và "Lịch sử" (chỉ MANAGER)
+# ---------------------------------------------------------------------------
+# POS Invoice không có link tới POS Opening Entry. ERPNext chỉ cho mỗi POS Profile 1 ca Open
+# (sales_invoice.validate_pos_opening_entry) và đóng ca gom đơn theo
+# Timestamp(posting_date, posting_time) >= period_start_date (pos_closing_entry.build_invoice_query)
+# -> đơn thuộc ca hiện tại = cùng POS Profile + Timestamp >= period_start_date của ca Open.
+ORDERS_MAX_LIMIT = 200
+HISTORY_MAX_DAYS = 31
+HISTORY_STATUSES = ("Paid", "Consolidated")
+ORDER_SCOPES = ("shift", "history")
+ORDER_LIST_FIELDS = (
+	"name",
+	"customer",
+	"customer_name",
+	"order_type",
+	"order_channel",
+	"status",
+	"docstatus",
+	"grand_total",
+	"rounded_total",
+	"currency",
+	"payment_status",
+	"payment_code",
+	"custom_kitchen_status",
+	"buzzer",
+	"creation",
+)
+
+
+def _order_scope(scope, roles=None):
+	"""Kiểm tra scope; "history" chỉ dành cho MANAGER (gồm System Manager / Administrator)."""
+	scope = scope or "shift"
+	if scope not in ORDER_SCOPES:
+		frappe.throw(_("Chế độ xem đơn không hợp lệ."))
+	if scope == "history" and not (roles or _pos_roles())["manager"]:
+		frappe.throw(_("Chỉ quản lý (POS MANAGER) được xem lịch sử đơn."), frappe.PermissionError)
+	return scope
+
+
+def _open_shift_of(profile_name):
+	"""Ca POS đang mở của POS Profile (bất kỳ thu ngân), không có -> None. Không tự mở ca."""
+	rows = frappe.get_all(
+		"POS Opening Entry",
+		filters={"pos_profile": profile_name, "status": "Open", "docstatus": 1},
+		fields=["name", "period_start_date"],
+		order_by="period_start_date desc",
+		limit=1,
+	)
+	return rows[0] if rows else None
+
+
+def _history_range(from_date=None, to_date=None):
+	"""[from, to] của Lịch sử: mặc định hôm qua; from <= to; tối đa HISTORY_MAX_DAYS ngày."""
+	yesterday = add_days(nowdate(), -1)
+	try:
+		start = getdate(from_date or yesterday)
+		end = getdate(to_date or from_date or yesterday)
+	except Exception:
+		frappe.throw(_("Ngày lọc không hợp lệ."))
+	if start > end:
+		frappe.throw(_("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc."))
+	if (end - start).days + 1 > HISTORY_MAX_DAYS:
+		frappe.throw(_("Chỉ xem được tối đa {0} ngày mỗi lần.").format(HISTORY_MAX_DAYS))
+	return start, end
+
+
+def _like(text):
+	"""Mẫu LIKE chứa `text` (thoát ký tự đặc biệt)."""
+	text = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+	return f"%{text}%"
+
+
+def _order_conditions(invoice, profile_name, scope, status, shift, from_date=None, to_date=None, search=None):
+	"""Điều kiện frappe.qb cho danh sách đơn Orders. None = chắc chắn rỗng (ca hiện tại khi chưa mở ca)."""
+	from frappe.query_builder import functions as fn
+
+	cond = (invoice.pos_profile == profile_name) & (invoice.is_return == 0)
+	if scope == "history":
+		start, end = _history_range(from_date, to_date)
+		cond &= (
+			(invoice.docstatus == 1)
+			& invoice.status.isin(HISTORY_STATUSES)
+			& invoice.posting_date.between(start, end)
+		)
+	else:
+		if not shift:
+			return None
+		cond &= fn.Timestamp(invoice.posting_date, invoice.posting_time) >= shift.period_start_date
+		draft = invoice.docstatus == 0
+		paid = (invoice.docstatus == 1) & (invoice.status == "Paid")
+		if status == "draft":
+			cond &= draft
+		elif status == "paid":
+			cond &= paid
+		else:
+			cond &= draft | paid
+
+	query = (search or "").strip().lstrip("#").strip()[:100]
+	if query:
+		pattern = _like(query)
+		cond &= invoice.name.like(pattern) | invoice.customer_name.like(pattern)
+	return cond
+
+
+def _count(invoice, cond):
+	from frappe.query_builder.functions import Count
+
+	if cond is None:
+		return 0
+	return cint(frappe.qb.from_(invoice).select(Count("*")).where(cond).run()[0][0])
+
+
 @frappe.whitelist()
-def get_orders(status="all", limit=50):
-	"""Danh sách đơn cho màn hình Orders.
+def get_orders(status="all", limit=50, scope="shift", from_date=None, to_date=None, search=None, start=0):
+	"""Danh sách đơn cho màn hình Orders (của POS Profile hiện tại).
 
-	status: "all" | "draft" | "paid"
+	status: "all" | "draft" | "paid" (scope "shift").
+	scope:
+	- "shift" (mặc định): đơn Draft + Paid của ca đang mở; chưa mở ca -> [].
+	- "history" (chỉ MANAGER): đơn Paid + Consolidated có posting_date trong [from_date, to_date]
+	  (mặc định hôm qua, tối đa HISTORY_MAX_DAYS ngày); bỏ qua `status`.
+	search: khớp mã đơn / tên khách. limit <= ORDERS_MAX_LIMIT, start = vị trí bắt đầu ("Xem thêm").
+	Mỗi dòng giữ nguyên khóa cũ (+ amount, buzzer_number).
 	"""
-	filters = {}
-	if status == "draft":
-		filters = {"docstatus": 0}
-	elif status == "paid":
-		filters = {"docstatus": 1, "status": "Paid"}
+	from frappe.query_builder import DocType, Order
 
-	orders = frappe.get_all(
-		"POS Invoice",
-		filters=filters,
-		fields=[
-			"name",
-			"customer",
-			"customer_name",
-			"order_type",
-			"order_channel",
-			"status",
-			"docstatus",
-			"grand_total",
-			"rounded_total",
-			"currency",
-			"payment_status",
-			"payment_code",
-			"custom_kitchen_status",
-			"buzzer",
-			"creation",
-		],
-		order_by="creation desc",
-		limit=limit,
+	_require_sale_role()
+	scope = _order_scope(scope)
+	profile_name = resolve_pos_profile_name()
+	shift = _open_shift_of(profile_name) if scope == "shift" else None
+
+	invoice = DocType("POS Invoice")
+	cond = _order_conditions(invoice, profile_name, scope, status, shift, from_date, to_date, search)
+	if cond is None:
+		return []
+
+	limit = min(max(cint(limit) or 50, 1), ORDERS_MAX_LIMIT)
+	orders = (
+		frappe.qb.from_(invoice)
+		.select(*[invoice[f] for f in ORDER_LIST_FIELDS])
+		.where(cond)
+		.orderby(invoice.creation, order=Order.desc)
+		.orderby(invoice.name, order=Order.desc)
+		.limit(limit)
+		.offset(max(cint(start), 0))
+		.run(as_dict=True)
 	)
 
 	for order in orders:
@@ -1098,6 +1213,53 @@ def get_orders(status="all", limit=50):
 		order["buzzer_number"] = _buzzer_number(order.get("buzzer"))
 
 	return orders
+
+
+@frappe.whitelist()
+def get_orders_summary(scope="shift", from_date=None, to_date=None, search=None):
+	"""Bộ đếm + thông tin ca cho màn Orders (COUNT cùng bộ lọc với get_orders).
+
+	Trả {scope, shift: {name, period_start_date} | None, counts: {draft, paid}, old_drafts,
+	from_date, to_date}. old_drafts = đơn Draft của POS Profile thuộc ca trước (trước giờ mở ca
+	hiện tại, hoặc mọi Draft khi chưa mở ca) — chỉ tính cho MANAGER, role khác = 0.
+	"""
+	from frappe.query_builder import DocType
+	from frappe.query_builder import functions as fn
+
+	_require_sale_role()
+	roles = _pos_roles()
+	scope = _order_scope(scope, roles)
+	profile_name = resolve_pos_profile_name()
+	shift = _open_shift_of(profile_name)
+	invoice = DocType("POS Invoice")
+
+	def count(status):
+		return _count(
+			invoice,
+			_order_conditions(invoice, profile_name, scope, status, shift, from_date, to_date, search),
+		)
+
+	result = {
+		"scope": scope,
+		"shift": {"name": shift.name, "period_start_date": str(shift.period_start_date)} if shift else None,
+		"from_date": None,
+		"to_date": None,
+	}
+	if scope == "history":
+		start, end = _history_range(from_date, to_date)
+		result.update(from_date=str(start), to_date=str(end))
+		result["counts"] = {"draft": 0, "paid": count("paid")}
+	else:
+		result["counts"] = {"draft": count("draft"), "paid": count("paid")}
+
+	old_drafts = 0
+	if roles["manager"]:
+		cond = (invoice.pos_profile == profile_name) & (invoice.docstatus == 0) & (invoice.is_return == 0)
+		if shift:
+			cond &= fn.Timestamp(invoice.posting_date, invoice.posting_time) < shift.period_start_date
+		old_drafts = _count(invoice, cond)
+	result["old_drafts"] = old_drafts
+	return result
 
 
 @frappe.whitelist()

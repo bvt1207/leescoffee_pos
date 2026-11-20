@@ -4,14 +4,22 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
-import { formatOrderTime, orderMatches, shortOrderNo } from "../lib/format";
+import { addDaysIso, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
+import { usePos } from "../lib/pos-context";
 import { formatMoney } from "../store/cart";
+import { useOrderFilter } from "../store/orderFilter";
 import { useSearch } from "../store/search";
-import type { OrderDetail, OrderSummary, QrInfo } from "../types";
+import type { OrderDetail, OrderSummary, OrdersSummary, QrInfo } from "../types";
 
 type Tab = "draft" | "paid" | "kitchen";
 
+/** Ca hiện tại: số đơn tối đa mỗi tab (backend kẹp ở ORDERS_MAX_LIMIT = 200). */
+const SHIFT_LIMIT = 200;
+/** Lịch sử: số đơn mỗi lần tải ("Xem thêm" tải tiếp). */
+const HISTORY_PAGE = 100;
+/** Chờ người dùng gõ xong ô tìm kiếm trước khi hỏi server (chế độ Lịch sử). */
+const SEARCH_DEBOUNCE_MS = 350;
 
 // Món có CTKM: giá gốc (price_list_rate) cao hơn giá bán (rate) do server trả.
 const itemPromo = (it: OrderDetail["items"][number]) =>
@@ -26,10 +34,27 @@ export default function Orders() {
 	const [params] = useSearchParams();
 	const draftParam = params.get("draft");
 	const search = useSearch((s) => s.search).trim().toLowerCase();
+	const { config } = usePos();
+	const tz = config?.time_zone || SITE_TZ;
+	const isManager = !!config?.roles?.manager;
+
+	// Bộ lọc nhớ khi chuyển trang (zustand). Lịch sử chỉ dành cho MANAGER (backend cũng chặn).
+	const storedMode = useOrderFilter((s) => s.mode);
+	const mode = isManager ? storedMode : "shift";
+	const preset = useOrderFilter((s) => s.preset);
+	const day = useOrderFilter((s) => s.day);
+	const setMode = useOrderFilter((s) => s.setMode);
+	const setPreset = useOrderFilter((s) => s.setPreset);
+	const setDay = useOrderFilter((s) => s.setDay);
 
 	const [tab, setTab] = useState<Tab>("draft");
 	const [drafts, setDrafts] = useState<OrderSummary[]>([]);
 	const [paid, setPaid] = useState<OrderSummary[]>([]);
+	const [shiftInfo, setShiftInfo] = useState<OrdersSummary | null>(null);
+	const [history, setHistory] = useState<OrderSummary[]>([]);
+	const [historyInfo, setHistoryInfo] = useState<OrdersSummary | null>(null);
+	const [historyLoading, setHistoryLoading] = useState(false);
+	const [historySearch, setHistorySearch] = useState(search);
 	const [selected, setSelected] = useState<string | null>(draftParam || null);
 	const [detail, setDetail] = useState<OrderDetail | null>(null);
 	const [qr, setQr] = useState<QrInfo | null>(null);
@@ -40,19 +65,25 @@ export default function Orders() {
 	const [error, setError] = useState("");
 	// Đơn đang chờ thanh toán QR — khi xuất hiện trong danh sách đã thanh toán thì mở in bắt buộc.
 	const awaitingQr = useRef<string | null>(null);
+	// Số thứ tự request Lịch sử: bỏ kết quả về muộn của bộ lọc cũ.
+	const historySeq = useRef(0);
 
 	const closeReceipt = useCallback(() => setReceipt(null), []);
 
-	// Sau khi thanh toán: sang tab Đã thanh toán, chọn đúng đơn, mở hóa đơn bắt buộc in.
-	const openPaid = useCallback(async (name: string) => {
-		if (awaitingQr.current === name) awaitingQr.current = null;
-		const d = await api.getOrderDetail(name);
-		setQr(null);
-		setTab("paid");
-		setSelected(name);
-		setDetail(d);
-		setReceipt({ order: d, forced: true });
-	}, []);
+	// Sau khi thanh toán: về Ca hiện tại, tab Đã thanh toán, chọn đúng đơn, mở hóa đơn bắt buộc in.
+	const openPaid = useCallback(
+		async (name: string) => {
+			if (awaitingQr.current === name) awaitingQr.current = null;
+			const d = await api.getOrderDetail(name);
+			setQr(null);
+			setMode("shift");
+			setTab("paid");
+			setSelected(name);
+			setDetail(d);
+			setReceipt({ order: d, forced: true });
+		},
+		[setMode]
+	);
 
 	const loadDetail = useCallback(async (name: string | null) => {
 		if (!name) {
@@ -66,11 +97,17 @@ export default function Orders() {
 		}
 	}, []);
 
+	// Ca hiện tại: 2 danh sách + bộ đếm/thông tin ca (3 request mỗi 10 giây).
 	const loadData = useCallback(async () => {
 		try {
-			const [d, p] = await Promise.all([api.getOrders("draft"), api.getOrders("paid")]);
+			const [d, p, info] = await Promise.all([
+				api.getOrders({ status: "draft", limit: SHIFT_LIMIT }),
+				api.getOrders({ status: "paid", limit: SHIFT_LIMIT }),
+				api.getOrdersSummary({ scope: "shift" }),
+			]);
 			setDrafts((d || []).filter((o) => o.docstatus === 0));
 			setPaid(p || []);
+			setShiftInfo(info);
 			setError("");
 
 			const waiting = awaitingQr.current;
@@ -85,10 +122,62 @@ export default function Orders() {
 	}, [openPaid]);
 
 	useEffect(() => {
+		if (mode !== "shift") return;
 		loadData();
 		const timer = window.setInterval(loadData, 10000);
 		return () => window.clearInterval(timer);
-	}, [loadData]);
+	}, [mode, loadData]);
+
+	// Khoảng ngày Lịch sử theo múi giờ site.
+	const range = useMemo(() => {
+		const today = todayIso(tz);
+		if (preset === "7d") return { from: addDaysIso(today, -6), to: today };
+		if (preset === "day" && day) return { from: day, to: day };
+		const yesterday = addDaysIso(today, -1);
+		return { from: yesterday, to: yesterday };
+	}, [preset, day, tz]);
+
+	useEffect(() => {
+		const timer = window.setTimeout(() => setHistorySearch(search), SEARCH_DEBOUNCE_MS);
+		return () => window.clearTimeout(timer);
+	}, [search]);
+
+	// Lịch sử: tải theo bộ lọc (không poll — dữ liệu ngày cũ không đổi). start > 0 = "Xem thêm".
+	const loadHistory = useCallback(
+		async (start: number) => {
+			const seq = ++historySeq.current;
+			setHistoryLoading(true);
+			const query = {
+				scope: "history" as const,
+				from_date: range.from,
+				to_date: range.to,
+				search: historySearch,
+			};
+			try {
+				const [rows, info] = await Promise.all([
+					api.getOrders({ ...query, limit: HISTORY_PAGE, start }),
+					start === 0 ? api.getOrdersSummary(query) : Promise.resolve(null),
+				]);
+				if (seq !== historySeq.current) return;
+				setHistory((prev) => {
+					if (start === 0) return rows || [];
+					const seen = new Set(prev.map((o) => o.name));
+					return [...prev, ...(rows || []).filter((o) => !seen.has(o.name))];
+				});
+				if (info) setHistoryInfo(info);
+				setError("");
+			} catch (err) {
+				if (seq === historySeq.current) setError(err instanceof Error ? err.message : String(err));
+			} finally {
+				if (seq === historySeq.current) setHistoryLoading(false);
+			}
+		},
+		[range.from, range.to, historySearch]
+	);
+
+	useEffect(() => {
+		if (mode === "history") loadHistory(0);
+	}, [mode, loadHistory]);
 
 	useEffect(() => {
 		loadDetail(selected);
@@ -98,18 +187,29 @@ export default function Orders() {
 
 	useEffect(() => {
 		if (draftParam) {
+			setMode("shift");
 			setSelected(draftParam);
 			setTab("draft");
 		}
-	}, [draftParam]);
-
-	const matches = (o: OrderSummary) => orderMatches(o, search);
+	}, [draftParam, setMode]);
 
 	const list = useMemo(
-		() => (tab === "draft" ? drafts : paid).filter(matches),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[tab, drafts, paid, search]
+		() =>
+			mode === "history"
+				? history
+				: (tab === "draft" ? drafts : paid).filter((o) => orderMatches(o, search)),
+		[mode, history, tab, drafts, paid, search]
 	);
+
+	// Bộ đếm tab: COUNT của server; khi đang tìm thì đếm theo danh sách đã lọc.
+	const draftCount = search
+		? drafts.filter((o) => orderMatches(o, search)).length
+		: shiftInfo?.counts.draft ?? drafts.length;
+	const paidCount = search
+		? paid.filter((o) => orderMatches(o, search)).length
+		: shiftInfo?.counts.paid ?? paid.length;
+	const historyTotal = historyInfo?.counts.paid ?? 0;
+	const noShift = mode === "shift" && shiftInfo !== null && !shiftInfo.shift;
 
 	const run = async (action: () => Promise<void>) => {
 		setBusy(true);
@@ -171,18 +271,90 @@ export default function Orders() {
 		<div className="pos-orders-page">
 			{error ? <div className="pos-alert pos-alert--error">{error}</div> : null}
 
-			<div className="pos-tabs" role="tablist">
-				<button type="button" className={`pos-tab ${tab === "draft" ? "is-active" : ""}`} onClick={() => setTab("draft")}>
-					Chờ thanh toán <span className="pos-tab__count">{drafts.length}</span>
-				</button>
-				<button type="button" className={`pos-tab ${tab === "paid" ? "is-active" : ""}`} onClick={() => setTab("paid")}>
-					Đã thanh toán <span className="pos-tab__count">{paid.length}</span>
-				</button>
+			<div className="pos-orders-bar">
+				{isManager ? (
+					<div className="pos-segmented pos-orders-mode" role="group" aria-label="Chế độ xem đơn">
+						<button
+							type="button"
+							className={mode === "shift" ? "is-active" : ""}
+							aria-pressed={mode === "shift"}
+							onClick={() => setMode("shift")}
+						>
+							Ca hiện tại
+						</button>
+						<button
+							type="button"
+							className={mode === "history" ? "is-active" : ""}
+							aria-pressed={mode === "history"}
+							onClick={() => setMode("history")}
+						>
+							Lịch sử
+						</button>
+					</div>
+				) : null}
+
+				{mode === "shift" ? (
+					<div className="pos-tabs" role="tablist">
+						<button type="button" className={`pos-tab ${tab === "draft" ? "is-active" : ""}`} onClick={() => setTab("draft")}>
+							Chờ thanh toán <span className="pos-tab__count">{draftCount}</span>
+						</button>
+						<button type="button" className={`pos-tab ${tab === "paid" ? "is-active" : ""}`} onClick={() => setTab("paid")}>
+							Đã thanh toán <span className="pos-tab__count">{paidCount}</span>
+						</button>
+					</div>
+				) : (
+					<div className="pos-orders-filter" role="group" aria-label="Khoảng ngày">
+						<button
+							type="button"
+							className={`pos-tab ${preset === "yesterday" ? "is-active" : ""}`}
+							onClick={() => setPreset("yesterday")}
+						>
+							Hôm qua
+						</button>
+						<button
+							type="button"
+							className={`pos-tab ${preset === "7d" ? "is-active" : ""}`}
+							onClick={() => setPreset("7d")}
+						>
+							7 ngày
+						</button>
+						<label className={`pos-tab pos-orders-filter__day ${preset === "day" ? "is-active" : ""}`}>
+							<span>Chọn ngày</span>
+							<input
+								type="date"
+								className="pos-orders-filter__date"
+								value={preset === "day" ? day : ""}
+								max={todayIso(tz)}
+								onChange={(event) => {
+									if (event.target.value) setDay(event.target.value);
+								}}
+							/>
+						</label>
+						<span className="pos-orders-filter__count">
+							{historyLoading && !historyInfo ? "Đang tải…" : `${historyTotal} đơn`}
+						</span>
+					</div>
+				)}
 			</div>
+
+			{mode === "shift" && shiftInfo ? (
+				<div className="pos-orders-shift">
+					{shiftInfo.shift
+						? `Ca mở lúc ${formatOrderTime(shiftInfo.shift.period_start_date, tz)}`
+						: "Chưa mở ca bán hàng. Ca sẽ mở khi tạo đơn đầu tiên."}
+				</div>
+			) : null}
+
+			{mode === "shift" && isManager && (shiftInfo?.old_drafts ?? 0) > 0 ? (
+				<div className="pos-alert pos-alert--warn">
+					Còn {shiftInfo?.old_drafts} đơn chờ thanh toán của ca trước (không hiện ở Ca hiện tại). Xử lý trong Desk:
+					POS Invoice, lọc Draft.
+				</div>
+			) : null}
 
 			<div className="pos-orders-layout">
 				<section className="pos-orders-list">
-					{loading && !list.length ? (
+					{(mode === "shift" ? loading : historyLoading) && !list.length ? (
 						<div className="pos-empty">Đang tải đơn hàng…</div>
 					) : list.length ? (
 						<div className="pos-order-grid">
@@ -206,16 +378,35 @@ export default function Orders() {
 										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
 										{o.payment_status === "Đang chờ" ? <span className="pos-tag pos-tag--warn">Chờ QR</span> : null}
 										{o.custom_kitchen_status ? <span className="pos-status__badge">{o.custom_kitchen_status}</span> : null}
-										<span className="pos-order-card__time">{formatOrderTime(o.creation)}</span>
+										{o.status === "Consolidated" ? <span className="pos-tag">Đã đóng ca</span> : null}
+										<span className="pos-order-card__time">{formatOrderTime(o.creation, tz)}</span>
 									</div>
 								</button>
 							))}
 						</div>
 					) : (
 						<div className="pos-empty">
-							{search ? "Không tìm thấy đơn phù hợp." : tab === "draft" ? "Không có đơn nào chờ thanh toán." : "Chưa có đơn đã thanh toán."}
+							{search
+								? "Không tìm thấy đơn phù hợp."
+								: mode === "history"
+									? "Không có đơn đã thanh toán trong khoảng ngày này."
+									: noShift
+										? "Chưa mở ca bán hàng."
+										: tab === "draft"
+											? "Không có đơn nào chờ thanh toán trong ca."
+											: "Chưa có đơn đã thanh toán trong ca."}
 						</div>
 					)}
+					{mode === "history" && history.length < historyTotal ? (
+						<button
+							type="button"
+							className="pos-btn pos-orders-more"
+							disabled={historyLoading}
+							onClick={() => loadHistory(history.length)}
+						>
+							{historyLoading ? "Đang tải…" : `Xem thêm (${history.length}/${historyTotal})`}
+						</button>
+					) : null}
 				</section>
 
 				<aside className="pos-order-detail">
@@ -225,14 +416,18 @@ export default function Orders() {
 								<div>
 									<div className="pos-order-detail__name">{detail.customer_name}</div>
 									<div className="pos-order-detail__sub">
-										{detail.name} · {formatOrderTime(detail.creation)} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
+										{detail.name} · {formatOrderTime(detail.creation, tz)} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
 										{detail.order_type === "Dine In" && !isQrOrder(detail.order_channel)
 											? ` · Thẻ #${detail.buzzer_number || "—"}`
 											: ""}
 									</div>
 								</div>
 								<span className={isDraft ? "pos-pending" : "pos-ok"}>
-									{isDraft ? "Chờ thanh toán" : detail.status || "Đã thanh toán"}
+									{isDraft
+										? "Chờ thanh toán"
+										: detail.status === "Consolidated"
+											? "Đã đóng ca"
+											: detail.status || "Đã thanh toán"}
 								</span>
 							</div>
 
