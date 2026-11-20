@@ -35,6 +35,9 @@ _SHIFT = ["select", "read", "write", "create", "submit"]
 # Ca MANAGER mở thay thì Cashier không thấy trên Desk -> MANAGER đóng thay. Quy tắc mở/đóng: pos_shift_hooks.py.
 _SHIFT_CASHIER = _SHIFT + ["if_owner"]
 _INVOICE = ["select", "read", "write", "create", "submit"]
+# MANAGER cần thêm "report" trên POS Invoice: Script Report "MYPOS Review Queue" (ref_doctype POS Invoice) bị Frappe chặn nếu
+# thiếu (frappe.desk.query_report.get_report_doc kiểm has_permission(ref_doctype, "report")). CASHIER không cần (2026-11-21).
+_INVOICE_MANAGER = _INVOICE + ["report"]
 _MASTER_RW = ["select", "read", "write", "create"]
 
 # role -> {doctype: [ptype, ...]}
@@ -70,7 +73,7 @@ PERMS = {
 		"Account": _MASTER_RW,
 		"Customer": _MASTER_RW,
 		"Item": _MASTER_RW,
-		"POS Invoice": _INVOICE,
+		"POS Invoice": _INVOICE_MANAGER,
 		"POS Invoice Merge Log": _INVOICE,
 		"Sales Invoice": _INVOICE,
 		"Address": ["read", "write", "create"],
