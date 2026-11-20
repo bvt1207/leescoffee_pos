@@ -33,7 +33,7 @@ Không cấp Cancel / Delete / Amend.
 | Account | R | — | S R W C |
 | Customer | R | — | S R W C |
 | Item | R | — | S R W C |
-| POS Invoice | S R W C Sub | — | S R W C Sub |
+| POS Invoice | S R W C Sub | — | S R W C Sub + Report |
 | POS Invoice Merge Log | S R W C Sub | — | S R W C Sub |
 | Sales Invoice | S R W C Sub | — | S R W C Sub |
 | Address | R | — | R W C |
@@ -91,7 +91,8 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
   (Khách không nhận / Không thực hiện được), kể cả đã gộp (Consolidated); không lọc ca / ngày. Truy vấn ở MỘT nơi:
   `kitchen_status.review_orders` / `review_counts` (`REVIEW_OVERDUE_HOURS = 24`).
 - **Script Report "MYPOS Review Queue"** (`leescoffee_pos/report/mypos_review_queue/`): roles POS MANAGER + System Manager, `execute` kiểm
-  manager lần nữa; lọc POS Profile / mã-tên khách / chỉ quá 24 giờ. Mở bằng thanh tìm kiếm Desk hoặc `/desk/query-report/MYPOS Review Queue`.
+  manager lần nữa; lọc POS Profile / mã-tên khách / chỉ quá 24 giờ. Frappe đòi quyền **Report** trên `ref_doctype` (POS Invoice)
+  (`query_report.get_report_doc`) → MANAGER thêm cờ `report` trên POS Invoice (patch `v1_create_pos_roles`, nhãn `#2026-11-21 manager-invoice-report`). Mở bằng thanh tìm kiếm Desk hoặc `/desk/query-report/MYPOS Review Queue`.
   **Chưa link vào workspace** (task sau).
 - **Nút "Xử lý đơn"** trên form POS Invoice (`public/js/pos_invoice.js`, chỉ manager + đơn cần xử lý) → `pos_api.resolve_open_order`:
   luồng xem lại `_resolve_review` — chỉ manager; kết cục Đã hoàn thành / Không thực hiện được / Khách không nhận; lý do luôn bắt buộc;
