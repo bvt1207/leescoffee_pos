@@ -30,7 +30,7 @@
 | Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (`pos_closing_entry.get_invoices` lọc `owner == user` — đã đọc mã ERPNext 17-dev; chỉ gom POS Invoice khi `POS Settings.invoice_type = "POS Invoice"`; self-test 9a/9b) |
 | Thẻ rung | Đơn QR Dine In **không** có buzzer. Hook/`confirm_pickup` đã bỏ qua khi `buzzer` rỗng |
 | Thanh toán | Chỉ chuyển khoản: Mode of Payment `type = Bank` có tài khoản (ưu tiên mode trong POS Profile). Branch phải bật SePay + VA + mã NH + **API key** |
-| Hết hạn | Sau `PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Job xóa sau `DRAFT_DELETE_MINUTES = 60` (webhook chuyển khoản trễ vẫn khớp) |
+| Hết hạn | Sau `QR_PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Webhook còn khớp thêm `QR_CLEANUP_GRACE_MINUTES = 5`; sau đó job **hủy + ghi log** "QR hết hạn không thanh toán" (2026-11-20, bỏ mốc xóa 60 phút). Mốc ở `doctype/mypos_order_cancel_log/order_cancel.py` |
 | Loyalty | **Không đổi điểm** (`redeem_points > 0` → lỗi). Chỉ hiện điểm + hạng của chính khách. Tích điểm do ERPNext như đơn thường |
 | Giá/CTKM/tùy chọn | Server tính lại bằng `_normalize_items`, `_build_invoice`, `_pricing_preview` (dùng chung với POS). Client chỉ gửi `item_code`, `qty`, `options` |
 
@@ -83,9 +83,16 @@ lịch sử (> 30 ngày, nhiều chi nhánh). Trước đó: **chỉ bật đổ
 
 ## 5. Job dọn đơn
 
-`customer_order_api.cleanup_expired_qr_orders` (cron `*/5 * * * *`): `docstatus = 0`, `order_channel = QR`,
-`creation` < now − 60 phút, `payment_status != "Đã thanh toán"`; đọc lại docstatus ngay trước khi xóa;
-commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng đơn submit hay đơn kênh POS.
+Từ 2026-11-20: job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, thay job cũ) gồm 2 phần, dùng chung hàm hủy +
+log `cancel_draft_with_log` (MYPOS Order Cancel Log):
+- QR: `docstatus = 0`, `order_channel = QR`, không phải trả hàng, `creation` < now − (15 + 5) phút, `payment_status != "Đã thanh toán"`
+  → lý do "QR hết hạn không thanh toán", nguồn "Tự động". `customer_order_api.cleanup_expired_qr_orders` giữ tên, gọi phần này.
+- Draft kênh khác QR quá `POS_DRAFT_AUTO_CANCEL_MINUTES = 120` → "Tự hủy quá 2 giờ".
+Đọc lại docstatus ngay trước khi hủy; commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng đơn đã submit.
+
+**Tiền đến sau khi đơn đã hủy** (`sepay_webhook` không thấy đơn): `order_cancel.record_orphan_payment` tìm log theo `payment_code`
+(khớp đúng, rồi chuẩn hóa trong 30 ngày), xác thực API key theo Branch của log, ghi `needs_review`, mã giao dịch, số tiền, payload;
+Error Log + Notification Log cho user POS MANAGER; trả `{success: true, needs_review: true}`; gọi lại cùng giao dịch không nhân đôi.
 
 ## 6. Màn nhân viên
 
@@ -96,7 +103,7 @@ commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng 
 
 - OTP (SMS/Zalo) → mở đổi điểm cho kênh QR.
 - Web Push khi khách đóng tab (giai đoạn này chỉ poll khi tab mở).
-- Khách chuyển khoản sau khi đơn đã bị xóa (> 60 phút) → webhook "không tìm thấy đơn" (Error Log), xử lý tay.
+- Khách chuyển khoản sau khi đơn đã bị hủy (> 20 phút) → giao dịch mồ côi trong MYPOS Order Cancel Log (`needs_review`), quản lý xử lý tay.
 - Ca đóng giữa lúc đơn QR đang chờ: đơn Draft thuộc owner ca cũ; webhook vẫn submit được ([Unverified] ERPNext
   có chặn submit khi ca của owner đã đóng hay không — cần test trên bench).
 - Index: `get_my_orders` lọc `customer` + `order_channel` + `qr_source` + `creation`; [Unverified] cột `customer` của

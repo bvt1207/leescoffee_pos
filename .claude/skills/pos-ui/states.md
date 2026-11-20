@@ -118,7 +118,10 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
   + "N đơn", nút "Xem thêm (x/N)"; trạng thái rỗng riêng cho từng chế độ.
 - Ô tìm header lọc mã đơn (đầy đủ hoặc ngắn)/tên khách; key món có index.
 - Panel chi tiết: khách + mã + loại, dòng món (Đường x%·Đá y%), tổng, ghi chú, bếp; nút 52px: Thu tiền / QR / Hủy (viền đỏ).
-- **Hủy đơn luôn có hộp xác nhận**; `payment_status="Đang chờ"` → cảnh báo + tự `force=1`.
+- **Hủy đơn luôn có hộp xác nhận**; `payment_status="Đang chờ"` → cảnh báo + tự `force=1`. Bắt buộc chọn lý do (`.pos-reason`, radio 44px:
+  Khách đổi ý / Đặt nhầm / Khách không lấy / Khác + ghi chú bắt buộc); nút xác nhận khóa tới khi hợp lệ; gửi `reason`, `note`.
+- Draft kênh khác QR: chi tiết "Tự hủy lúc HH:MM nếu chưa thanh toán" (`.pos-order-detail__auto`, theo `config.pos_draft_auto_cancel_minutes`,
+  `lib/format.ts::autoCancelInfo`); thẻ có nhãn vàng "Tự hủy sau N phút" khi còn ≤ 30 phút.
 - Tự refresh mỗi 10s; URL `?draft=<name>` → tự chọn đơn đó.
 - Nhãn thống nhất "Tại quán"/"Mang đi"; bỏ nút "Quay lại bán hàng".
 

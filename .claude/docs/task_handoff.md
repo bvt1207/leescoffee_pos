@@ -3,6 +3,14 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0h. Chặn đóng ca khi còn Draft + tự hủy Draft quá hạn + lý do hủy (2026-11-20) — CHỜ VAN TEST
+- Mới: DocType `MYPOS Order Cancel Log` (+ `order_cancel.py`: 3 mốc QR 15 / đệm 5 / POS 120 phút, hàm hủy + log, job, giao dịch mồ côi).
+- Sửa: `pos_api` (`cancel_draft_order` có lý do, `force_close_shift`, config `pos_draft_auto_cancel_minutes`), `customer_order_api` (bỏ mốc 60 phút),
+  `sepay.sepay_webhook` (đơn đã hủy → log mồ côi), `pos_shift_hooks` (chặn đóng ca), `hooks.py` (job mới), `public/js/pos_opening_entry.js`
+  (nút Đóng ca bắt buộc), patch quyền (MANAGER xem log), Orders (hộp lý do, giờ tự hủy). `order_qr_selftest` 10c/10d theo mốc mới.
+- **Lần chạy đầu của job trên site sẽ hủy (có log) mọi Draft kênh POS cũ hơn 2 giờ và Draft QR quá 20 phút.**
+- Chi tiết: `rules/leescoffee_pos/roles.md` §2c, `order-qr.md` §2, §5. Kiểm tra: `.claude/docs/draft_cancel_check.py`.
+
 ## 0g. Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (2026-11-20, backend + quyền) — ĐÃ TEST PASS trên bench DEV (`a97d530`; `check_shift_owner` PASS sau `e8da9f1`)
 - Mới: `leescoffee_pos/doctype/pos_shift_hooks/` (doc_events POS Opening/Closing Entry), `public/js/pos_opening_entry.js` (`doctype_js`).
 - Sửa: `hooks.py`, `pos_api._ensure_opening_entry` (chỉ thông báo lỗi), `patches/v1_create_pos_roles.py` (CASHIER `if_owner`),

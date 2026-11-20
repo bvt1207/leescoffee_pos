@@ -41,6 +41,7 @@ Không cấp Cancel / Delete / Amend.
 | Branch | — | — | S R W C |
 | MYPOS Option Group | R | R | R W C |
 | MYPOS Order QR | R | — | S R W C |
+| MYPOS Order Cancel Log | — | — | S R W (chỉ bỏ cờ "Cần đối soát"; log do hệ thống ghi) |
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
 
@@ -62,6 +63,18 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
   /pos, QR, `validate_pos_opening_entry` của ERPNext dùng `get_all` → không ảnh hưởng; gộp hóa đơn khi đóng ca không đổi.
 - Rủi ro: POS Profile chưa khai Applicable for Users → không ai mở được ca; MANAGER bán ở /pos phải có trong danh sách để tự mở ca.
 - Kiểm tra: `.claude/docs/shift_owner_check.py` (`check_shift_owner(...)`, profile + user tạm, rollback).
+
+### 2c. Đóng ca khi còn Draft, hủy đơn có lý do (2026-11-20, CHỜ VAN TEST)
+
+- `pos_shift_hooks._check_closing` chặn đóng ca khi còn Draft của POS Profile (`order_cancel.closing_blockers`: kênh khác QR — mọi đơn;
+  QR — chỉ đơn còn trong 15 phút), liệt kê tối đa 10 mã. Đơn đã thanh toán (pha chế chưa xong) không chặn.
+- **Đóng ca bắt buộc** (`pos_api.force_close_shift(opening_entry, reason)`, nút trên form POS Opening Entry — `public/js/pos_opening_entry.js`):
+  chỉ manager, lý do bắt buộc; hủy MỌI Draft (log "Đóng ca" / "Hủy khi đóng ca", ghi chú = lý do) rồi tạo + submit phiếu đóng ca trong một
+  giao dịch; comment lý do trên phiếu đóng ca. CASHIER gọi → PermissionError.
+- `cancel_draft_order(invoice_name, force, reason, note)`: Orders luôn gửi lý do (Khách đổi ý / Đặt nhầm / Khách không lấy / Khác + ghi chú);
+  `reason=None` (giao diện cũ) vẫn hủy, log "Không ghi lý do (giao diện cũ)".
+- Mọi đường hủy (tay, job, đóng ca) qua `order_cancel.cancel_draft_with_log` → `MYPOS Order Cancel Log` (đơn bị xóa nên Comment không giữ được).
+- Kiểm tra: `.claude/docs/draft_cancel_check.py` (`check_draft_cancel(...)`).
 
 ## 3. Cơ chế cài đặt
 
