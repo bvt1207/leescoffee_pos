@@ -85,7 +85,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - `resolve_open_order(s)`: CASHIER / MANAGER / System Manager / Administrator (`_require_sale_role`); KITCHEN bị chặn.
 - Kiểm tra: `.claude/docs/open_orders_check.py` (`check_open_orders(...)`).
 
-### 2e. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21, CHỜ VAN TEST) — máy POS KHÔNG đổi
+### 2e. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21) — ĐÃ TEST PASS trên bench DEV (`660693e` + `b918bb7`) — máy POS KHÔNG đổi
 
 - "Cần xử lý" = POS Invoice docstatus 1, không trả hàng, `custom_kitchen_status = "Đã đóng ca chưa xử lý"` hoặc `needs_review = 1`
   (Khách không nhận / Không thực hiện được), kể cả đã gộp (Consolidated); không lọc ca / ngày. Truy vấn ở MỘT nơi:

@@ -28,6 +28,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── legacy_options_check.py  # options '[]' vs NULL, cột đường/đá cũ không tự điền
 │   │   ├── draft_cancel_check.py  # chặn đóng ca khi còn Draft, job tự hủy, lý do hủy, giao dịch mồ côi
 │   │   ├── open_orders_check.py   # đóng ca chặn đơn đã thanh toán chưa giao, trạng thái kết thúc có lý do
+│   │   ├── review_queue_check.py  # quản lý xử lý đơn cần xem lại trên Desk (Report, nút Xử lý đơn, thông báo)
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -52,7 +53,8 @@ PROJECTPOS/                        # git repo
     ├── fixtures/custom_field.json, role.json
     ├── public/
     │   ├── images/logo.svg
-    │   ├── js/pos_opening_entry.js  # doctype_js: form POS Opening Entry (Cashier tự điền + khóa)
+    │   ├── js/pos_opening_entry.js  # doctype_js: form POS Opening Entry (Cashier tự điền + khóa, Đóng ca bắt buộc)
+    │   ├── js/pos_invoice.js      # doctype_js: form POS Invoice (nút "Xử lý đơn" cho quản lý)
     │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
     ├── www/
     │   ├── pos.html               # trang /pos, nạp /assets/leescoffee_pos/pos/pos.js
@@ -73,6 +75,7 @@ PROJECTPOS/                        # git repo
         │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         │   └── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
         ├── workspace/leescoffee_pos/leescoffee_pos.json
+        ├── report/mypos_review_queue/ # Script Report "MYPOS Review Queue" (đơn cần xử lý, chỉ quản lý)
         └── doctype/
             ├── mypos_buzzer/              # thẻ rung (tên cũ leescoffee_buzzer)
             ├── mypos_menu/                # menu theo Price List (tên cũ leescoffee_menu)
