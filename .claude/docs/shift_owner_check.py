@@ -49,6 +49,8 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 			"user": users[cashier_key],
 			"period_start_date": now_datetime(),
 			"posting_date": nowdate(),
+			# Bảng "Opening Balance Details" bắt buộc (reqd) trong ERPNext v16.
+			"balance_details": [{"mode_of_payment": m, "opening_amount": 0} for m in balance_modes],
 		})
 		doc.insert(ignore_permissions=True)
 		made["openings"].append(doc.name)
@@ -74,6 +76,7 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 		src = frappe.get_doc("POS Profile", pos_profile)
 		company = src.company
 		price_list = price_list or src.get("selling_price_list")
+		balance_modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
 
 		print("== 1. Dữ liệu tạm ==")
 		for key, role in ROLE_OF.items():
