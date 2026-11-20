@@ -3,6 +3,19 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0e. Orders: ngày giờ + mã ngắn (bước A) và "Ca hiện tại" / "Lịch sử" (bước B) — 2026-11-20
+- **Bước A (chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`d1cac1f`)**: `lib/format.ts` (formatOrderTime, formatStamp/nowStamp, shortOrderNo,
+  orderMatches), Orders bỏ gọi `get_status_board`, ReceiptModal dùng hàm chung.
+- **Bước B (backend + frontend) — CHỜ VAN TEST.** `pos_api.get_orders` thêm `scope/from_date/to_date/search/start` (mặc định `scope="shift"`),
+  `_require_sale_role`; mới `get_orders_summary`; `get_pos_config` thêm `time_zone`. Frontend: `store/orderFilter.ts`, Orders 2 chế độ.
+  - Đơn thuộc ca: POS Invoice **không có** link Opening Entry (đã đọc ERPNext trên bench DEV) → cùng POS Profile +
+    `Timestamp(posting_date, posting_time)` ≥ `period_start_date` của ca Open (giống `pos_closing_entry.build_invoice_query`).
+  - Đổi hành vi: Orders chỉ còn đơn của POS Profile hiện tại; đơn ca trước / dữ liệu cũ không hiện ở Ca hiện tại.
+  - [Inference, đọc mã] Draft ca cũ được thu tiền ở ca mới → ERPNext đặt lại posting_date/time → chuyển sang ca mới.
+  - [Unverified] `posting_time` theo giờ server; System Settings `time_zone` phải là Asia/Ho_Chi_Minh.
+  - Kiểm tra: `.claude/docs/orders_shift_check.py` (`check_orders_shift(item_code, mode_of_payment, branch_name=...)`), sau đó
+    `run_order_qr_selftest()` + `run_order_history_selftest()`.
+
 ## 0d. Bỏ chấm thẻ món + CTKM hiện sẵn trong giỏ (2026-11-19, chỉ frontend) — CHỜ VAN TEST
 - `MenuGrid.tsx`: bỏ chấm `.pos-menu-card__dot`. `CartPanel.tsx`: chip CTKM dưới tóm tắt ("Giảm 5% · tên", "+N", dòng tặng "Tặng · tên"),
   bỏ nhãn ngắn "−5%" + tooltip; chân giỏ thêm dòng tên chương trình dưới "Khuyến mãi". `global.css`.

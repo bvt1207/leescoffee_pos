@@ -187,16 +187,23 @@ Routes:
 ### Orders.tsx (Quản lý đơn — mẫu cho skill; rút lại Pha chế tab)
 
 **State:**
-- `tab`: "draft" | "paid" — chỉ 2 tab: Chờ thanh toán / Đã thanh toán
-- `drafts[]`, `paid[]` — mỗi tỷ lệ dữ liệu riêng
-- `selected`: string|null — mã đơn được chọn
-- `detail`, `qr`, `confirmCancel`, `busy`, `loading`, `error`
+- Chế độ (`store/orderFilter.ts`, zustand — nhớ khi chuyển trang, F5 về mặc định): `mode` "shift" (Ca hiện tại, mặc định)
+  | "history" (Lịch sử, **chỉ MANAGER** — `config.roles.manager`; backend cũng chặn), `preset` "yesterday" | "7d" | "day", `day`.
+- Ca hiện tại: `tab` "draft" | "paid", `drafts[]`, `paid[]`, `shiftInfo` (`get_orders_summary`: ca, COUNT, `old_drafts`).
+- Lịch sử: `history[]`, `historyInfo`, `historyLoading`, `historySearch` (ô tìm header, trễ 350ms).
+- `selected`, `detail`, `qr`, `confirmCancel`, `busy`, `loading`, `error`
 
 **Luồng xử lý:**
-1. Load → `Promise.all([getOrders("draft"), getOrders("paid")])`
-2. Poll mỗi 10s — refresh danh sách (không getStatusBoard / board)
-3. Nếu `?draft=<name>` trong URL → tự chọn đó
-4. Match search: mã đơn OR tên khách (lowercase includes)
+1. Ca hiện tại → `Promise.all([getOrders({status:"draft"}), getOrders({status:"paid"}), getOrdersSummary({scope:"shift"})])`,
+   poll 10s (3 request; không gọi getStatusBoard). Đơn của ca = cùng POS Profile + `Timestamp(posting_date, posting_time)` ≥ giờ mở ca
+   (`pos_api` mục "Màn Đơn hàng"). Chưa mở ca → danh sách rỗng + "Chưa mở ca bán hàng". MANAGER thấy cảnh báo `old_drafts`
+   (Draft ca trước, xử lý trong Desk).
+2. Lịch sử → `getOrders({scope:"history", from_date, to_date, search, limit:100, start})` + summary (COUNT); không poll;
+   "Xem thêm" tải tiếp theo `start`; bỏ kết quả cũ theo `historySeq`. Gồm Paid + Consolidated ("Đã đóng ca": chỉ xem + In).
+   Hôm qua / 7 ngày (gồm hôm nay) / chọn ngày; ngày tính theo `config.time_zone` (mặc định Asia/Ho_Chi_Minh).
+3. Nếu `?draft=<name>` trong URL → về Ca hiện tại, tự chọn đơn đó
+4. Tìm: Ca hiện tại lọc tại máy (`lib/format.ts::orderMatches` — mã đầy đủ, mã ngắn "#00016", tên khách); Lịch sử gửi server.
+5. Thẻ đơn: mã ngắn `shortOrderNo` + `formatOrderTime` ("Hôm nay 11:38"); chi tiết có mã đầy đủ; bản in dùng `formatStamp`.
 5. Hành động trên đơn đã chọn:
    - Draft: `payCash()` / `generateQr()` / Hủy đơn (viền đỏ)
    - Dine In Paid + kitchen "Đã hoàn thành": `confirmPickup()` → reset buzzer

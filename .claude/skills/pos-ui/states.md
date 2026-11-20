@@ -111,8 +111,12 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 
 #### Orders.tsx (Management — mẫu cho skill; rút lại Pha chế tab)
 - Layout: tab 2 — Chờ thanh toán / Đã thanh toán → danh sách đơn lưới → panel chi tiết fixed 380px, sticky. Không Pha chế tab.
-- Thẻ đơn: `customer_name`, `amount` (formatMoney), `name`, `order_type` tag, buzzer, **"Chờ QR"** `payment_status="Đang chờ"`, bếp status (khi phản hồi), giờ tạo.
-- Ô tìm header lọc mã đơn/tên khách; key món có index.
+- Thẻ đơn: `customer_name`, `amount` (formatMoney), mã ngắn "#00016" (`title` = mã đầy đủ), `order_type` tag, buzzer, **"Chờ QR"**
+  `payment_status="Đang chờ"`, "Đã đóng ca" (status Consolidated), bếp status, ngày giờ `formatOrderTime` ("Hôm nay 11:38").
+- Thanh trên: MANAGER có segmented "Ca hiện tại | Lịch sử" (44px). Ca hiện tại = 2 tab + bộ đếm COUNT (đang tìm → đếm danh sách đã lọc),
+  dòng "Ca mở lúc …", cảnh báo vàng `.pos-alert--warn` khi còn Draft ca trước. Lịch sử = Hôm qua · 7 ngày · Chọn ngày (`input type=date`)
+  + "N đơn", nút "Xem thêm (x/N)"; trạng thái rỗng riêng cho từng chế độ.
+- Ô tìm header lọc mã đơn (đầy đủ hoặc ngắn)/tên khách; key món có index.
 - Panel chi tiết: khách + mã + loại, dòng món (Đường x%·Đá y%), tổng, ghi chú, bếp; nút 52px: Thu tiền / QR / Hủy (viền đỏ).
 - **Hủy đơn luôn có hộp xác nhận**; `payment_status="Đang chờ"` → cảnh báo + tự `force=1`.
 - Tự refresh mỗi 10s; URL `?draft=<name>` → tự chọn đơn đó.

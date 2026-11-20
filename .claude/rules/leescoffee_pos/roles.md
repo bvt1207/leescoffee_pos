@@ -121,7 +121,8 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `pos_api.create_customer` | CASHIER, MANAGER |
 | `pos_api.create_draft_order` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role` — CASHIER, MANAGER, System Manager, Administrator |
 | `pos_api.preview_pricing` | CASHIER, MANAGER |
-| `pos_api.get_orders` | CASHIER, MANAGER |
+| `pos_api.get_orders` | **ĐÃ LÀM** (2026-11-20): `_require_sale_role`; `scope="history"` chỉ MANAGER (`_order_scope`) |
+| `pos_api.get_orders_summary` | **ĐÃ LÀM** (2026-11-20): như `get_orders`; `old_drafts` chỉ tính cho MANAGER |
 | `pos_api.get_order_detail` | KITCHEN, CASHIER, MANAGER (KITCHEN cần để in tem / phiếu pha chế) |
 | `pos_api.pay_cash` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role` |
 | `pos_api.cancel_draft_order` | **ĐÃ LÀM** (2026-11-17): `_require_sale_role`; chưa làm: `force=1` chỉ MANAGER |
