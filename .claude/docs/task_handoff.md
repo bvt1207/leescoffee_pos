@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0j. Web khách /order: trạng thái kết thúc mới (2026-11-20) — CHỜ VAN TEST
+## 0j. Web khách /order: trạng thái kết thúc mới (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`bc84976`)
 - `customer_order_api`: stage `closed` / `failed` / `review` / `processing` (giá trị lạ), `stage_message`, nhóm active theo `needs_review`
   cho `failed`/`review`; `kitchen_status` luôn rỗng; không trả trường nội bộ.
 - `pos/src/order`: `types.ts` (Stage mới, `stage_message`), `format.ts` (`isActiveStage`), `MyOrdersPanel.tsx` (thông điệp), `order.css`.

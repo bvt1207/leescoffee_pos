@@ -18,7 +18,7 @@
    → `sepay_webhook` (đã xác thực API key) submit đơn → hook `on_submit` đặt `Chưa làm` → Kitchen.
 4. Khách poll `get_my_orders` (5 giây, chỉ khi còn đơn đang xử lý) / `get_order` (3 giây ở màn thanh toán): `stage` = `awaiting_payment` | `expired` | `queued`
    (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận", CHỈ stage này) | `done` (Đã hoàn thành).
-   Từ 2026-11-20 (CHỜ VAN TEST) — `customer_order_api.KITCHEN_STAGE` / `STAGE_LABELS` / `STAGE_MESSAGES`:
+   Từ 2026-11-20 (ĐÃ TEST PASS trên bench DEV, `bc84976`) — `customer_order_api.KITCHEN_STAGE` / `STAGE_LABELS` / `STAGE_MESSAGES`:
    | Trạng thái nội bộ | stage | Nhãn khách | Nhóm | Thông điệp (`stage_message`) |
    |---|---|---|---|---|
    | Khách không nhận | `closed` | Đã đóng đơn | history | — |
