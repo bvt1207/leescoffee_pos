@@ -64,22 +64,38 @@ RATE_LIMITS = {
 }
 
 QR_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+# --- Trạng thái đơn hiển thị cho khách (2026-11-20) -------------------------------------------------
+# custom_kitchen_status (nội bộ, kitchen_status.py) -> stage + stage_label (+ stage_message) cho khách.
+# Khách KHÔNG nhận: needs_review, lý do nội bộ, tên nhân viên, giá trị custom_kitchen_status thô.
 STAGE_LABELS = {
 	"awaiting_payment": "Chờ thanh toán",
 	"expired": "Hết hạn thanh toán",
 	"queued": "Chưa làm",
 	"ready": "Đã làm",
 	"done": "Đã hoàn thành",
+	"closed": "Đã đóng đơn",  # Khách không nhận (trung tính)
+	"failed": "Không thực hiện được",
+	"review": "Đang chờ quầy xác nhận",  # Đã đóng ca chưa xử lý
+	"processing": "Đang xử lý",  # trạng thái lạ: nhãn an toàn
 }
-# Trạng thái kết thúc có lý do (kitchen_status.py) -> "done" với khách (UI khách chưa phân biệt, đợt sau).
 KITCHEN_STAGE = {
 	"Chưa làm": "queued",
 	"Đã làm": "ready",
 	"Đã hoàn thành": "done",
-	"Khách không nhận": "done",
-	"Không thực hiện được": "done",
-	"Đã đóng ca chưa xử lý": "done",
+	"Khách không nhận": "closed",
+	"Không thực hiện được": "failed",
+	"Đã đóng ca chưa xử lý": "review",
 }
+STAGE_FALLBACK = "processing"
+# Thông điệp nổi bật ({invoice} = mã đơn khách đang thấy).
+STAGE_MESSAGES = {
+	"failed": "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: {invoice}",
+	"review": "Đơn đang được quầy xác nhận, vui lòng liên hệ nhân viên. Mã đơn: {invoice}",
+}
+# Nhóm "Đang xử lý": đơn đang làm trong ACTIVE_PAID_HOURS giờ; đơn lỗi / chờ quầy xác nhận còn active
+# tới khi quầy giải quyết (quản lý bỏ cờ needs_review trên POS Invoice).
+STAGES_IN_PROGRESS = ("queued", "ready", "processing")
+STAGES_UNTIL_RESOLVED = ("failed", "review")
 
 MSG_QR_INVALID = "Mã QR không hợp lệ hoặc đã ngưng sử dụng. Vui lòng quét lại mã tại quán."
 MSG_SESSION = "Phiên đặt món đã hết hạn. Vui lòng quét lại mã QR và đăng nhập."
@@ -414,6 +430,7 @@ def _expires_in(creation):
 _ORDER_FIELDS = [
 	"name", "order_type", "docstatus", "status", "custom_kitchen_status", "payment_code",
 	"grand_total", "rounded_total", "currency", "creation", "order_note",
+	"needs_review",  # chỉ dùng chia nhóm ở server, không trả cho khách
 ]
 
 
@@ -434,7 +451,15 @@ def _own_invoice(s, invoice_name):
 def _stage(row):
 	if row.docstatus == 0:
 		return "expired" if _expired(row.creation) else "awaiting_payment"
-	return KITCHEN_STAGE.get(row.custom_kitchen_status or "Chưa làm", "queued")
+	return KITCHEN_STAGE.get(row.custom_kitchen_status or "Chưa làm", STAGE_FALLBACK)
+
+
+def _is_active_paid(row, active_since):
+	"""Đơn đã thanh toán còn thuộc nhóm "Đang xử lý" của khách."""
+	stage = _stage(row)
+	if stage in STAGES_UNTIL_RESOLVED:
+		return bool(cint(row.get("needs_review")))
+	return stage in STAGES_IN_PROGRESS and get_datetime(row.creation) >= active_since
 
 
 def _orders_payload(s, rows, groups=None):
@@ -473,8 +498,10 @@ def _orders_payload(s, rows, groups=None):
 				"invoice_name": r.name,
 				"order_type": r.order_type,
 				"stage": stage,
-				"stage_label": _(STAGE_LABELS[stage]),
-				"kitchen_status": "" if minimal else (r.custom_kitchen_status or ""),
+				"stage_label": _(STAGE_LABELS.get(stage) or STAGE_LABELS[STAGE_FALLBACK]),
+				"stage_message": _(STAGE_MESSAGES[stage]).format(invoice=r.name) if stage in STAGE_MESSAGES else "",
+				# Không trả giá trị nội bộ (vd. "Đã đóng ca chưa xử lý"); khóa giữ để tương thích, luôn rỗng.
+				"kitchen_status": "",
 				"customer_name": s.display_name,
 				"amount": flt(r.rounded_total or r.grand_total),
 				"currency": r.currency,
@@ -725,8 +752,7 @@ def get_my_orders(session_token, limit=None):
 	for r in drafts:
 		groups[r.name] = "active"
 	for r in paid:
-		is_active = KITCHEN_STAGE.get(r.custom_kitchen_status or "Chưa làm") != "done" and get_datetime(r.creation) >= active_since
-		if is_active:
+		if _is_active_paid(r, active_since):
 			groups[r.name] = "active"
 			active.append(r)
 		elif len(history) < HISTORY_LIMIT:

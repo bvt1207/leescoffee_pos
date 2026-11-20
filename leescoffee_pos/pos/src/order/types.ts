@@ -95,7 +95,17 @@ export interface Preview {
 	loyalty: Loyalty;
 }
 
-export type Stage = "awaiting_payment" | "expired" | "queued" | "ready" | "done";
+/** Trạng thái hiển thị cho khách (server quy đổi từ trạng thái pha chế; giá trị lạ -> "processing"). */
+export type Stage =
+	| "awaiting_payment"
+	| "expired"
+	| "queued"
+	| "ready"
+	| "done"
+	| "closed"
+	| "failed"
+	| "review"
+	| "processing";
 
 export interface OrderLine {
 	item_name: string;
@@ -110,6 +120,8 @@ export interface CustomerOrder {
 	order_type: OrderTypeValue;
 	stage: Stage;
 	stage_label: string;
+	/** Thông điệp nổi bật cho khách (đơn không thực hiện được / chờ quầy xác nhận); rỗng nếu không có. */
+	stage_message?: string;
 	kitchen_status: string;
 	customer_name: string;
 	amount: number;

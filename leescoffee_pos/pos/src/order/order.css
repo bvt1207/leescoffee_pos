@@ -1081,6 +1081,46 @@ button:disabled {
 	color: var(--pos-error);
 }
 
+/* Trạng thái kết thúc có lý do (2026-11-20). */
+.qo-badge--closed,
+.qo-badge--processing {
+	background: var(--pos-surface-alt);
+	color: var(--pos-text-muted);
+}
+
+.qo-badge--failed {
+	background: var(--pos-error);
+	color: var(--pos-on-solid);
+}
+
+.qo-badge--review {
+	background: var(--pos-warning-soft);
+	color: var(--pos-text);
+}
+
+.qo-order--failed {
+	border-color: var(--pos-error);
+	background: var(--pos-error-soft);
+}
+
+.qo-order--review {
+	border-color: var(--pos-warning);
+}
+
+.qo-order__notice {
+	margin-top: 8px;
+	font-size: 14px;
+	font-weight: 700;
+}
+
+.qo-order__notice--failed {
+	color: var(--pos-error);
+}
+
+.qo-order__notice--review {
+	color: var(--pos-text);
+}
+
 .qo-steps {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);

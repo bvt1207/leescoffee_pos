@@ -19,7 +19,9 @@ export function clock(seconds: number): string {
 }
 
 /** Đơn còn "đang chạy" (hiện số trên nút Đơn của tôi). */
-export const isActiveStage = (s: Stage) => s === "awaiting_payment" || s === "queued" || s === "ready";
+/** Dự phòng khi server cũ không trả `group`. "failed"/"review" còn cần khách liên hệ quầy. */
+export const isActiveStage = (s: Stage) =>
+	s === "awaiting_payment" || s === "queued" || s === "ready" || s === "processing" || s === "failed" || s === "review";
 
 /** Giờ:phút từ chuỗi datetime server "YYYY-MM-DD HH:MM:SS". */
 export function hhmm(dt: string): string {

@@ -264,6 +264,54 @@ def run_order_history_selftest(branch=None, run_old=True):
 		check("H7a Đơn quá 30 ngày không hiện", o1 not in names(guest(C.get_my_orders, tok_a2)))
 		set_inv(o1, creation=creation_o1, custom_kitchen_status="Chưa làm")
 
+		# ---------------- H11. Trạng thái kết thúc có lý do (2026-11-20) -> nhóm / nhãn cho khách ----------------
+		def view_o1():
+			return next((o for o in guest(C.get_my_orders, tok_a2) if o["invoice_name"] == o1), None)
+
+		internal_reason = "ZZ ly do noi bo H11"
+		set_inv(o1, custom_kitchen_status="Đã làm", needs_review=0)
+		v = view_o1()
+		check("H11a Đã làm -> active, stage ready (banner 'Món sẵn sàng' chỉ ở stage này)",
+			v and v["group"] == "active" and v["stage"] == "ready" and not v.get("stage_message"), str(v and v["stage"]))
+		set_inv(o1, custom_kitchen_status="Khách không nhận", needs_review=1, kitchen_outcome_reason=internal_reason,
+			kitchen_completed_by="Administrator")
+		v = view_o1()
+		check("H11b Khách không nhận -> history, nhãn 'Đã đóng đơn', không thông điệp",
+			v and v["group"] == "history" and v["stage"] == "closed" and v["stage_label"] == "Đã đóng đơn"
+			and not v.get("stage_message"), str(v and (v["group"], v["stage"], v["stage_label"])))
+		set_inv(o1, custom_kitchen_status="Không thực hiện được", needs_review=1)
+		v = view_o1()
+		check("H11c Không thực hiện được (chưa giải quyết) -> active, thông điệp liên hệ quầy + mã đơn",
+			v and v["group"] == "active" and v["stage"] == "failed" and "liên hệ quầy" in v.get("stage_message", "")
+			and o1 in v.get("stage_message", ""), str(v and (v["group"], v["stage"], v.get("stage_message"))))
+		set_inv(o1, needs_review=0)
+		v = view_o1()
+		check("H11d Không thực hiện được, quầy đã giải quyết (bỏ needs_review) -> history",
+			v and v["group"] == "history" and v["stage"] == "failed", str(v and v["group"]))
+		set_inv(o1, custom_kitchen_status="Đã đóng ca chưa xử lý", needs_review=1)
+		v = view_o1()
+		check("H11e Đã đóng ca chưa xử lý -> active, thông điệp 'quầy xác nhận'",
+			v and v["group"] == "active" and v["stage"] == "review" and "quầy xác nhận" in v.get("stage_message", ""),
+			str(v and (v["group"], v["stage"], v.get("stage_message"))))
+		set_inv(o1, custom_kitchen_status="ZZ trạng thái lạ")
+		try:
+			v = view_o1()
+			check("H11f Trạng thái lạ -> không lỗi, nhãn mặc định 'Đang xử lý'",
+				v and v["stage"] == "processing" and v["stage_label"] == "Đang xử lý", str(v and v["stage"]))
+		except Exception as e:
+			check("H11f Trạng thái lạ -> không lỗi", False, repr(e)[:150])
+		# Nhãn "Không thực hiện được" trùng chữ trạng thái nội bộ (cố ý) -> kiểm rò rỉ bằng "Đã đóng ca chưa xử lý".
+		set_inv(o1, custom_kitchen_status="Đã đóng ca chưa xử lý", needs_review=1)
+		lst = guest(C.get_my_orders, tok_a2)
+		internal_keys = {"needs_review", "kitchen_outcome_reason", "kitchen_done_by", "kitchen_done_at",
+			"kitchen_completed_by", "kitchen_completed_at", "custom_kitchen_status"}
+		check("H11g Không trả trường nội bộ (needs_review, lý do, người/giờ), kitchen_status rỗng",
+			all(not (internal_keys & set(o)) and o.get("kitchen_status") == "" for o in lst),
+			str(sorted(set().union(*[set(o) for o in lst]) & internal_keys)) if lst else "")
+		leak_check("H11h Không lộ lý do nội bộ / tên nhân viên / trạng thái nội bộ",
+			lst, {"lý do nội bộ": internal_reason, "nhân viên": "Administrator", "trạng thái nội bộ": "Đã đóng ca chưa xử lý"})
+		set_inv(o1, custom_kitchen_status="Chưa làm", needs_review=0, kitchen_outcome_reason=None, kitchen_completed_by=None)
+
 		# ---------------- H8. Draft hết hạn của chính phiên ----------------
 		o3 = guest(C.create_order, tok_a2, cart, "Take Away")["invoice_name"]
 		made["invoices"].append(o3)

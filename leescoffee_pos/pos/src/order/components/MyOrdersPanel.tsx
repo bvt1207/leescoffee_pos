@@ -1,5 +1,5 @@
 import { formatOptions } from "../../lib/options";
-import { clock, hhmm, money, orderTypeLabel } from "../format";
+import { clock, hhmm, isActiveStage, money, orderTypeLabel } from "../format";
 import type { CustomerOrder } from "../types";
 import Sheet from "./Sheet";
 
@@ -10,8 +10,7 @@ const STEPS: Array<{ stage: CustomerOrder["stage"]; label: string }> = [
 ];
 
 /** Nhóm do server chia; thiếu `group` (server cũ) thì đơn còn xử lý = active. */
-const isActive = (o: CustomerOrder) =>
-	o.group ? o.group === "active" : o.stage === "awaiting_payment" || o.stage === "queued" || o.stage === "ready";
+const isActive = (o: CustomerOrder) => (o.group ? o.group === "active" : isActiveStage(o.stage));
 
 /**
  * "Đơn của tôi": đơn của KHÁCH tại chi nhánh này (server lọc theo khách + chi nhánh, không theo phiên),
@@ -76,8 +75,14 @@ function OrderCard({ order: o, onPay }: { order: CustomerOrder; onPay: (invoiceN
 						{orderTypeLabel(o.order_type)} · {hhmm(o.creation)} · {money(o.amount, o.currency)}
 					</div>
 				</div>
-				<span className={`qo-badge qo-badge--${o.stage}`}>{o.stage_label}</span>
+				<span className={`qo-badge qo-badge--${o.stage}`}>{o.stage_label || "Đang xử lý"}</span>
 			</div>
+
+			{o.stage_message ? (
+				<div className={`qo-order__notice qo-order__notice--${o.stage}`} role={o.stage === "failed" ? "alert" : undefined}>
+					{o.stage_message}
+				</div>
+			) : null}
 
 			{showSteps ? (
 				<ol className="qo-steps" aria-label="Tiến độ pha chế">
