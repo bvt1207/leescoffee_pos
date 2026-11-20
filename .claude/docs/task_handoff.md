@@ -3,6 +3,14 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0f. Món không có Option Group hiện "Đường 100% · Đá 100%" (2026-11-20) — CHỜ VAN TEST
+- Nguyên nhân: Custom Field `sugar_level`/`ice_level` default `"100"` + `read_line_options` coi `'[]'` như chưa có JSON.
+- Sửa: `option_resolver.read_line_options` (chỉ dựng legacy khi `options` NULL/rỗng), fixture default null, patch
+  `v1_clear_legacy_option_default` (cần **migrate**). Không đổi frontend, không sửa dữ liệu đơn cũ.
+- Đơn có `options='[]'` + cột 100/100 (vd. ACC-PSINV-2026-00025) hết hiện đường/đá. [Inference, đọc mã] `'[]'` chỉ được ghi khi
+  request có khóa `options` và món không có nhóm → cột cũ là default, không phải lựa chọn của khách.
+- Kiểm tra: `.claude/docs/legacy_options_check.py` (`check_legacy_options(...)`, mục G báo cáo chỉ đọc).
+
 ## 0e. Orders: ngày giờ + mã ngắn (bước A) và "Ca hiện tại" / "Lịch sử" (bước B) — 2026-11-20
 - **Bước A (chỉ frontend) — ĐÃ TEST PASS trên bench DEV (`d1cac1f`)**: `lib/format.ts` (formatOrderTime, formatStamp/nowStamp, shortOrderNo,
   orderMatches), Orders bỏ gọi `get_status_board`, ReceiptModal dùng hàm chung.

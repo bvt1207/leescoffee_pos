@@ -26,7 +26,9 @@
 - Nhóm không có giá trị đang bật hoặc không có target → bỏ qua.
 - Custom Field `POS Invoice Item-options` (Long Text, read only, sau `ice_level`): JSON
   `[{"group": "<tên nhóm>", "group_title": "<title lúc bán>", "value": "<nhãn>", "price": <phụ thu mỗi đơn vị lúc bán>}]`.
-- Cột cũ `sugar_level`, `ice_level` giữ nguyên để tương thích.
+- Cột cũ `sugar_level`, `ice_level` giữ nguyên để tương thích. **Không có default** (2026-11-20: bỏ `"100"` trong fixture +
+  patch `v1_clear_legacy_option_default`, chỉ đổi định nghĩa field, không sửa đơn cũ) — chỉ được ghi khi request kiểu cũ
+  (không khóa `options`), request gửi rõ sugar/ice, hoặc nhóm có `legacy_field`.
 
 ## 3. Quy tắc áp dụng (`option_resolver.resolve_option_groups`)
 
@@ -57,8 +59,10 @@ không cache → đổi nhóm hàng có hiệu lực ngay.
     thì vẫn lưu, nhưng `legacy_field` ghi đè.
   - Cùng món khác tổ hợp tùy chọn = các dòng khác nhau (frontend gộp theo khóa item + options).
 - Giá món: kiểm tra giá Price List, CTKM giữ nguyên; phụ thu cộng sau (§9).
-- `get_order_detail`, `get_kitchen_orders`: mỗi món thêm `options` (đọc JSON; JSON rỗng mà cột cũ có giá trị
-  → dựng từ cột cũ bằng hằng `LEGACY_OPTION_LABELS`, tạm thời, bỏ khi hết đơn cũ). `sugar_level`/`ice_level` vẫn trả.
+- `get_order_detail`, `get_kitchen_orders`, `customer_order_api._orders_payload` (`get_my_orders`, `get_order`): mỗi món thêm
+  `options` qua **một** hàm `option_resolver.read_line_options` (2026-11-20): cột `options` **NULL/rỗng** (đơn cũ chưa từng ghi JSON)
+  mà cột cũ có giá trị → dựng từ cột cũ bằng hằng `LEGACY_OPTION_LABELS` (tạm thời, bỏ khi hết đơn cũ); **`'[]'` = đã xử lý,
+  không có tùy chọn → `[]`** (không dựng từ cột cũ); JSON hỏng → `[]`. Frontend chỉ hiển thị `options` server trả. `sugar_level`/`ice_level` vẫn trả.
 
 ## 5. Quyền
 
