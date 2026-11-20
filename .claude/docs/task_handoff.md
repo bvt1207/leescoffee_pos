@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0h. Chặn đóng ca khi còn Draft + tự hủy Draft quá hạn + lý do hủy (2026-11-20) — CHỜ VAN TEST
+## 0h. Chặn đóng ca khi còn Draft + tự hủy Draft quá hạn + lý do hủy (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`c892469`)
 - Mới: DocType `MYPOS Order Cancel Log` (+ `order_cancel.py`: 3 mốc QR 15 / đệm 5 / POS 120 phút, hàm hủy + log, job, giao dịch mồ côi).
 - Sửa: `pos_api` (`cancel_draft_order` có lý do, `force_close_shift`, config `pos_draft_auto_cancel_minutes`), `customer_order_api` (bỏ mốc 60 phút),
   `sepay.sepay_webhook` (đơn đã hủy → log mồ côi), `pos_shift_hooks` (chặn đóng ca), `hooks.py` (job mới), `public/js/pos_opening_entry.js`

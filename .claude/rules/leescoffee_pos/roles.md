@@ -64,7 +64,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Rủi ro: POS Profile chưa khai Applicable for Users → không ai mở được ca; MANAGER bán ở /pos phải có trong danh sách để tự mở ca.
 - Kiểm tra: `.claude/docs/shift_owner_check.py` (`check_shift_owner(...)`, profile + user tạm, rollback).
 
-### 2c. Đóng ca khi còn Draft, hủy đơn có lý do (2026-11-20, CHỜ VAN TEST)
+### 2c. Đóng ca khi còn Draft, hủy đơn có lý do (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`c892469`)
 
 - `pos_shift_hooks._check_closing` chặn đóng ca khi còn Draft của POS Profile (`order_cancel.closing_blockers`: kênh khác QR — mọi đơn;
   QR — chỉ đơn còn trong 15 phút), liệt kê tối đa 10 mã. Đơn đã thanh toán (pha chế chưa xong) không chặn.
