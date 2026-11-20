@@ -22,7 +22,7 @@
 
 - **Chỉ được set khi `status == "Paid"`** (kiểm tra trong `on_submit`).
 - Vòng đời: `(trống)` → `Chưa làm` → `Đã làm` → `Đã hoàn thành`.
-- **Trạng thái kết thúc có lý do (2026-11-20, CHỜ VAN TEST)** — hằng ở MỘT nơi `doctype/pos_invoice_hooks/kitchen_status.py`:
+- **Trạng thái kết thúc có lý do (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`2325990`)** — hằng ở MỘT nơi `doctype/pos_invoice_hooks/kitchen_status.py`:
   `Khách không nhận`, `Không thực hiện được` (thu ngân / quản lý qua `pos_api.resolve_open_order(s)`), `Đã đóng ca chưa xử lý`
   (đóng ca bắt buộc). Thêm vào options của Select (giá trị cũ giữ nguyên; fixture + patch `v1_kitchen_outcomes`).
   - `KITCHEN_FLOW` (bước tiến của `set_kitchen_status`) không đổi; `KITCHEN_BLOCK_STATUSES` = Chưa làm, Đã làm (chặn đóng ca);

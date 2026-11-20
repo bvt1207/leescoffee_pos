@@ -27,6 +27,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── shift_owner_check.py   # mở/đóng ca của chính mình, MANAGER thao tác thay, Only If Creator
 │   │   ├── legacy_options_check.py  # options '[]' vs NULL, cột đường/đá cũ không tự điền
 │   │   ├── draft_cancel_check.py  # chặn đóng ca khi còn Draft, job tự hủy, lý do hủy, giao dịch mồ côi
+│   │   ├── open_orders_check.py   # đóng ca chặn đơn đã thanh toán chưa giao, trạng thái kết thúc có lý do
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -44,7 +45,7 @@ PROJECTPOS/                        # git repo
     ├── modules.txt                # "Leescoffee POS" (phải khớp module DocType/Workspace, mục 5)
     ├── patches.txt, patches/      # v1_rename_mypos_doctypes.py (pre_model_sync); v1_remove_pos_settings.py,
     │                              # v1_create_pos_roles.py, v1_kitchen_desk_access.py,
-    │                              # v1_clear_legacy_option_default.py (post_model_sync)
+    │                              # v1_clear_legacy_option_default.py, v1_kitchen_outcomes.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/leescoffee_pos.json
     ├── workspace_sidebar/leescoffee_pos.json
@@ -81,7 +82,7 @@ PROJECTPOS/                        # git repo
             ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
             ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
             ├── mypos_order_cancel_log/    # nhật ký hủy đơn Draft + order_cancel.py (mốc hết hạn, hàm hủy + log, job)
-            ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
+            ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board; kitchen_status.py (trạng thái pha chế, đơn dở của ca)
             ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
             ├── sepay/                     # sinh VietQR + webhook SePay
             └── branch_config/             # helper cấu hình Branch (SePay, branding, company)

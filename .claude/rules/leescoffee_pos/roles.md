@@ -76,7 +76,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Mọi đường hủy (tay, job, đóng ca) qua `order_cancel.cancel_draft_with_log` → `MYPOS Order Cancel Log` (đơn bị xóa nên Comment không giữ được).
 - Kiểm tra: `.claude/docs/draft_cancel_check.py` (`check_draft_cancel(...)`).
 
-### 2d. Đóng ca chặn đơn đã thanh toán chưa giao (2026-11-20, CHỜ VAN TEST)
+### 2d. Đóng ca chặn đơn đã thanh toán chưa giao (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`2325990`)
 
 - Chặn đóng ca thêm đơn Paid của ca còn "Chưa làm" (chưa pha chế) / "Đã làm" (chưa giao) — `kitchen_status.shift_open_orders`,
   thông báo theo nhóm (tối đa 10 mã + "và N đơn khác").

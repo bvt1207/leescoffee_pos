@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0i. Đóng ca chặn đơn đã thanh toán chưa giao + trạng thái kết thúc có lý do (2026-11-20, backend) — CHỜ VAN TEST
+## 0i. Đóng ca chặn đơn đã thanh toán chưa giao + trạng thái kết thúc có lý do (2026-11-20, backend) — ĐÃ TEST PASS trên bench DEV (`2325990`)
 - Mới: `doctype/pos_invoice_hooks/kitchen_status.py` (hằng trạng thái, `shift_open_orders`, `set_terminal`), patch `v1_kitchen_outcomes`.
 - Sửa: fixtures (options `custom_kitchen_status` + 6 Custom Field), `pos_api` (`set_kitchen_status` ghi người/giờ, `resolve_open_order(s)`,
   `force_close_shift` chuyển đơn dở, `get_order_detail` thêm khóa, giữ thẻ theo trạng thái kết thúc), `pos_invoice_hooks` (nhả thẻ),
