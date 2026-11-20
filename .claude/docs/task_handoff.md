@@ -3,6 +3,13 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0j. Web khách /order: trạng thái kết thúc mới (2026-11-20) — CHỜ VAN TEST
+- `customer_order_api`: stage `closed` / `failed` / `review` / `processing` (giá trị lạ), `stage_message`, nhóm active theo `needs_review`
+  cho `failed`/`review`; `kitchen_status` luôn rỗng; không trả trường nội bộ.
+- `pos/src/order`: `types.ts` (Stage mới, `stage_message`), `format.ts` (`isActiveStage`), `MyOrdersPanel.tsx` (thông điệp), `order.css`.
+- Banner "Món sẵn sàng" chỉ stage `ready` (đã như vậy). Kiểm tra: `run_order_history_selftest` H11a–H11h. Chi tiết: `order-qr.md` §1 mục 4.
+- [Inference] Đơn `failed`/`review` để lâu chưa bỏ `needs_review` thì trang khách mở vẫn poll 5 giây (trong giới hạn tần suất sẵn có).
+
 ## 0i. Đóng ca chặn đơn đã thanh toán chưa giao + trạng thái kết thúc có lý do (2026-11-20, backend) — ĐÃ TEST PASS trên bench DEV (`2325990`)
 - Mới: `doctype/pos_invoice_hooks/kitchen_status.py` (hằng trạng thái, `shift_open_orders`, `set_terminal`), patch `v1_kitchen_outcomes`.
 - Sửa: fixtures (options `custom_kitchen_status` + 6 Custom Field), `pos_api` (`set_kitchen_status` ghi người/giờ, `resolve_open_order(s)`,

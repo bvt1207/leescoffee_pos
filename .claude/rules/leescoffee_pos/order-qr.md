@@ -17,8 +17,17 @@
 3. `get_menu` → `preview` → `create_order(order_type)` → `create_payment_qr` → khách chuyển khoản
    → `sepay_webhook` (đã xác thực API key) submit đơn → hook `on_submit` đặt `Chưa làm` → Kitchen.
 4. Khách poll `get_my_orders` (5 giây, chỉ khi còn đơn đang xử lý) / `get_order` (3 giây ở màn thanh toán): `stage` = `awaiting_payment` | `expired` | `queued`
-   (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận") | `done` (Đã hoàn thành; từ 2026-11-20 cả "Khách không nhận",
-   "Không thực hiện được", "Đã đóng ca chưa xử lý" — UI khách chưa phân biệt).
+   (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận", CHỈ stage này) | `done` (Đã hoàn thành).
+   Từ 2026-11-20 (CHỜ VAN TEST) — `customer_order_api.KITCHEN_STAGE` / `STAGE_LABELS` / `STAGE_MESSAGES`:
+   | Trạng thái nội bộ | stage | Nhãn khách | Nhóm | Thông điệp (`stage_message`) |
+   |---|---|---|---|---|
+   | Khách không nhận | `closed` | Đã đóng đơn | history | — |
+   | Không thực hiện được | `failed` | Không thực hiện được | active tới khi quầy bỏ `needs_review` | "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: …" |
+   | Đã đóng ca chưa xử lý | `review` | Đang chờ quầy xác nhận | active tới khi quầy bỏ `needs_review` | "Đơn đang được quầy xác nhận, vui lòng liên hệ nhân viên. Mã đơn: …" |
+   | Giá trị lạ | `processing` | Đang xử lý | active trong 24 giờ | — |
+   Khách không nhận `needs_review`, lý do nội bộ, tên nhân viên; `kitchen_status` luôn rỗng. Poll chỉ khi còn đơn active
+   (đơn `failed`/`review` chưa giải quyết vẫn poll 5 giây). `MyOrdersPanel` hiện `stage_message` (`.qo-order__notice--failed|review`).
+   Kiểm tra: `run_order_history_selftest` mục H11.
 
 ## 2. Quyết định đã chốt (Van, 2026-11-14)
 
