@@ -23,6 +23,8 @@ PROJECTPOS/                        # git repo
 │   │   ├── mypos_rename_check.py  # kiểm tra đổi tên MYPOS Menu/Menu Item/Buzzer
 │   │   ├── kitchen_desk_check.py  # kiểm tra KITCHEN vào Desk + chặn API bán hàng theo role
 │   │   ├── surcharge_check.py     # kiểm tra phụ thu topping (dòng Actual, sau CTKM)
+│   │   ├── orders_shift_check.py  # Orders: Ca hiện tại / Lịch sử (get_orders, get_orders_summary)
+│   │   ├── shift_owner_check.py   # mở/đóng ca của chính mình, MANAGER thao tác thay, Only If Creator
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -46,6 +48,7 @@ PROJECTPOS/                        # git repo
     ├── fixtures/custom_field.json, role.json
     ├── public/
     │   ├── images/logo.svg
+    │   ├── js/pos_opening_entry.js  # doctype_js: form POS Opening Entry (Cashier tự điền + khóa)
     │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
     ├── www/
     │   ├── pos.html               # trang /pos, nạp /assets/leescoffee_pos/pos/pos.js
@@ -58,8 +61,8 @@ PROJECTPOS/                        # git repo
     │       ├── components/        # AppHeader, MenuGrid (tab Item Group), SizeModal + ItemModalFrame,
     │       │                      # CartPanel + OptionChips (chip tùy chọn), CustomerPicker, BuzzerPicker, QrModal,
     │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly)
-    │       ├── store/             # cart.ts, search.ts, menuFilter.ts (zustand)
-    │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm)
+    │       ├── store/             # cart.ts, search.ts, menuFilter.ts, orderFilter.ts (zustand)
+    │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm), format.ts (ngày giờ, mã đơn)
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
@@ -75,6 +78,7 @@ PROJECTPOS/                        # git repo
             ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
             ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board
+            ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
             ├── sepay/                     # sinh VietQR + webhook SePay
             └── branch_config/             # helper cấu hình Branch (SePay, branding, company)
 ```

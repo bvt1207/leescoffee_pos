@@ -44,7 +44,7 @@ Không cấp Cancel / Delete / Amend.
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
 
-### 2b. Mở / đóng ca (2026-11-20, CHỜ VAN TEST)
+### 2b. Mở / đóng ca (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`a97d530`, script `check_shift_owner` PASS sau `e8da9f1`)
 
 - Quy tắc ở `doctype/pos_shift_hooks/pos_shift_hooks.py` (doc_events `before_validate`, `before_submit`, `on_submit` của
   `POS Opening Entry` và `POS Closing Entry`; `before_validate` chạy trước validate của ERPNext nên thông báo tiếng Việt hiện trước):

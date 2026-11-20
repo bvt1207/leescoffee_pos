@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0g. Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (2026-11-20, backend + quyền) — CHỜ VAN TEST
+## 0g. Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (2026-11-20, backend + quyền) — ĐÃ TEST PASS trên bench DEV (`a97d530`; `check_shift_owner` PASS sau `e8da9f1`)
 - Mới: `leescoffee_pos/doctype/pos_shift_hooks/` (doc_events POS Opening/Closing Entry), `public/js/pos_opening_entry.js` (`doctype_js`).
 - Sửa: `hooks.py`, `pos_api._ensure_opening_entry` (chỉ thông báo lỗi), `patches/v1_create_pos_roles.py` (CASHIER `if_owner`),
   `patches.txt` (nhãn mới → migrate chạy lại patch quyền). Chi tiết + ảnh hưởng: `rules/leescoffee_pos/roles.md` §2b.
