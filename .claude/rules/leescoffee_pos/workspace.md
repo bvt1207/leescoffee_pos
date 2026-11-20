@@ -104,8 +104,8 @@ File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.jso
 - 1 card "MYPOS Setup" (đổi từ "Lee's Coffee Setup" 2026-11-15; `link_count: 8`, `modified` 2026-11-15 15:00), thứ tự link: Branch, POS Profile,
   POS Opening Entry, POS Closing Entry, MYPOS Menu, MYPOS Buzzer, MYPOS Option Group, MYPOS Order QR.
   Sau migrate: `Workspace Link` của `leescoffee_pos` = **9 dòng** (8 Link + 1 Card Break).
-- **2026-11-21 (CHỜ VAN TEST):** đã link Report "MYPOS Review Queue" — thêm link thứ 9 cuối card "MYPOS Setup": label "Đơn cần xử lý",
-  `link_type: Report`, `is_query_report: 1` (`link_count: 9`, `modified` 2026-11-21 09:00). Sau migrate: `Workspace Link` = **10 dòng**
+- **2026-11-21 (CHỜ VAN TEST):** đã link Report "MYPOS Review Queue" — thêm link thứ 9 cuối card "MYPOS Setup": label "MYPOS Review Queue"
+  (đổi từ "Đơn cần xử lý" 2026-11-21, `modified` 10:00), `link_type: Report`, `is_query_report: 1` (`link_count: 9`). Sau migrate: `Workspace Link` = **10 dòng**
   (9 Link + 1 Card Break). Link chỉ hiện với role của Report (POS MANAGER, System Manager).
 - 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
 

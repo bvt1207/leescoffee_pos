@@ -4,8 +4,8 @@
 > Đọc file này đầu phiên mới.
 
 ## 0l. Link Report "MYPOS Review Queue" vào workspace leescoffee_pos (2026-11-21) — CHỜ VAN TEST
-- Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link "Đơn cần xử lý" (Report) cuối card "MYPOS Setup",
-  `link_count` 8 → 9, `modified` 2026-11-21 09:00. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 10 dòng
+- Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link Report cuối card "MYPOS Setup", `link_count` 8 → 9.
+  Nhãn đổi "Đơn cần xử lý" → "MYPOS Review Queue" (2026-11-21, `modified` 10:00); link_to / Report không đổi. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 10 dòng
   (`workspace.md` §7).
 
 ## 0k. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21) — ĐÃ TEST PASS trên bench DEV (`660693e` + `b918bb7`) — máy POS KHÔNG đổi
