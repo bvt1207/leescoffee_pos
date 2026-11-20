@@ -3,6 +3,14 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0k. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21) — CHỜ VAN TEST — máy POS KHÔNG đổi
+- Bản trước có UI POS (`b032383`, `280f190`) đã bỏ khỏi nhánh (lưu ở `backup/review-ui-280f190`); repo đặt lại về `ff960c4` rồi làm Desk-only.
+- Mới: Script Report `report/mypos_review_queue/` (+ `report/__init__.py`), `public/js/pos_invoice.js`, `.claude/docs/review_queue_check.py`.
+- Sửa: `kitchen_status.py` (review_orders/counts, profile_managers, notify_profile_managers, job remind_overdue_reviews), `pos_api.py`
+  (`_resolve_review`, thông báo force close), `order_cancel.py` (giao dịch mồ côi báo quản lý chi nhánh), `customer_order_api.py` (thông điệp có số),
+  `hooks.py` (cron mỗi giờ + doctype_js POS Invoice). Cần migrate (nạp Report). Chi tiết: `roles.md` §2e.
+- Task sau: link Report vào workspace.
+
 ## 0j. Web khách /order: trạng thái kết thúc mới (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`bc84976`)
 - `customer_order_api`: stage `closed` / `failed` / `review` / `processing` (giá trị lạ), `stage_message`, nhóm active theo `needs_review`
   cho `failed`/`review`; `kitchen_status` luôn rỗng; không trả trường nội bộ.

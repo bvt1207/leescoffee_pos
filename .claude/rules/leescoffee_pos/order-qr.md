@@ -28,6 +28,9 @@
    Khách không nhận `needs_review`, lý do nội bộ, tên nhân viên; `kitchen_status` luôn rỗng. Poll chỉ khi còn đơn active
    (đơn `failed`/`review` chưa giải quyết vẫn poll 5 giây). `MyOrdersPanel` hiện `stage_message` (`.qo-order__notice--failed|review`).
    Kiểm tra: `run_order_history_selftest` mục H11.
+   Từ 2026-11-21 (CHỜ VAN TEST): Branch có `brand_phone` → thông điệp `failed`/`review` thành "… Vui lòng liên hệ {brand_name hoặc 'quán'} qua
+   {số} …" (`STAGE_MESSAGES_WITH_PHONE`, `get_brand_info` một lần mỗi request); thiếu số → câu cũ. Quản lý xử lý trên Desk (needs_review = 0)
+   → khách thấy trạng thái mới ở nhóm history, ngừng poll (`roles.md` §2e).
 
 ## 2. Quyết định đã chốt (Van, 2026-11-14)
 

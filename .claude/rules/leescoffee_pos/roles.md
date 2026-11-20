@@ -85,6 +85,24 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - `resolve_open_order(s)`: CASHIER / MANAGER / System Manager / Administrator (`_require_sale_role`); KITCHEN bị chặn.
 - Kiểm tra: `.claude/docs/open_orders_check.py` (`check_open_orders(...)`).
 
+### 2e. Quản lý xử lý đơn cần xem lại trên Desk (2026-11-21, CHỜ VAN TEST) — máy POS KHÔNG đổi
+
+- "Cần xử lý" = POS Invoice docstatus 1, không trả hàng, `custom_kitchen_status = "Đã đóng ca chưa xử lý"` hoặc `needs_review = 1`
+  (Khách không nhận / Không thực hiện được), kể cả đã gộp (Consolidated); không lọc ca / ngày. Truy vấn ở MỘT nơi:
+  `kitchen_status.review_orders` / `review_counts` (`REVIEW_OVERDUE_HOURS = 24`).
+- **Script Report "MYPOS Review Queue"** (`leescoffee_pos/report/mypos_review_queue/`): roles POS MANAGER + System Manager, `execute` kiểm
+  manager lần nữa; lọc POS Profile / mã-tên khách / chỉ quá 24 giờ. Mở bằng thanh tìm kiếm Desk hoặc `/desk/query-report/MYPOS Review Queue`.
+  **Chưa link vào workspace** (task sau).
+- **Nút "Xử lý đơn"** trên form POS Invoice (`public/js/pos_invoice.js`, chỉ manager + đơn cần xử lý) → `pos_api.resolve_open_order`:
+  luồng xem lại `_resolve_review` — chỉ manager; kết cục Đã hoàn thành / Không thực hiện được / Khách không nhận; lý do luôn bắt buộc;
+  `db_set` (không save đơn đã gộp): trạng thái, `needs_review = 0`, người/giờ kết thúc, nối lý do; comment "Quản lý xử lý: …".
+  `resolve_open_orders` dùng chung. CASHIER/KITCHEN: không thấy nút, gọi API bị chặn, Report bị chặn.
+- Thông báo (Notification Log) chỉ cho **quản lý của chi nhánh** (`profile_managers`: user bật + role POS MANAGER + thuộc Applicable for Users):
+  đóng ca bắt buộc (số đơn hủy + số đơn chuyển "Đã đóng ca chưa xử lý"); job `remind_overdue_reviews` mỗi giờ (đơn quá 24 giờ, mỗi đơn tối đa
+  1 lần / 24 giờ theo Notification Log của đơn); tiền đến sau khi đơn đã hủy (không có quản lý của chi nhánh → mọi POS MANAGER).
+- Máy POS (`pos/src`, `get_orders`, `get_orders_summary`) không đổi. Bản có UI POS cũ lưu ở nhánh `backup/review-ui-280f190` (không dùng).
+- Kiểm tra: `.claude/docs/review_queue_check.py` (`check_review_queue(...)`).
+
 ## 3. Cơ chế cài đặt
 
 - **Role**: fixture `fixtures/role.json` (filter `name in [3 role]`) **và** patch tự tạo nếu
