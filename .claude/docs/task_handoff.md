@@ -9,6 +9,9 @@
   `v1_clear_legacy_option_default` (cần **migrate**). Không đổi frontend, không sửa dữ liệu đơn cũ.
 - Đơn có `options='[]'` + cột 100/100 (vd. ACC-PSINV-2026-00025) hết hiện đường/đá. [Inference, đọc mã] `'[]'` chỉ được ghi khi
   request có khóa `options` và món không có nhóm → cột cũ là default, không phải lựa chọn của khách.
+- Lần test 1 (Van): C1 FAIL — dòng mới `options='[]'` nhưng cột cũ `50/50`: Frappe gán lựa chọn đầu của Select khi không có
+  default (`frappe/model/create_new.py`). Sửa: options `\n50\n70\n100` (fixture + patch chạy lại bằng nhãn
+  `#2026-11-20 blank-first-option`). Dòng tạo giữa 2 lần migrate có `'[]'` + `50/50`: hiển thị đã đúng (`[]`), không sửa dữ liệu.
 - Kiểm tra: `.claude/docs/legacy_options_check.py` (`check_legacy_options(...)`, mục G báo cáo chỉ đọc).
 
 ## 0e. Orders: ngày giờ + mã ngắn (bước A) và "Ca hiện tại" / "Lịch sử" (bước B) — 2026-11-20

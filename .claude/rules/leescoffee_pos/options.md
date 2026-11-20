@@ -27,7 +27,9 @@
 - Custom Field `POS Invoice Item-options` (Long Text, read only, sau `ice_level`): JSON
   `[{"group": "<tên nhóm>", "group_title": "<title lúc bán>", "value": "<nhãn>", "price": <phụ thu mỗi đơn vị lúc bán>}]`.
 - Cột cũ `sugar_level`, `ice_level` giữ nguyên để tương thích. **Không có default** (2026-11-20: bỏ `"100"` trong fixture +
-  patch `v1_clear_legacy_option_default`, chỉ đổi định nghĩa field, không sửa đơn cũ) — chỉ được ghi khi request kiểu cũ
+  patch `v1_clear_legacy_option_default`, chỉ đổi định nghĩa field, không sửa đơn cũ) và **lựa chọn đầu là trống**
+  (options `\n50\n70\n100`: Frappe tự gán lựa chọn đầu tiên cho Select không có default — `create_new.get_static_default_value`;
+  thiếu dòng trống thì dòng mới nhận `50`) — chỉ được ghi khi request kiểu cũ
   (không khóa `options`), request gửi rõ sugar/ice, hoặc nhóm có `legacy_field`.
 
 ## 3. Quy tắc áp dụng (`option_resolver.resolve_option_groups`)
