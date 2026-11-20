@@ -1,11 +1,12 @@
-def check_orders_shift(item_code, mode_of_payment, branch_name=None, customer=None, cleanup=True):
+def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=None, customer=None, cleanup=True):
 	"""Màn Orders: "Ca hiện tại" + "Lịch sử" (get_orders / get_orders_summary) và phân quyền.
 
 	Dán CẢ hàm vào `bench --site <site> console` rồi gọi, ví dụ:
 	    check_orders_shift("CF-ESP1", "Tiền mặt", branch_name="<tên Branch>")
 
 	Cần: Administrator có ca POS đang mở (POS Opening Entry Open) cho POS Profile của chi nhánh — script
-	KHÔNG mở ca. item_code có giá trong Price List của POS Profile. Tạo 5 đơn thử (Take Away), đổi
+	KHÔNG mở ca. item_code có giá trong price_list (bỏ trống = selling_price_list của POS Profile; nên truyền
+	đúng Price List của MYPOS Menu đang bán). Tạo 5 đơn thử (Take Away), đổi
 	posting_date/status bằng db.set_value để giả đơn ca trước / hôm qua (Consolidated giả) / 8 ngày trước,
 	và 3 user tạm (mỗi người 1 role POS). Không commit: cuối hàm ROLLBACK; nếu có commit ngầm thì tự
 	trả status, hủy + xóa đơn, Loyalty Point Entry, user tạm và in WARN.
@@ -21,6 +22,7 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, customer=No
 
 	ROLES = ("POS CASHIER", "POS KITCHEN", "POS MANAGER")
 	results, made_inv, users = [], [], {}
+	ctx = {"price_list": price_list}
 
 	def ok(case, cond, extra=""):
 		results.append((case, bool(cond)))
@@ -45,6 +47,7 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, customer=No
 			customer_name=customer,
 			mode_of_payment=mode_of_payment,
 			branch_name=branch_name,
+			price_list=ctx["price_list"],
 		)
 		name = res["invoice_name"]
 		made_inv.append(name)
@@ -70,7 +73,11 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, customer=No
 		if not shift:
 			print(f"DỪNG: POS Profile {profile.name} chưa có ca đang mở. Mở ca (POS Opening Entry) rồi chạy lại.")
 			return False
-		print(f"INFO POS Profile {profile.name}, ca {shift.name} mở lúc {shift.period_start_date}")
+		ctx["price_list"] = ctx["price_list"] or profile.get("selling_price_list")
+		if not ctx["price_list"]:
+			print("DỪNG: chưa có Price List — truyền price_list=\"<Price List của MYPOS Menu>\".")
+			return False
+		print(f"INFO POS Profile {profile.name}, ca {shift.name} mở lúc {shift.period_start_date}, Price List {ctx['price_list']}")
 
 		today = getdate(nowdate())
 		yesterday = add_days(today, -1)
