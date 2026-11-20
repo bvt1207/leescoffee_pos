@@ -13,6 +13,9 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+# Trạng thái kết thúc (Đã hoàn thành + kết thúc có lý do) không giữ thẻ rung — kitchen_status.py.
+from .kitchen_status import KITCHEN_TERMINAL_STATUSES, is_terminal
+
 
 class PosInvoiceHooks:
 
@@ -86,7 +89,7 @@ class PosInvoiceHooks:
             or doc.status != "Paid"
             or doc.order_type != "Dine In"
             or not doc.buzzer
-            or doc.custom_kitchen_status != "Đã hoàn thành"
+            or not is_terminal(doc.custom_kitchen_status)
         ):
             return
 
@@ -100,7 +103,7 @@ class PosInvoiceHooks:
                 "status": "Paid",
                 "order_type": "Dine In",
                 "buzzer": doc.buzzer,
-                "custom_kitchen_status": ["!=", "Đã hoàn thành"],
+                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
             },
             fields=["name"],
             limit=1,
@@ -127,7 +130,7 @@ class PosInvoiceHooks:
         if (
             doc.order_type != "Dine In"
             or not doc.buzzer
-            or doc.custom_kitchen_status != "Đã hoàn thành"
+            or not is_terminal(doc.custom_kitchen_status)
         ):
             return
 
@@ -140,7 +143,7 @@ class PosInvoiceHooks:
                 "status": "Paid",
                 "order_type": "Dine In",
                 "buzzer": doc.buzzer,
-                "custom_kitchen_status": ["!=", "Đã hoàn thành"],
+                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
             },
             fields=["name"],
             limit=1,
@@ -185,7 +188,7 @@ class PosInvoiceHooks:
                 "status": "Paid",
                 "order_type": "Dine In",
                 "buzzer": doc.buzzer,
-                "custom_kitchen_status": ["!=", "Đã hoàn thành"],
+                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
             },
             fields=["name"],
             limit=1,

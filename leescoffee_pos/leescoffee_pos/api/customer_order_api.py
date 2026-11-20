@@ -71,7 +71,15 @@ STAGE_LABELS = {
 	"ready": "Đã làm",
 	"done": "Đã hoàn thành",
 }
-KITCHEN_STAGE = {"Chưa làm": "queued", "Đã làm": "ready", "Đã hoàn thành": "done"}
+# Trạng thái kết thúc có lý do (kitchen_status.py) -> "done" với khách (UI khách chưa phân biệt, đợt sau).
+KITCHEN_STAGE = {
+	"Chưa làm": "queued",
+	"Đã làm": "ready",
+	"Đã hoàn thành": "done",
+	"Khách không nhận": "done",
+	"Không thực hiện được": "done",
+	"Đã đóng ca chưa xử lý": "done",
+}
 
 MSG_QR_INVALID = "Mã QR không hợp lệ hoặc đã ngưng sử dụng. Vui lòng quét lại mã tại quán."
 MSG_SESSION = "Phiên đặt món đã hết hạn. Vui lòng quét lại mã QR và đăng nhập."
@@ -717,7 +725,7 @@ def get_my_orders(session_token, limit=None):
 	for r in drafts:
 		groups[r.name] = "active"
 	for r in paid:
-		is_active = r.custom_kitchen_status != "Đã hoàn thành" and get_datetime(r.creation) >= active_since
+		is_active = KITCHEN_STAGE.get(r.custom_kitchen_status or "Chưa làm") != "done" and get_datetime(r.creation) >= active_since
 		if is_active:
 			groups[r.name] = "active"
 			active.append(r)
