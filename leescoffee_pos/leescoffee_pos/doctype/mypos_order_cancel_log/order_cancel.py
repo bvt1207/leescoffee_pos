@@ -214,22 +214,6 @@ def _find_log_by_code(content, normalized_content):
 	return rows[0] if len(rows) == 1 else None
 
 
-def _notify_managers(log_name, subject):
-	users = frappe.get_all("Has Role", filters={"role": "POS MANAGER", "parenttype": "User"}, pluck="parent")
-	for user in set(users):
-		if not frappe.db.get_value("User", user, "enabled"):
-			continue
-		frappe.get_doc(
-			{
-				"doctype": "Notification Log",
-				"subject": subject,
-				"for_user": user,
-				"type": "Alert",
-				"document_type": LOG_DOCTYPE,
-				"document_name": log_name,
-			}
-		).insert(ignore_permissions=True)
-
 
 def record_orphan_payment(content, normalized_content, payload, transaction_id, amount, verify_branch_key):
 	"""Webhook không thấy đơn: nếu mã thanh toán thuộc đơn ĐÃ HỦY -> ghi giao dịch mồ côi vào log, cảnh báo MANAGER.
@@ -243,7 +227,10 @@ def record_orphan_payment(content, normalized_content, payload, transaction_id, 
 	if not log_name:
 		return None
 	log = frappe.db.get_value(
-		LOG_DOCTYPE, log_name, ["name", "branch", "invoice_name", "orphan_transaction_ref", "orphan_payload"], as_dict=True
+		LOG_DOCTYPE,
+		log_name,
+		["name", "branch", "pos_profile", "invoice_name", "orphan_transaction_ref", "orphan_payload"],
+		as_dict=True,
 	)
 	if not verify_branch_key(log.branch):
 		frappe.log_error(title="SePay webhook: sai hoặc thiếu API key", message=f"cancel_log={log.name}\nbranch={log.branch}")
@@ -271,7 +258,16 @@ def record_orphan_payment(content, normalized_content, payload, transaction_id, 
 		title="SePay: giao dịch mồ côi (đơn đã hủy)",
 		message=f"cancel_log={log.name}\ninvoice={log.invoice_name}\ntransaction={transaction_id}\namount={amount}",
 	)
-	_notify_managers(log.name, _("Tiền chuyển khoản {0} đến sau khi đơn {1} đã hủy — cần đối soát.").format(
-		frappe.format_value(flt(amount), {"fieldtype": "Currency"}), log.invoice_name
-	))
+	# Quản lý của chi nhánh (kitchen_status.notify_profile_managers); không có ai -> mọi POS MANAGER (tiền đến không được mất cảnh báo).
+	from ..pos_invoice_hooks.kitchen_status import notify_profile_managers
+
+	notify_profile_managers(
+		log.pos_profile,
+		_("Tiền chuyển khoản {0} đến sau khi đơn {1} đã hủy — cần đối soát.").format(
+			frappe.format_value(flt(amount), {"fieldtype": "Currency"}), log.invoice_name
+		),
+		LOG_DOCTYPE,
+		log.name,
+		fallback_all=True,
+	)
 	return {"success": True, "needs_review": True, "message": message}

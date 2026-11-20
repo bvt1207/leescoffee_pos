@@ -133,3 +133,159 @@ def set_terminal(invoice, outcome, reason=None, note=None):
 		),
 	)
 	return invoice
+
+
+# --- Đơn cần quản lý xử lý ("Cần xử lý") ----------------------------------------------------------
+# Đơn đã submit (Paid hoặc đã gộp khi đóng ca), không phải trả hàng, đang "Đã đóng ca chưa xử lý" hoặc needs_review = 1.
+# Không lọc theo ca / ngày / consolidated. Quản lý xử lý trên Desk (2026-11-21, máy POS không đổi): Script Report
+# "MYPOS Review Queue" + nút "Xử lý đơn" trên form POS Invoice (public/js/pos_invoice.js) -> pos_api.resolve_open_order;
+# job remind_overdue_reviews nhắc qua Notification Log.
+REVIEW_OVERDUE_HOURS = 24  # quá số giờ này (tính từ lúc tạo đơn) -> "quá hạn" (cột Report, job nhắc)
+REVIEW_REMIND_HOURS = 24  # đơn đã có Notification Log trong khoảng này -> job không nhắc lại
+REVIEW_OUTCOMES = [KS_COMPLETED, OUTCOME_FAILED, OUTCOME_NOT_PICKED]  # kết cục quản lý chọn khi xử lý
+REVIEW_REMIND_PREFIX = "[Cần xử lý]"  # tiền tố tiêu đề Notification Log của job nhắc
+MANAGER_ROLE = "POS MANAGER"
+
+
+def needs_manager_review(status, needs_review):
+	"""Đơn thuộc hàng đợi "Cần xử lý"."""
+	return (status or "") == SHIFT_CLOSED or bool(frappe.utils.cint(needs_review))
+
+
+def _review_cond(inv, pos_profile=None, search=None, overdue_only=False):
+	from frappe.query_builder import functions as fn
+	from frappe.utils import add_to_date
+
+	cond = (
+		(inv.docstatus == 1)
+		& (fn.IfNull(inv.is_return, 0) == 0)
+		& ((inv.custom_kitchen_status == SHIFT_CLOSED) | (fn.IfNull(inv.needs_review, 0) == 1))
+	)
+	if pos_profile:
+		cond &= inv.pos_profile.isin(pos_profile) if isinstance(pos_profile, (list, tuple)) else inv.pos_profile == pos_profile
+	if overdue_only:
+		cond &= inv.creation < add_to_date(now_datetime(), hours=-REVIEW_OVERDUE_HOURS)
+	query = (search or "").strip().lstrip("#").strip()[:100]
+	if query:
+		pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+		cond &= inv.name.like(pattern) | inv.customer_name.like(pattern)
+	return cond
+
+
+def review_orders(pos_profile=None, search=None, overdue_only=False, limit=200, start=0, fields=None):
+	"""Danh sách đơn cần xử lý, cũ nhất trước; mỗi dòng thêm age_minutes (từ lúc tạo đơn)."""
+	from frappe.query_builder import DocType, Order
+	from frappe.utils import cint, get_datetime
+
+	inv = DocType("POS Invoice")
+	base = ["name", "creation", "pos_profile", "custom_kitchen_status", "needs_review", "kitchen_outcome_reason",
+		"consolidated_invoice", "status"]
+	cols = list(dict.fromkeys([*(fields or []), *base]))
+	rows = (
+		frappe.qb.from_(inv)
+		.select(*[inv[f] for f in cols])
+		.where(_review_cond(inv, pos_profile, search, overdue_only))
+		.orderby(inv.creation, order=Order.asc)
+		.orderby(inv.name, order=Order.asc)
+		.limit(min(max(cint(limit) or 200, 1), 500))
+		.offset(max(cint(start), 0))
+		.run(as_dict=True)
+	)
+	now = now_datetime()
+	for r in rows:
+		r["age_minutes"] = max(0, int((now - get_datetime(r.creation)).total_seconds() // 60))
+		r["needs_review"] = cint(r.get("needs_review"))
+	return rows
+
+
+def review_counts(pos_profile=None):
+	"""{review, overdue}: số đơn cần xử lý / quá REVIEW_OVERDUE_HOURS giờ (COUNT, cùng điều kiện với review_orders)."""
+	from frappe.query_builder import DocType
+	from frappe.query_builder.functions import Count
+
+	inv = DocType("POS Invoice")
+
+	def count(overdue):
+		return frappe.utils.cint(
+			frappe.qb.from_(inv).select(Count("*")).where(_review_cond(inv, pos_profile, overdue_only=overdue)).run()[0][0]
+		)
+
+	return {"review": count(False), "overdue": count(True)}
+
+
+# --- Thông báo cho quản lý của chi nhánh ----------------------------------------------------------
+
+
+def profile_managers(pos_profile):
+	"""User đang bật, có role POS MANAGER, thuộc Applicable for Users của POS Profile."""
+	if not pos_profile:
+		return []
+	users = frappe.get_all(
+		"POS Profile User",
+		filters={"parent": pos_profile, "parenttype": "POS Profile", "parentfield": "applicable_for_users"},
+		pluck="user",
+	)
+	out = []
+	for user in dict.fromkeys(u for u in users if u):
+		if frappe.db.get_value("User", user, "enabled") and MANAGER_ROLE in frappe.get_roles(user):
+			out.append(user)
+	return out
+
+
+def all_managers():
+	users = frappe.get_all("Has Role", filters={"role": MANAGER_ROLE, "parenttype": "User"}, pluck="parent")
+	return [u for u in dict.fromkeys(users) if frappe.db.get_value("User", u, "enabled")]
+
+
+def notify_users(users, subject, document_type=None, document_name=None):
+	for user in users:
+		frappe.get_doc(
+			{
+				"doctype": "Notification Log",
+				"subject": subject,
+				"for_user": user,
+				"type": "Alert",
+				"document_type": document_type,
+				"document_name": document_name,
+			}
+		).insert(ignore_permissions=True)
+	return list(users)
+
+
+def notify_profile_managers(pos_profile, subject, document_type=None, document_name=None, fallback_all=False):
+	"""Gửi Notification Log cho quản lý của chi nhánh (không gửi toàn bộ). fallback_all: không có ai -> mọi POS MANAGER."""
+	users = profile_managers(pos_profile)
+	if not users and fallback_all:
+		users = all_managers()
+	return notify_users(users, subject, document_type, document_name)
+
+
+def remind_overdue_reviews(pos_profile=None):
+	"""Job (cron mỗi giờ, hooks.scheduler_events): nhắc quản lý đơn cần xử lý quá REVIEW_OVERDUE_HOURS giờ.
+
+	pos_profile: chỉ xét một POS Profile (script kiểm tra); job định kỳ để trống = mọi POS Profile.
+
+	Idempotent: đơn đã có Notification Log (của chính đơn đó) trong REVIEW_REMIND_HOURS giờ qua -> bỏ qua. Không thêm field.
+	"""
+	from frappe.utils import add_to_date
+
+	since = add_to_date(now_datetime(), hours=-REVIEW_REMIND_HOURS)
+	sent = 0
+	for r in review_orders(pos_profile=pos_profile, overdue_only=True, limit=500):
+		if frappe.db.exists(
+			"Notification Log",
+			{"document_type": "POS Invoice", "document_name": r.name, "creation": [">=", since]},
+		):
+			continue
+		hours = r.age_minutes // 60
+		subject = _("{0} Đơn {1} ({2}) chờ xử lý {3} giờ.").format(
+			REVIEW_REMIND_PREFIX, r.name, r.custom_kitchen_status or "", hours
+		)
+		try:
+			if notify_profile_managers(r.pos_profile, subject, "POS Invoice", r.name):
+				sent += 1
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(title="MYPOS: lỗi nhắc đơn cần xử lý", message=f"{r.name}\n{frappe.get_traceback()}")
+	return sent

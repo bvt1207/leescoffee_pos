@@ -87,11 +87,17 @@ KITCHEN_STAGE = {
 	"Đã đóng ca chưa xử lý": "review",
 }
 STAGE_FALLBACK = "processing"
-# Thông điệp nổi bật ({invoice} = mã đơn khách đang thấy).
+# Thông điệp nổi bật ({invoice} = mã đơn khách đang thấy). Branch có brand_phone -> bản có liên hệ
+# ({shop} = brand_name, thiếu thì "quán"; {phone} = brand_phone); không có số -> bản cũ.
 STAGE_MESSAGES = {
 	"failed": "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: {invoice}",
 	"review": "Đơn đang được quầy xác nhận, vui lòng liên hệ nhân viên. Mã đơn: {invoice}",
 }
+STAGE_MESSAGES_WITH_PHONE = {
+	"failed": "Quán không thể thực hiện đơn này. Vui lòng liên hệ {shop} qua {phone} để được hỗ trợ/hoàn tiền. Mã đơn: {invoice}",
+	"review": "Đơn đang được quầy xác nhận. Vui lòng liên hệ {shop} qua {phone}. Mã đơn: {invoice}",
+}
+SHOP_FALLBACK = "quán"
 # Nhóm "Đang xử lý": đơn đang làm trong ACTIVE_PAID_HOURS giờ; đơn lỗi / chờ quầy xác nhận còn active
 # tới khi quầy giải quyết (quản lý bỏ cờ needs_review trên POS Invoice).
 STAGES_IN_PROGRESS = ("queued", "ready", "processing")
@@ -454,6 +460,16 @@ def _stage(row):
 	return KITCHEN_STAGE.get(row.custom_kitchen_status or "Chưa làm", STAGE_FALLBACK)
 
 
+def _stage_message(stage, invoice, brand):
+	if stage not in STAGE_MESSAGES:
+		return ""
+	phone = (brand.get("phone") or "").strip()
+	if phone:
+		shop = (brand.get("name") or "").strip() or _(SHOP_FALLBACK)
+		return _(STAGE_MESSAGES_WITH_PHONE[stage]).format(shop=shop, phone=phone, invoice=invoice)
+	return _(STAGE_MESSAGES[stage]).format(invoice=invoice)
+
+
 def _is_active_paid(row, active_since):
 	"""Đơn đã thanh toán còn thuộc nhóm "Đang xử lý" của khách."""
 	stage = _stage(row)
@@ -489,6 +505,10 @@ def _orders_payload(s, rows, groups=None):
 			}
 		)
 
+	brand = {}
+	if any(_stage(r) in STAGE_MESSAGES for r in rows):
+		brand = get_brand_info(s.branch) or {}  # một lần mỗi request, chỉ khi có đơn cần thông điệp
+
 	out = []
 	for r in rows:
 		stage = _stage(r)
@@ -499,7 +519,7 @@ def _orders_payload(s, rows, groups=None):
 				"order_type": r.order_type,
 				"stage": stage,
 				"stage_label": _(STAGE_LABELS.get(stage) or STAGE_LABELS[STAGE_FALLBACK]),
-				"stage_message": _(STAGE_MESSAGES[stage]).format(invoice=r.name) if stage in STAGE_MESSAGES else "",
+				"stage_message": _stage_message(stage, r.name, brand),
 				# Không trả giá trị nội bộ (vd. "Đã đóng ca chưa xử lý"); khóa giữ để tương thích, luôn rỗng.
 				"kitchen_status": "",
 				"customer_name": s.display_name,

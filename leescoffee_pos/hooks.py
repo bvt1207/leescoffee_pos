@@ -45,7 +45,11 @@ app_license = "mit"
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 # POS Opening Entry: tự điền Cashier = người đăng nhập, khóa với người không phải quản lý (server vẫn chặn).
-doctype_js = {"POS Opening Entry": "public/js/pos_opening_entry.js"}
+# POS Invoice: nút "Xử lý đơn" cho quản lý (đơn cần xử lý) -> pos_api.resolve_open_order (2026-11-20).
+doctype_js = {
+	"POS Opening Entry": "public/js/pos_opening_entry.js",
+	"POS Invoice": "public/js/pos_invoice.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -183,6 +187,10 @@ scheduler_events = {
 	"cron": {
 		"*/5 * * * *": [
 			"leescoffee_pos.leescoffee_pos.doctype.mypos_order_cancel_log.order_cancel.auto_cancel_stale_drafts",
+		],
+		# Nhắc quản lý đơn "Cần xử lý" quá 24 giờ (mỗi đơn một lần / 24 giờ) — kitchen_status.remind_overdue_reviews.
+		"0 * * * *": [
+			"leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.kitchen_status.remind_overdue_reviews",
 		],
 	},
 }
