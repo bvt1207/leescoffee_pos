@@ -25,8 +25,8 @@ Không cấp Cancel / Delete / Amend.
 
 | DocType | CASHIER | KITCHEN | MANAGER |
 |---------|---------|---------|---------|
-| POS Opening Entry | S R W C Sub | — | S R W C Sub |
-| POS Closing Entry | S R W C Sub | — | S R W C Sub |
+| POS Opening Entry | S R W C Sub + Only If Creator | — | S R W C Sub |
+| POS Closing Entry | S R W C Sub + Only If Creator | — | S R W C Sub |
 | POS Profile | S R | — | S R W C |
 | MYPOS Menu | R | R | S R W C |
 | MYPOS Buzzer | R | R | S R W C |
@@ -43,6 +43,25 @@ Không cấp Cancel / Delete / Amend.
 | MYPOS Order QR | R | — | S R W C |
 
 Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả patch.
+
+### 2b. Mở / đóng ca (2026-11-20, CHỜ VAN TEST)
+
+- Quy tắc ở `doctype/pos_shift_hooks/pos_shift_hooks.py` (doc_events `before_validate`, `before_submit`, `on_submit` của
+  `POS Opening Entry` và `POS Closing Entry`; `before_validate` chạy trước validate của ERPNext nên thông báo tiếng Việt hiện trước):
+  - Mở ca: Cashier (`user`) = người thao tác **và** thuộc Applicable for Users của POS Profile (danh sách rỗng cũng chặn).
+    Đã có ca Open của profile → "Ca của {tên} tại {profile} chưa đóng".
+  - Đóng ca: Cashier của phiếu = Cashier của ca (ERPNext gom đơn theo `owner == closing.user`); chỉ đóng ca của chính mình.
+  - Manager (`_pos_roles` → POS MANAGER / System Manager / Administrator) mở/đóng thay; Cashier vẫn phải thuộc Applicable for Users;
+    `on_submit` ghi comment "Mở ca thay / Đóng ca thay … bởi …" (đóng thay: comment cả trên ca).
+  - KITCHEN / role khác: chặn.
+- `pos_api._ensure_opening_entry` (tự mở ca khi tạo đơn) đi qua cùng hook; lỗi giờ nối thêm lý do gốc. QR không tạo ca
+  (`_as_user(shift.user)` → thấy ca sẵn có).
+- Form Desk: `public/js/pos_opening_entry.js` (`doctype_js`): Cashier tự điền = người đăng nhập, khóa với người không phải quản lý.
+- **Only If Creator** (`if_owner`) cho CASHIER trên 2 DocType (patch `v1_create_pos_roles`, nhãn `#2026-11-20 cashier-if-owner`):
+  Cashier chỉ thấy ca / phiếu đóng ca do mình tạo. Ca MANAGER mở thay → Cashier không thấy trên Desk → MANAGER đóng thay.
+  /pos, QR, `validate_pos_opening_entry` của ERPNext dùng `get_all` → không ảnh hưởng; gộp hóa đơn khi đóng ca không đổi.
+- Rủi ro: POS Profile chưa khai Applicable for Users → không ai mở được ca; MANAGER bán ở /pos phải có trong danh sách để tự mở ca.
+- Kiểm tra: `.claude/docs/shift_owner_check.py` (`check_shift_owner(...)`, profile + user tạm, rollback).
 
 ## 3. Cơ chế cài đặt
 
