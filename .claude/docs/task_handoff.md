@@ -3,6 +3,10 @@
 > Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0m. Link DocType "MYPOS Order Cancel Log" vào workspace leescoffee_pos (2026-11-21) — CHỜ VAN TEST
+- Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link ngay sau "MYPOS Review Queue", `link_count` 9 → 10,
+  `modified` 11:00. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 11 dòng (`workspace.md` §7).
+
 ## 0l. Link Report "MYPOS Review Queue" vào workspace leescoffee_pos (2026-11-21) — ĐÃ TEST PASS trên bench DEV (`66efbd6` + `b8b8056`)
 - Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link Report cuối card "MYPOS Setup", `link_count` 8 → 9.
   Nhãn đổi "Đơn cần xử lý" → "MYPOS Review Queue" (2026-11-21, `modified` 10:00); link_to / Report không đổi. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 10 dòng

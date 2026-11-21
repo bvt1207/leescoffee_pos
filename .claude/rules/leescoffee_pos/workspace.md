@@ -107,6 +107,9 @@ File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.jso
 - **2026-11-21 — ĐÃ TEST PASS trên bench DEV (`66efbd6` + `b8b8056`):** đã link Report "MYPOS Review Queue" — thêm link thứ 9 cuối card "MYPOS Setup": label "MYPOS Review Queue"
   (đổi từ "Đơn cần xử lý" 2026-11-21, `modified` 10:00), `link_type: Report`, `is_query_report: 1` (`link_count: 9`). Sau migrate: `Workspace Link` = **10 dòng**
   (9 Link + 1 Card Break). Link chỉ hiện với role của Report (POS MANAGER, System Manager).
+- **2026-11-21 (CHỜ VAN TEST):** đã link log hủy đơn — link thứ 10 ngay sau "MYPOS Review Queue": label/link_to "MYPOS Order Cancel Log",
+  `link_type: DocType` (`link_count: 10`, `modified` 11:00). Sau migrate: `Workspace Link` = **11 dòng** (10 Link + 1 Card Break).
+  Chỉ người có quyền Read DocType này (POS MANAGER, System Manager) thấy link.
 - 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
 
 Quy tắc khi sửa JSON workspace:
