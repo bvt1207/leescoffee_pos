@@ -33,15 +33,6 @@ class MYPOSBuzzer(Document):
 			)
 
 	@staticmethod
-	def get_available_buzzer(branch):
-		"""Trả về 1 buzzer 'Sẵn sàng' trong branch, hoặc None nếu không có."""
-		return frappe.db.get_value(
-			"MYPOS Buzzer",
-			{"status": "Sẵn sàng", "branch": branch},
-			"name",
-		)
-
-	@staticmethod
 	def set_busy(buzzer_name, pos_invoice_name):
 		"""Đánh dấu buzzer là 'Đang dùng' và gán cho POS Invoice."""
 		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
@@ -52,9 +43,4 @@ class MYPOSBuzzer(Document):
 		buzzer.status = "Đang dùng"
 		buzzer.save(ignore_permissions=True)
 
-	@staticmethod
-	def set_available(buzzer_name):
-		"""Reset buzzer về 'Sẵn sàng' sau khi đơn xong."""
-		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
-		buzzer.status = "Sẵn sàng"
-		buzzer.save(ignore_permissions=True)
+	# Nhả thẻ: pos_invoice_hooks (on_update_after_submit, on_cancel, release_buzzer) — không có hàm nhả thủ công.

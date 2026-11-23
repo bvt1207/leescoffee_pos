@@ -15,7 +15,7 @@ export default function AppHeader() {
 	const initial = (displayName || "?").trim().slice(0, 1).toUpperCase();
 
 	const nav = navOf(config);
-	// Số đơn chờ phục vụ (chỉ có dữ liệu khi máy có quyền Orders, xem App.tsx).
+	// Số đơn "Đã làm" chờ giao (chỉ có dữ liệu khi máy có quyền Orders, xem App.tsx) -> chấm đỏ ở "Pha chế".
 	const serveCount = useServeQueue((s) => s.items.length);
 	const isKitchen = pathname.startsWith("/kitchen");
 	const placeholder = pathname.startsWith("/orders") ? "Tìm đơn…" : "Tìm món…";
@@ -91,15 +91,15 @@ export default function AppHeader() {
 			<div className="pos-header__right">
 				<nav className="pos-header__nav">
 					{nav.includes("sell") ? <NavLink to="/" end className="pos-navlink">Bán món</NavLink> : null}
-					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">
-							Đơn hàng
+					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink> : null}
+					{nav.includes("kitchen") ? <NavLink to="/kitchen" className="pos-navlink">
+							Pha chế
 							{serveCount > 0 ? (
-								<span className="pos-navlink__badge" aria-label={`${serveCount} đơn chờ phục vụ`}>
+								<span className="pos-navlink__badge" aria-label={`${serveCount} đơn đã làm chờ giao`}>
 									{serveCount}
 								</span>
 							) : null}
 						</NavLink> : null}
-					{nav.includes("kitchen") ? <NavLink to="/kitchen" className="pos-navlink">Pha chế</NavLink> : null}
 				</nav>
 
 				{displayName ? (

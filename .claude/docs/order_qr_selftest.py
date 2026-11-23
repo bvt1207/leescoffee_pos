@@ -354,10 +354,13 @@ def run_order_qr_selftest(branch=None):
 		check("8i Pha chế bấm Đã làm -> khách thấy stage ready", st["stage"] == "ready", st["stage_label"])
 		P.set_kitchen_status(ta["invoice_name"], "Đã hoàn thành")
 		try:
-			P.confirm_pickup(ta["invoice_name"])
-			check("8j confirm_pickup không lỗi khi không có thẻ rung", True)
+			# 2026-11-23: bỏ API confirm_pickup; nhả thẻ dùng PosInvoiceHooks.release_buzzer (đơn QR không có thẻ -> bỏ qua).
+			from leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
+
+			PosInvoiceHooks.release_buzzer(frappe.get_doc("POS Invoice", ta["invoice_name"]))
+			check("8j release_buzzer không lỗi khi đơn không có thẻ bàn", not hasattr(P, "confirm_pickup"))
 		except Exception as e:
-			check("8j confirm_pickup không lỗi khi không có thẻ rung", False, str(e))
+			check("8j release_buzzer không lỗi khi đơn không có thẻ bàn", False, str(e))
 
 		# ---------------- 9. Đóng ca: đơn QR thuộc ca đang mở ----------------
 		# ERPNext mới: get_invoices(start, end, pos_profile, user) -> {"invoices": [...]}, lọc owner == user,

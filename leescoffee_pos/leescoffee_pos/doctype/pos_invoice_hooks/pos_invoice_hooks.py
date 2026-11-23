@@ -4,9 +4,8 @@ Hooks for POS Invoice DocType to handle Leescoffee POS business logic.
 
 - Khởi tạo custom_kitchen_status khi invoice đã thanh toán.
 - Buzzer Dine In chuyển sang Đang dùng khi invoice đã Paid và submit.
-- Phase 3: Reset Buzzer về Sẵn sàng khi pha chế hoàn thành
-  và không còn hóa đơn Dine In khác đang sử dụng Buzzer.
-- Huỷ đơn trước khi bắt đầu làm có thể reset Buzzer.
+- Thẻ bàn (MYPOS Buzzer) tự về Sẵn sàng khi đơn kết thúc (Đã hoàn thành / Khách không nhận / Không thực hiện được)
+  hoặc bị hủy, nếu không còn hóa đơn Dine In khác giữ thẻ. Không có bước nhả thẻ thủ công.
 """
 
 import frappe
@@ -122,10 +121,34 @@ class PosInvoiceHooks:
             buzzer.save(ignore_permissions=True)
 
     @staticmethod
-    def confirm_pickup(doc, method=None):
-        """
-        Giữ lại phương thức xác nhận khách lấy món.
-        Chỉ reset khi trạng thái pha chế là Đã hoàn thành.
+    def _free_buzzer_if_unheld(doc):
+        """Trả thẻ về Sẵn sàng nếu không còn đơn Dine In đã thanh toán khác chưa kết thúc giữ cùng thẻ."""
+        other_invoices = frappe.get_all(
+            "POS Invoice",
+            filters={
+                "name": ["!=", doc.name],
+                "docstatus": 1,
+                "status": "Paid",
+                "order_type": "Dine In",
+                "buzzer": doc.buzzer,
+                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
+            },
+            fields=["name"],
+            limit=1,
+        )
+        if other_invoices:
+            return
+
+        buzzer = frappe.get_doc("MYPOS Buzzer", doc.buzzer)
+        if buzzer.status == "Đang dùng":
+            buzzer.status = "Sẵn sàng"
+            buzzer.save(ignore_permissions=True)
+
+    @staticmethod
+    def release_buzzer(doc, method=None):
+        """Nhả thẻ cho đơn đã kết thúc mà không qua save() (vd. đơn đã gộp, pos_api._resolve_consolidated).
+
+        Không có bước "đã phục vụ" / "khách đã lấy" thủ công (2026-11-23): đơn kết thúc là thẻ tự nhả.
         """
         if (
             doc.order_type != "Dine In"
@@ -133,78 +156,16 @@ class PosInvoiceHooks:
             or not is_terminal(doc.custom_kitchen_status)
         ):
             return
-
-        # Tránh reset nếu hóa đơn khác vẫn cần dùng Buzzer.
-        other_invoices = frappe.get_all(
-            "POS Invoice",
-            filters={
-                "name": ["!=", doc.name],
-                "docstatus": 1,
-                "status": "Paid",
-                "order_type": "Dine In",
-                "buzzer": doc.buzzer,
-                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
-            },
-            fields=["name"],
-            limit=1,
-        )
-
-        if other_invoices:
-            return
-
-        buzzer = frappe.get_doc(
-            "MYPOS Buzzer",
-            doc.buzzer,
-        )
-
-        if buzzer.status == "Đang dùng":
-            buzzer.status = "Sẵn sàng"
-            buzzer.save(ignore_permissions=True)
-
-            frappe.msgprint(
-                _("Thẻ bàn {0} đã trở về trạng thái Sẵn sàng.").format(
-                    doc.buzzer
-                )
-            )
+        PosInvoiceHooks._free_buzzer_if_unheld(doc)
 
     @staticmethod
     def on_cancel(doc, method=None):
         """
-        Khi hủy invoice, chỉ reset Buzzer nếu đơn chưa bắt đầu làm.
+        Đơn đã submit bị hủy: không còn giữ thẻ, ở MỌI trạng thái pha chế (2026-11-23; trước chỉ khi chưa làm).
         """
-        if (
-            doc.order_type != "Dine In"
-            or not doc.buzzer
-            or doc.custom_kitchen_status not in (None, "", "Chưa làm")
-        ):
+        if doc.order_type != "Dine In" or not doc.buzzer:
             return
-
-        # Không reset nếu hóa đơn khác vẫn đang sử dụng Buzzer.
-        other_invoices = frappe.get_all(
-            "POS Invoice",
-            filters={
-                "name": ["!=", doc.name],
-                "docstatus": 1,
-                "status": "Paid",
-                "order_type": "Dine In",
-                "buzzer": doc.buzzer,
-                "custom_kitchen_status": ["not in", KITCHEN_TERMINAL_STATUSES],
-            },
-            fields=["name"],
-            limit=1,
-        )
-
-        if other_invoices:
-            return
-
-        buzzer = frappe.get_doc(
-            "MYPOS Buzzer",
-            doc.buzzer,
-        )
-
-        if buzzer.status == "Đang dùng":
-            buzzer.status = "Sẵn sàng"
-            buzzer.save(ignore_permissions=True)
+        PosInvoiceHooks._free_buzzer_if_unheld(doc)
 
 
 def on_submit(doc, method=None):

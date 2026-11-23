@@ -1439,20 +1439,7 @@ def generate_qr(invoice_name):
 	return generate_qr_for_invoice(invoice_name)
 
 
-@frappe.whitelist()
-def confirm_pickup(invoice_name):
-	"""Dự phòng: trả thẻ bàn về Sẵn sàng khi đơn đã kết thúc (frontend không còn nút; _resolve_consolidated vẫn dùng hook)."""
-	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
-
-	invoice = frappe.get_doc("POS Invoice", invoice_name)
-
-	PosInvoiceHooks.confirm_pickup(invoice, method="confirm_pickup")
-
-	return {
-		"invoice_name": invoice.name,
-		"buzzer_number": _buzzer_number(invoice.buzzer),
-		"message": _("Đã xác nhận khách lấy món."),
-	}
+# 2026-11-23: bỏ API confirm_pickup (nhả thẻ thủ công). Thẻ tự nhả khi đơn kết thúc / bị hủy (pos_invoice_hooks).
 
 
 SERVE_QUEUE_LIMIT = 50
@@ -1675,10 +1662,10 @@ def _resolve_consolidated(invoice, outcome, text):
 	invoice.add_comment(
 		"Info", _("Kết thúc đơn: {0} → {1}. Lý do: {2}. Bởi {3}.").format(previous, outcome, text, actor)
 	)
-	# db_set không chạy hook on_update_after_submit (hook đó cũng chỉ xét đơn Paid) -> nhả thẻ bằng confirm_pickup.
+	# db_set không chạy hook on_update_after_submit (hook đó cũng chỉ xét đơn Paid) -> nhả thẻ bằng release_buzzer.
 	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
 
-	PosInvoiceHooks.confirm_pickup(invoice, method="resolve_open_order")
+	PosInvoiceHooks.release_buzzer(invoice, method="resolve_open_order")
 
 
 def _resolve_open_order(invoice_name, outcome, reason=None, note=None):

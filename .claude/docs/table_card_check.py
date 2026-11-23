@@ -224,9 +224,10 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 
 		print("== 3. Đã hoàn thành -> nhả thẻ, rời hàng chờ ==")
 		_r, err = as_user("A", P.set_kitchen_status, d1, "Đã hoàn thành")
-		ok("3a Cashier 'Đã phục vụ' (Đã hoàn thành) -> status Sẵn sàng + trống", err is None and stored_status(c1) == "Sẵn sàng"
-			and card(c1)["available"], f"({err}; {card(c1)})")
-		ok("3b Rời hàng chờ", not in_queue("A", d1))
+		ok("3a Đã làm -> Đã hoàn thành: thẻ Sẵn sàng NGAY (status lưu + trống), không cần thao tác khác",
+			err is None and stored_status(c1) == "Sẵn sàng" and card(c1)["available"], f"({err}; {card(c1)})")
+		ok("3b Rời hàng chờ (thông báo thu ngân)", not in_queue("A", d1))
+		ok("3c Không còn API nhả thẻ thủ công (pos_api.confirm_pickup)", not hasattr(P, "confirm_pickup"))
 
 		print("== 4. Hủy Draft (Cancelled) nhả thẻ ==")
 		d2 = draft("Dine In", buzzer=c2)
@@ -246,6 +247,13 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 		_r, err = as_user("M", P.resolve_open_order, p6, "Khách không nhận", "Khách bỏ về")
 		ok("5c 'Khách không nhận' (từ Chưa làm) -> thẻ Sẵn sàng + trống",
 			err is None and stored_status(c2) == "Sẵn sàng" and card(c2)["available"], f"({err})")
+		p5d = paid("Dine In", buzzer=c1)
+		prepared(p5d)
+		inv = frappe.get_doc("POS Invoice", p5d)
+		inv.flags.ignore_permissions = True
+		inv.cancel()  # Administrator hủy đơn đã submit đang "Đã làm" (hook on_cancel)
+		ok("5d Hủy đơn đã thanh toán đang 'Đã làm' -> thẻ Sẵn sàng (status lưu) + trống",
+			stored_status(c1) == "Sẵn sàng" and card(c1)["available"], f"({card(c1)})")
 
 		print("== 6. Thẻ kẹt 'Đang dùng' không còn đơn giữ ==")
 		frappe.db.set_value("MYPOS Buzzer", c2, "status", "Đang dùng", update_modified=False)

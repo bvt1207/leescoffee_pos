@@ -6,45 +6,12 @@ import { shortOrderNo } from "./format";
 
 /** Nhịp poll hàng chờ phục vụ (chỉ máy có quyền Orders; dừng khi tab ẩn). */
 export const SERVE_POLL_MS = 15000;
-/** Chờ quá mốc này (giây) -> thẻ đổi màu cảnh báo. */
-export const SERVE_LATE_SECONDS = 180;
 
 const isDineIn = (o: ServeQueueItem) => o.order_type === "Dine In";
 
 /** "Bàn 07" (Dine In có thẻ bàn) hoặc mã ngắn "#00066". */
 export function serveTarget(o: ServeQueueItem): string {
 	return isDineIn(o) && o.buzzer_number ? `Bàn ${o.buzzer_number}` : shortOrderNo(o.name);
-}
-
-/** Việc cần làm: mang ra bàn (Dine In) hoặc gọi khách lấy (Take Away). */
-export function serveAction(o: ServeQueueItem): string {
-	return isDineIn(o) ? "Sẵn sàng phục vụ" : "Gọi khách lấy";
-}
-
-/** Nút kết thúc: Dine In "Đã phục vụ", Take Away "Đã giao". */
-export function serveDoneLabel(o: ServeQueueItem): string {
-	return isDineIn(o) ? "Đã phục vụ" : "Đã giao";
-}
-
-/** Tên khách, hoặc mã ngắn khi khách lẻ (server trả "" cho Walk-in). */
-export function serveWho(o: ServeQueueItem): string {
-	return o.customer_name || shortOrderNo(o.name);
-}
-
-/** "Cà phê sữa x1 +1 món". */
-export function servePreview(o: ServeQueueItem): string {
-	const head = o.items_preview.join(", ");
-	return o.more_lines > 0 ? `${head} +${o.more_lines} món` : head;
-}
-
-/** Số giây đã chờ tính tới `now` (waiting_seconds của server + thời gian từ lúc nhận). */
-export function waitedSeconds(o: ServeQueueItem, loadedAt: number, now: number): number {
-	return o.waiting_seconds + Math.max(0, Math.floor((now - loadedAt) / 1000));
-}
-
-/** "vừa xong" (< 1 phút) / "N phút trước". */
-export function waitLabel(seconds: number): string {
-	return seconds < 60 ? "vừa xong" : `${Math.floor(seconds / 60)} phút trước`;
 }
 
 /** Câu toast cho đơn mới: "Bàn 07 sẵn sàng phục vụ" / "#00066 · Gọi khách lấy món"; nhiều đơn -> gộp. */

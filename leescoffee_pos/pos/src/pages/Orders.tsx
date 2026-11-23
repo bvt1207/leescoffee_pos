@@ -7,25 +7,12 @@ import { api } from "../lib/api";
 import { addDaysIso, autoCancelInfo, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
-import {
-	refreshServeQueue,
-	SERVE_LATE_SECONDS,
-	serveAction,
-	serveDoneLabel,
-	servePreview,
-	serveTarget,
-	serveWho,
-	waitedSeconds,
-	waitLabel,
-} from "../lib/serve";
 import { formatMoney } from "../store/cart";
 import { useOrderFilter } from "../store/orderFilter";
 import { useSearch } from "../store/search";
-import { useServeQueue } from "../store/serveQueue";
-import type { OrderDetail, OrderSummary, OrdersSummary, QrInfo, ServeQueueItem } from "../types";
+import type { OrderDetail, OrderSummary, OrdersSummary, QrInfo } from "../types";
 
-/** serve = "Chờ phục vụ" (đơn tại quầy "Đã làm": mang tới thẻ bàn / gọi khách lấy), dữ liệu từ store serveQueue. */
-type Tab = "draft" | "paid" | "serve";
+type Tab = "draft" | "paid";
 
 /** Ca hiện tại: số đơn tối đa mỗi tab (backend kẹp ở ORDERS_MAX_LIMIT = 200). */
 const SHIFT_LIMIT = 200;
@@ -87,24 +74,6 @@ export default function Orders() {
 	const awaitingQr = useRef<string | null>(null);
 	// Số thứ tự request Lịch sử: bỏ kết quả về muộn của bộ lọc cũ.
 	const historySeq = useRef(0);
-
-	// Chờ phục vụ: đọc store (App poll 15 giây) — Orders không gọi thêm request.
-	const serveItems = useServeQueue((s) => s.items);
-	const serveLoadedAt = useServeQueue((s) => s.loadedAt);
-	const focusServe = useServeQueue((s) => s.focusServe);
-	const setFocusServe = useServeQueue((s) => s.setFocusServe);
-	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
-		const t = window.setInterval(() => setNow(Date.now()), 30000);
-		return () => window.clearInterval(t);
-	}, []);
-	// Bấm toast "… sẵn sàng phục vụ" -> mở tab Chờ phục vụ.
-	useEffect(() => {
-		if (!focusServe) return;
-		setFocusServe(false);
-		setMode("shift");
-		setTab("serve");
-	}, [focusServe, setFocusServe, setMode]);
 
 	const closeReceipt = useCallback(() => setReceipt(null), []);
 
@@ -235,12 +204,9 @@ export default function Orders() {
 		() =>
 			mode === "history"
 				? history
-				: tab === "serve"
-					? []
-					: (tab === "draft" ? drafts : paid).filter((o) => orderMatches(o, search)),
+				: (tab === "draft" ? drafts : paid).filter((o) => orderMatches(o, search)),
 		[mode, history, tab, drafts, paid, search]
 	);
-	const serveList = useMemo(() => serveItems.filter((o) => orderMatches(o, search)), [serveItems, search]);
 
 	// Bộ đếm tab: COUNT của server; khi đang tìm thì đếm theo danh sách đã lọc.
 	const draftCount = search
@@ -286,14 +252,6 @@ export default function Orders() {
 			await refresh(detail.name);
 		});
 
-	// Đã mang tới bàn / đã giao: "Đã làm" -> "Đã hoàn thành" (cùng API màn Pha chế; hook nhả thẻ bàn).
-	const markServed = (o: ServeQueueItem) =>
-		run(async () => {
-			await api.setKitchenStatus(o.name, "Đã hoàn thành");
-			await refreshServeQueue();
-			await loadData();
-			if (selected === o.name) await loadDetail(o.name);
-		});
 
 	const openCancel = () => {
 		setCancelReason("");
@@ -356,13 +314,6 @@ export default function Orders() {
 						<button type="button" className={`pos-tab ${tab === "paid" ? "is-active" : ""}`} onClick={() => setTab("paid")}>
 							Đã thanh toán <span className="pos-tab__count">{paidCount}</span>
 						</button>
-						<button
-							type="button"
-							className={`pos-tab ${tab === "serve" ? "is-active" : ""}${serveItems.length ? " pos-tab--alert" : ""}`}
-							onClick={() => setTab("serve")}
-						>
-							Chờ phục vụ <span className="pos-tab__count">{search ? serveList.length : serveItems.length}</span>
-						</button>
 					</div>
 				) : (
 					<div className="pos-orders-filter" role="group" aria-label="Khoảng ngày">
@@ -416,46 +367,7 @@ export default function Orders() {
 
 			<div className="pos-orders-layout">
 				<section className="pos-orders-list">
-					{mode === "shift" && tab === "serve" ? (
-						serveList.length ? (
-							<div className="pos-serve-grid">
-								{serveList.map((o) => {
-									const waited = waitedSeconds(o, serveLoadedAt, now);
-									const late = waited >= SERVE_LATE_SECONDS;
-									return (
-										<div
-											key={o.name}
-											className={`pos-serve-card${late ? " is-late" : ""}${selected === o.name ? " is-active" : ""}`}
-										>
-											<button type="button" className="pos-serve-card__body" onClick={() => setSelected(o.name)}>
-												<span className="pos-serve-card__title">
-													<strong className="pos-serve-card__target">{serveTarget(o)}</strong>
-													<span className="pos-serve-card__action">{serveAction(o)}</span>
-												</span>
-												<span className="pos-serve-card__who">
-													{serveWho(o)} · {o.item_count} món
-												</span>
-												{servePreview(o) ? <span className="pos-serve-card__items">{servePreview(o)}</span> : null}
-												<span className="pos-serve-card__time">{waitLabel(waited)}</span>
-											</button>
-											<button
-												type="button"
-												className="pos-btn pos-btn--success pos-serve-card__done"
-												disabled={busy}
-												onClick={() => markServed(o)}
-											>
-												{serveDoneLabel(o)}
-											</button>
-										</div>
-									);
-								})}
-							</div>
-						) : (
-							<div className="pos-empty">
-								{search ? "Không tìm thấy đơn phù hợp." : "Không có đơn nào chờ phục vụ."}
-							</div>
-						)
-					) : (mode === "shift" ? loading : historyLoading) && !list.length ? (
+					{(mode === "shift" ? loading : historyLoading) && !list.length ? (
 						<div className="pos-empty">Đang tải đơn hàng…</div>
 					) : list.length ? (
 						<div className="pos-order-grid">

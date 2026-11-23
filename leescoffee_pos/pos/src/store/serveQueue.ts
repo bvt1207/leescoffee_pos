@@ -4,7 +4,8 @@ import type { ServeQueueItem } from "../types";
 
 /**
  * Hàng chờ phục vụ của thu ngân (2026-11-23): đơn tại quầy đã "Đã làm", chờ mang tới thẻ bàn (Dine In)
- * hoặc gọi khách lấy (Take Away). Một nguồn cho chấm đỏ ở menu "Đơn hàng", toast + bíp, tab "Chờ phục vụ" ở Orders.
+ * hoặc gọi khách lấy (Take Away). Một nguồn cho chấm đỏ ở menu "Pha chế" + toast + bíp. Kết thúc đơn = nút
+ * "Đã hoàn thành" ở màn Pha chế (tab Đã làm); thẻ bàn tự nhả. Không có bước "đã phục vụ" riêng (2026-11-23).
  * Poll do `lib/serve.ts::useServeQueuePoller` (gắn một lần ở App) — chỉ máy có quyền Orders (CASHIER / MANAGER).
  */
 type ServeQueueState = {
@@ -17,13 +18,10 @@ type ServeQueueState = {
 	primed: boolean;
 	/** Toast đơn mới (null = ẩn). */
 	toast: string | null;
-	/** Bấm toast -> Orders mở tab "Chờ phục vụ". */
-	focusServe: boolean;
 	setEnabled: (enabled: boolean) => void;
 	/** Gọi lại ngay (sau khi chuyển trạng thái pha chế). Trả danh sách mã đơn mới xuất hiện. */
 	refresh: () => Promise<string[]>;
 	setToast: (toast: string | null) => void;
-	setFocusServe: (focus: boolean) => void;
 };
 
 let inflight: Promise<string[]> | null = null;
@@ -34,7 +32,6 @@ export const useServeQueue = create<ServeQueueState>((set, get) => ({
 	loadedAt: 0,
 	primed: false,
 	toast: null,
-	focusServe: false,
 	setEnabled: (enabled) => set(enabled ? { enabled } : { enabled, items: [], primed: false, toast: null }),
 	refresh: () => {
 		if (!get().enabled) return Promise.resolve([]);
@@ -56,5 +53,4 @@ export const useServeQueue = create<ServeQueueState>((set, get) => ({
 		return inflight;
 	},
 	setToast: (toast) => set({ toast }),
-	setFocusServe: (focusServe) => set({ focusServe }),
 }));

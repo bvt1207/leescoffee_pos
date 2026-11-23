@@ -34,10 +34,9 @@ export default function App() {
 	useServeQueuePoller(!loading && !!config && nav.includes("orders"));
 	const toast = useServeQueue((s) => s.toast);
 	const setToast = useServeQueue((s) => s.setToast);
-	const setFocusServe = useServeQueue((s) => s.setFocusServe);
 	const navigate = useNavigate();
 
-	// Toast tự tắt sau 8 giây; thông báo bền là chấm đỏ ở "Đơn hàng" + tab "Chờ phục vụ".
+	// Toast tự tắt sau 8 giây; thông báo bền là chấm đỏ ở "Pha chế" (tab Đã làm có nút Đã hoàn thành).
 	useEffect(() => {
 		if (!toast) return;
 		const t = window.setTimeout(() => setToast(null), 8000);
@@ -46,8 +45,7 @@ export default function App() {
 
 	const openServe = () => {
 		setToast(null);
-		setFocusServe(true);
-		navigate("/orders");
+		navigate("/kitchen");
 	};
 
 	return (

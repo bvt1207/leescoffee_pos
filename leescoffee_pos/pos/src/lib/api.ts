@@ -138,7 +138,6 @@ export const api = {
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
 	payCash: (invoice_name: string) => call<{ invoice_name: string; status: string; payment_status: string; amount: number; currency: string }>("pay_cash", { invoice_name }),
 	generateQr: (invoice_name: string) => call<QrInfo>("generate_qr", { invoice_name }),
-	confirmPickup: (invoice_name: string) => call<{ invoice_name: string; buzzer_number: string | null; message: string }>("confirm_pickup", { invoice_name }),
 	searchCustomers: (query: string) =>
 		call<CustomerOption[]>("search_customers", { query }),
 	createCustomer: (customer_name: string, mobile_no?: string) =>
