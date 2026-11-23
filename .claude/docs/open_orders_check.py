@@ -1,13 +1,12 @@
 def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
-	"""Đóng ca chặn đơn đã thanh toán chưa giao; trạng thái kết thúc có lý do; đóng ca bắt buộc chuyển đơn dở.
+	"""Đóng ca chặn đơn đã thanh toán chưa giao; trạng thái kết thúc có lý do; quản lý xử lý TỪNG đơn rồi mới đóng ca (2026-11-23).
 
 	Dán CẢ hàm vào `bench --site <site> console` MỚI (SAU khi migrate) rồi gọi, ví dụ:
 	    check_open_orders("POS TEST", "CH-CFLON", "Cash", price_list="<Price List của MYPOS Menu>")
 
 	KHÔNG đụng ca / đơn thật: chép POS Profile thành "ZZTEST Open ...", user tạm A (POS CASHIER), K (POS KITCHEN),
-	M (POS MANAGER). Trước bước đóng ca bắt buộc, các đơn đã thanh toán của A được hủy và 2 đơn dở đổi owner sang M
-	để phiếu đóng ca (gom đơn theo owner == Cashier) KHÔNG gộp hóa đơn thử thành Sales Invoice (tránh bút toán kế toán thử).
-	Submit phiếu đóng ca có commit (ERPNext create_merge_logs) -> cuối hàm dọn mọi dữ liệu thử: commit trước mỗi lần xóa,
+	M (POS MANAGER). Không submit phiếu đóng ca (chỉ chạy kiểm tra chặn đóng ca) -> không gộp hóa đơn thử thành Sales Invoice.
+	Cuối hàm dọn mọi dữ liệu thử: commit trước mỗi lần xóa,
 	thử lại 3 lần khi QueryDeadlockError, Contact trước User; lỗi dọn chỉ in WARN + lệnh xóa tay; dòng KẾT QUẢ luôn được in.
 	Sau khi PASS: chạy lại check_draft_cancel(...), check_shift_owner(...), run_order_qr_selftest(), run_order_history_selftest().
 	"""
@@ -23,7 +22,6 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 
 	PREFIX = "zz.test.open"
 	PROFILE_PREFIX = "ZZTEST Open "
-	LOG = "MYPOS Order Cancel Log"
 	ROLE_OF = {"A": "POS CASHIER", "K": "POS KITCHEN", "M": "POS MANAGER"}
 	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	results, users, ctx = [], {}, {"profile": None}
@@ -94,10 +92,6 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 				for dt in ("POS Invoice", "POS Opening Entry"):
 					for n in frappe.get_all(dt, filters={"pos_profile": prof}, pluck="name"):
 						delete_fresh(dt, n, removed, failed, cancel=True)
-				for log in frappe.get_all(LOG, filters={"pos_profile": prof}, pluck="name"):
-					for nl in frappe.get_all("Notification Log", filters={"document_type": LOG, "document_name": log}, pluck="name"):
-						delete_fresh("Notification Log", nl, removed, failed)
-					delete_fresh(LOG, log, removed, failed)
 				delete_fresh("POS Profile", prof, removed, failed)
 			contacts = set(frappe.get_all("Contact", filters={"user": ["like", PREFIX + ".%"]}, pluck="name"))
 			contacts |= set(frappe.get_all("Contact", filters={"email_id": ["like", PREFIX + ".%"]}, pluck="name"))
@@ -139,7 +133,7 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 
 	def st(name):
 		return frappe.db.get_value("POS Invoice", name, ["custom_kitchen_status", "kitchen_done_by", "kitchen_done_at",
-			"kitchen_completed_by", "kitchen_completed_at", "kitchen_outcome_reason", "needs_review"], as_dict=True)
+			"kitchen_completed_by", "kitchen_completed_at", "kitchen_outcome_reason", "docstatus", "custom_cancel_reason"], as_dict=True)
 
 	def comments_of(name):
 		return frappe.get_all("Comment", filters={"reference_doctype": "POS Invoice", "reference_name": name},
@@ -212,7 +206,7 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 		_r, err = as_user("A", P.set_kitchen_status, p1, "Đã hoàn thành")
 		s1 = st(p1)
 		ok("2e CASHIER bấm Đã hoàn thành -> ghi kitchen_completed_by/at = A",
-			err is None and s1.kitchen_completed_by == users["A"] and s1.kitchen_completed_at and not s1.needs_review, f"({err or s1})")
+			err is None and s1.kitchen_completed_by == users["A"] and s1.kitchen_completed_at, f"({err or s1})")
 		_r, err = check_closing("A")
 		passed("2f 'Đã hoàn thành' -> không chặn", err)
 
@@ -222,8 +216,8 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 		blocked("3a 'Khách không nhận' thiếu lý do -> từ chối", err, "nhập lý do")
 		_r, err = as_user("A", P.resolve_open_order, p2, "Khách không nhận", "Gọi 3 lần không ai nhận")
 		s2 = st(p2)
-		ok("3b 'Khách không nhận' có lý do -> needs_review, lý do, người/giờ, comment",
-			err is None and s2.custom_kitchen_status == "Khách không nhận" and s2.needs_review and "Gọi 3 lần" in (s2.kitchen_outcome_reason or "")
+		ok("3b 'Khách không nhận' có lý do -> lý do xử lý pha chế, người/giờ, comment",
+			err is None and s2.custom_kitchen_status == "Khách không nhận" and "Gọi 3 lần" in (s2.kitchen_outcome_reason or "")
 			and s2.kitchen_completed_by == users["A"] and any("Kết thúc đơn" in (c or "") for c in comments_of(p2)), f"({err or s2})")
 		_r, err = as_user("K", P.set_kitchen_status, p2, "Đã làm")
 		blocked("3c set_kitchen_status trên đơn đã kết thúc -> từ chối", err, "đã kết thúc")
@@ -233,15 +227,15 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 		_r, err = as_user("A", P.resolve_open_order, p3, "Đã hoàn thành")
 		blocked("3e 'Đã hoàn thành' từ 'Chưa làm' thiếu lý do -> từ chối", err, "nhập lý do")
 		_r, err = as_user("A", P.resolve_open_order, p3, "Đã hoàn thành", "Giao luôn bánh có sẵn")
-		ok("3f 'Đã hoàn thành' từ 'Chưa làm' có lý do -> OK, không needs_review",
-			err is None and st(p3).custom_kitchen_status == "Đã hoàn thành" and not st(p3).needs_review, f"({err})")
+		ok("3f 'Đã hoàn thành' từ 'Chưa làm' có lý do -> OK, lý do lưu",
+			err is None and st(p3).custom_kitchen_status == "Đã hoàn thành" and "Giao luôn" in (st(p3).kitchen_outcome_reason or ""), f"({err})")
 		p4 = paid()
 		as_user("K", P.set_kitchen_status, p4, "Đã làm")
 		_r, err = as_user("A", P.resolve_open_order, p4, "Đã hoàn thành")
 		passed("3g 'Đã hoàn thành' từ 'Đã làm' không cần lý do", err)
 		p5 = paid()
 		_r, err = as_user("M", P.resolve_open_order, p5, "Không thực hiện được", "Hết nguyên liệu")
-		ok("3h MANAGER 'Không thực hiện được' -> needs_review", err is None and st(p5).needs_review
+		ok("3h MANAGER 'Không thực hiện được' -> OK, người kết thúc = M", err is None and st(p5).kitchen_completed_by == users["M"]
 			and st(p5).custom_kitchen_status == "Không thực hiện được", f"({err})")
 		p6 = paid()
 		_r, err = as_user("K", P.resolve_open_order, p6, "Khách không nhận", "x")
@@ -251,12 +245,12 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 		_r, err = as_user("A", P.resolve_open_order, p1, "Khách không nhận", "x")
 		blocked("3k Đơn đã kết thúc -> từ chối", err, "đã kết thúc")
 
-		print("== 4. resolve_open_orders (hàng loạt) ==")
-		_r, err = as_user("A", P.resolve_open_orders, [p6, p2], "Khách không nhận", "Lô thử")
-		ok("4a Một đơn lỗi -> báo lỗi, đơn còn lại không đổi (hoàn tác cả lô)",
-			err is not None and st(p6).custom_kitchen_status == "Chưa làm", f"({err}; p6 {st(p6).custom_kitchen_status})")
-		res, err = as_user("A", P.resolve_open_orders, frappe.as_json([p6]), "Khách không nhận", "Lô thử")
-		ok("4b Lô hợp lệ (JSON) -> OK", err is None and res and st(p6).custom_kitchen_status == "Khách không nhận", f"({err})")
+		print("== 4. Không còn xử lý hàng loạt ==")
+		ok("4a pos_api không còn resolve_open_orders / force_close_shift",
+			not hasattr(P, "resolve_open_orders") and not hasattr(P, "force_close_shift"))
+		ok("4b kitchen_status không còn hàng đợi 'Cần xử lý' (review_orders) / cờ Cần xem lại",
+			not hasattr(KS, "review_orders") and not hasattr(KS, "NEEDS_REVIEW_STATUSES")
+			and "Đã đóng ca chưa xử lý" not in KS.KITCHEN_TERMINAL_STATUSES)
 
 		print("== 5. Thẻ rung nhả khi kết thúc ==")
 		bz = [b for b in (as_user("A", P.get_buzzers)[0] or []) if b.get("available")]
@@ -272,52 +266,23 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 			ok("5b 'Khách không nhận' -> thẻ Sẵn sàng + trống", frappe.db.get_value("MYPOS Buzzer", bname, "status") == "Sẵn sàng"
 				and free["available"], f"({free})")
 
-		print("== 6. Đóng ca bắt buộc ==")
+		print("== 6. Quản lý xử lý từng đơn rồi đóng ca (không còn đóng ca bắt buộc) ==")
 		for name in (p1, p2, p3, p4, p5, p6, pd):
 			if name:
-				cancel_paid(name)  # để phiếu đóng ca không gộp đơn thử thành Sales Invoice
+				cancel_paid(name)  # các đơn trên đã xong, hủy cho gọn ca thử
 		d1 = draft()
-		p8, p9 = paid(), paid()
-		as_user("K", P.set_kitchen_status, p9, "Đã làm")
-		for name in (p8, p9):  # owner khác Cashier của ca -> không bị gộp, nhưng vẫn là đơn dở của ca (cùng profile + giờ)
-			frappe.db.set_value("POS Invoice", name, "owner", users["M"], update_modified=False)
-		_r, err = as_user("A", P.force_close_shift, ctx["shift"], "Hết giờ")
-		blocked("6a CASHIER gọi đóng ca bắt buộc -> chặn", err, "chỉ quản lý")
-		_r, err = as_user("M", P.force_close_shift, ctx["shift"], "")
-		blocked("6b MANAGER thiếu lý do -> từ chối", err, "nhập lý do")
-
-		from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import POSClosingEntry
-
-		orig_submit = POSClosingEntry.submit
-
-		def boom(self, *args, **kwargs):
-			raise RuntimeError("ZZTEST lỗi giả lập khi submit phiếu đóng ca")
-
-		POSClosingEntry.submit = boom
-		try:
-			_r, err = as_user("M", P.force_close_shift, ctx["shift"], "Thử lỗi")
-		finally:
-			POSClosingEntry.submit = orig_submit
-		ok("6c Lỗi giữa chừng -> không đổi gì (Draft còn, đơn dở giữ trạng thái, không log hủy)",
-			err is not None and frappe.db.exists("POS Invoice", d1) and st(p8).custom_kitchen_status == "Chưa làm"
-			and st(p9).custom_kitchen_status == "Đã làm" and not frappe.db.exists(LOG, {"invoice_name": d1}), f"({err})")
-
-		res, err = as_user("M", P.force_close_shift, ctx["shift"], "Hết giờ, còn đơn dở")
-		ok("6d MANAGER có lý do -> phiếu đóng ca OK", err is None and res and res.get("closing_entry"), f"({err or res})")
-		if res and res.get("closing_entry"):
-			ce = res["closing_entry"]
-			ok("6e Draft bị hủy + log 'Đóng ca'", not frappe.db.exists("POS Invoice", d1)
-				and frappe.db.exists(LOG, {"invoice_name": d1, "source": "Đóng ca"}))
-			s8, s9 = st(p8), st(p9)
-			ok("6f Đơn dở -> 'Đã đóng ca chưa xử lý' + needs_review + lý do, KHÔNG xóa",
-				s8.custom_kitchen_status == s9.custom_kitchen_status == "Đã đóng ca chưa xử lý" and s8.needs_review and s9.needs_review
-				and "Hết giờ" in (s8.kitchen_outcome_reason or ""), f"({s8.custom_kitchen_status}, {s9.custom_kitchen_status})")
-			ok("6g Comment trên đơn dở + phiếu đóng ca", any("Kết thúc đơn" in (c or "") for c in comments_of(p8))
-				and any("Đóng ca bắt buộc" in (c or "") for c in frappe.get_all("Comment",
-					filters={"reference_doctype": "POS Closing Entry", "reference_name": ce}, pluck="content")))
-			ok("6h Cashier phiếu đóng ca = A, ca Closed", frappe.db.get_value("POS Closing Entry", ce, "user") == users["A"]
-				and frappe.db.get_value("POS Opening Entry", ctx["shift"], "status") == "Closed")
-			ok("6i Người kết thúc đơn dở = M", s8.kitchen_completed_by == users["M"])
+		p8 = paid()
+		_r, err = check_closing("A")
+		blocked("6a Còn Draft + đơn 'Chưa làm' -> chặn đóng ca", err, "chưa thanh toán", d1, p8)
+		ok("6b Thông báo chặn không còn nhắc 'Đóng ca bắt buộc'", err is not None and "bắt buộc" not in str(err).lower())
+		_r, err = as_user("M", P.cancel_draft_order, d1, 0, "Khách không lấy")
+		s_d1 = st(d1)
+		ok("6c MANAGER hủy Draft có lý do -> Cancelled, 'Thủ công: Khách không lấy'",
+			err is None and s_d1.docstatus == 2 and (s_d1.custom_cancel_reason or "").startswith("Thủ công: Khách không lấy"), f"({err or s_d1})")
+		_r, err = as_user("M", P.resolve_open_order, p8, "Không thực hiện được", "Hết sữa")
+		ok("6d MANAGER xử lý đơn 'Chưa làm' có lý do", err is None and st(p8).custom_kitchen_status == "Không thực hiện được", f"({err})")
+		_r, err = check_closing("A")
+		passed("6e Đã xử lý hết -> đóng ca không bị chặn (đơn Cancelled không tính)", err)
 	except Exception:
 		ok("Lỗi ngoài dự kiến", False)
 		traceback.print_exc()
@@ -330,8 +295,8 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 			frappe.db.commit()
 			left = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name") \
 				+ frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name") \
-				+ (frappe.get_all(LOG, filters={"pos_profile": ctx["profile"]}, pluck="name") if ctx["profile"] else [])
-			ok("7 Dọn dữ liệu: không còn profile / user / log thử trong DB", not left, f"({left})")
+				+ (frappe.get_all("POS Invoice", filters={"pos_profile": ctx["profile"]}, pluck="name") if ctx["profile"] else [])
+			ok("7 Dọn dữ liệu: không còn profile / user / đơn thử trong DB", not left, f"({left})")
 		except Exception:  # noqa: BLE001
 			ok("7 Dọn dữ liệu (lỗi khi dọn — xem WARN / traceback)", False)
 			traceback.print_exc()

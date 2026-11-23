@@ -125,7 +125,7 @@ function OrderCard({ order: o, onPay }: { order: CustomerOrder; onPay: (invoiceN
 			) : null}
 			{o.stage === "expired" ? (
 				<div className="qo-fine">
-					Đơn hết hạn thanh toán. Nếu đã chuyển khoản, vui lòng báo nhân viên kèm mã đơn.
+					Đơn đã hủy hoặc hết hạn thanh toán. Nếu đã chuyển khoản, vui lòng báo nhân viên kèm mã đơn.
 				</div>
 			) : null}
 		</li>

@@ -54,7 +54,7 @@ export interface PosConfig {
 	kitchen_transitions?: KitchenTransition[];
 	/** Múi giờ site (System Settings), vd. "Asia/Ho_Chi_Minh". */
 	time_zone?: string;
-	/** Draft kênh khác QR tự hủy sau số phút này (backend order_cancel.POS_DRAFT_AUTO_CANCEL_MINUTES). */
+	/** Draft kênh khác QR tự hủy sau số phút này (backend pos_invoice_hooks/order_cancel.POS_DRAFT_AUTO_CANCEL_MINUTES). */
 	pos_draft_auto_cancel_minutes?: number;
 }
 

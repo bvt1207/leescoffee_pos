@@ -35,8 +35,8 @@ _SHIFT = ["select", "read", "write", "create", "submit"]
 # Ca MANAGER mở thay thì Cashier không thấy trên Desk -> MANAGER đóng thay. Quy tắc mở/đóng: pos_shift_hooks.py.
 _SHIFT_CASHIER = _SHIFT + ["if_owner"]
 _INVOICE = ["select", "read", "write", "create", "submit"]
-# MANAGER cần thêm "report" trên POS Invoice: Script Report "MYPOS Review Queue" (ref_doctype POS Invoice) bị Frappe chặn nếu
-# thiếu (frappe.desk.query_report.get_report_doc kiểm has_permission(ref_doctype, "report")). CASHIER không cần (2026-11-21).
+# MANAGER có thêm "report" trên POS Invoice (2026-11-21, ban đầu cho Script Report "MYPOS Review Queue" — đã bỏ 2026-11-23).
+# Giữ cờ: patch không tắt cờ đã bật, và cờ vẫn cho MANAGER dùng Report view của POS Invoice. CASHIER không cần.
 _INVOICE_MANAGER = _INVOICE + ["report"]
 _MASTER_RW = ["select", "read", "write", "create"]
 
@@ -81,8 +81,7 @@ PERMS = {
 		"Branch": _MASTER_RW,
 		"MYPOS Option Group": ["read", "write", "create"],
 		"MYPOS Order QR": _MASTER_RW,
-		# Nhật ký hủy đơn (2026-11-20): xem + bỏ cờ "Cần đối soát". Không tạo/xóa (log do hệ thống ghi).
-		"MYPOS Order Cancel Log": ["select", "read", "write"],
+		# "MYPOS Order Cancel Log" đã bỏ 2026-11-23 (đơn hủy giữ lại dạng Cancelled; patch v1_simplify_cancel_review xóa DocType).
 	},
 }
 

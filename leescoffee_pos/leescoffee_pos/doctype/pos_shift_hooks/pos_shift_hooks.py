@@ -139,7 +139,7 @@ def _check_closing(doc):
 
 	# Còn đơn dở -> chặn (2026-11-20): Draft (QR chỉ tính đơn còn hạn thanh toán) + đơn đã thanh toán của ca còn
 	# "Chưa làm" / "Đã làm". Đơn đã kết thúc (Đã hoàn thành / kết thúc có lý do) không chặn.
-	# Quản lý: pos_api.force_close_shift hủy Draft + chuyển đơn dở sang "Đã đóng ca chưa xử lý" rồi mới tạo phiếu đóng ca.
+	# Không có "đóng ca bắt buộc" (bỏ 2026-11-23): quản lý hủy / xử lý từng đơn trên Desk (POS Invoice) rồi mới đóng ca.
 	from leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.kitchen_status import (
 		has_open_orders,
 		open_orders_message,

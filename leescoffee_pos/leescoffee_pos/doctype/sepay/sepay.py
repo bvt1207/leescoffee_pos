@@ -166,21 +166,6 @@ def sepay_webhook():
         matched_invoice = _find_invoice_by_code(content, normalized_content)
 
         if not matched_invoice:
-            # Đơn đã bị hủy (Orders / job hết hạn / đóng ca bắt buộc) -> ghi giao dịch mồ côi vào
-            # MYPOS Order Cancel Log + cảnh báo MANAGER (đã xác thực API key theo Branch của log).
-            from ..mypos_order_cancel_log.order_cancel import record_orphan_payment
-
-            orphan = record_orphan_payment(
-                content,
-                normalized_content,
-                payload,
-                transaction_id,
-                amount,
-                lambda branch: verify_sepay_key_for_branch(branch, _received_sepay_key()),
-            )
-            if orphan:
-                return orphan
-
             frappe.log_error(
                 title="SePay POS Invoice Not Found",
                 message=(
@@ -199,6 +184,11 @@ def sepay_webhook():
         # 3b. Xác thực webhook đến từ SePay (API key của Branch của đơn).
         #     Mọi nhánh bên dưới (kể cả phản hồi idempotent) chỉ chạy SAU bước này.
         _verify_sepay_key(invoice)
+
+        # 3a. Đơn đã hủy (docstatus 2: hủy tay / job hết hạn) mà tiền vẫn về -> đánh dấu trên chính đơn,
+        #     báo quản lý; không thanh toán lại đơn. Idempotent theo transaction_id (custom_late_payment_ref).
+        if invoice.docstatus == 2:
+            return _record_late_payment(invoice, payload, transaction_id, amount)
 
         # 3b'. Đơn đã submit: KHÔNG BAO GIỜ xác nhận lại.
         #      already_processed CHỈ khi: docstatus = 1 VÀ payment_status = "Đã thanh toán"
@@ -388,6 +378,87 @@ def sepay_webhook():
         )
 
 
+def _record_late_payment(invoice, payload, transaction_id, amount):
+    """Tiền về cho đơn ĐÃ HỦY (docstatus 2). Gọi SAU _verify_sepay_key.
+
+    Ghi trên chính đơn: custom_late_payment = 1, nối transaction_id vào custom_late_payment_ref, nối giao dịch vào
+    sepay_payment_log (giữ dữ liệu giao dịch); Comment + Error Log; Notification Log cho quản lý của POS Profile
+    (không có ai -> mọi POS MANAGER). Không thanh toán lại / không mở lại đơn.
+    Idempotent: transaction_id đã có trong custom_late_payment_ref -> trả cùng phản hồi, không ghi thêm.
+    Không có transaction_id -> không chống trùng được, mỗi lần gọi đều ghi.
+    """
+    from ..pos_invoice_hooks.kitchen_status import notify_profile_managers
+
+    message = "Đơn {0} đã hủy trước khi nhận tiền; giao dịch được ghi nhận để đối soát.".format(invoice.name)
+    response = {"success": True, "needs_review": True, "message": message}
+
+    # Khóa dòng: SePay gửi lại song song không ghi trùng.
+    row = frappe.db.sql(
+        "SELECT `custom_late_payment_ref`, `sepay_payment_log` FROM `tabPOS Invoice` WHERE `name` = %s FOR UPDATE",
+        (invoice.name,),
+        as_dict=True,
+    )[0]
+    refs = [r for r in (row.custom_late_payment_ref or "").split(",") if r.strip()]
+    if transaction_id and transaction_id in refs:
+        return response
+
+    received_at = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+    entry = {
+        "late_payment": True,
+        "content": payload.get("content") or payload.get("code"),
+        "transaction_id": transaction_id,
+        "referenceCode": payload.get("referenceCode"),
+        "transferAmount": amount,
+        "gateway": payload.get("gateway"),
+        "transactionDate": payload.get("transactionDate"),
+        "received_at": received_at,
+    }
+    try:
+        log = _json.loads(row.sepay_payment_log or "[]")
+        if not isinstance(log, list):
+            log = [log]
+    except (ValueError, TypeError):
+        log = []
+    log.append(entry)
+
+    if transaction_id:
+        refs.append(transaction_id)
+    frappe.db.set_value(
+        "POS Invoice",
+        invoice.name,
+        {
+            "custom_late_payment": 1,
+            "custom_late_payment_ref": ",".join(refs)[:140],
+            "sepay_payment_log": _json.dumps(log[-50:], ensure_ascii=False),
+        },
+        update_modified=True,
+    )
+    amount_text = frappe.format_value(flt(amount), {"fieldtype": "Currency"})
+    frappe.get_doc(
+        {
+            "doctype": "Comment",
+            "comment_type": "Info",
+            "reference_doctype": "POS Invoice",
+            "reference_name": invoice.name,
+            "content": _("Tiền về sau khi hủy: mã giao dịch {0}, số tiền {1}, giờ giao dịch {2}, nhận lúc {3}. Cần đối soát / hoàn tiền.").format(
+                transaction_id or "(không có)", amount_text, payload.get("transactionDate") or "", received_at
+            ),
+        }
+    ).insert(ignore_permissions=True)
+    frappe.log_error(
+        title="SePay: tiền về sau khi đơn đã hủy",
+        message=f"invoice={invoice.name}\ntransaction={transaction_id}\namount={amount}\npayload={_json.dumps(payload, ensure_ascii=False, default=str)[:4000]}",
+    )
+    notify_profile_managers(
+        invoice.pos_profile,
+        _("Tiền chuyển khoản {0} đến sau khi đơn {1} đã hủy — cần đối soát.").format(amount_text, invoice.name),
+        "POS Invoice",
+        invoice.name,
+        fallback_all=True,
+    )
+    return response
+
+
 # Ký tự bỏ đi khi chuẩn hóa payment_code ở SQL (mã sinh ra chỉ gồm chữ, số, "-").
 _CODE_STRIP_CHARS = ("-", " ", ".", "/", "_")
 # Giới hạn quét của đường dự phòng (nội dung chuyển khoản bị ngân hàng bỏ dấu "-").
@@ -396,7 +467,7 @@ _LOOKUP_FIELDS = ["name", "docstatus", "creation"]
 
 
 def _find_invoice_by_code(content, normalized_content):
-    """POS Invoice (docstatus 0 hoặc 1) có payment_code khớp nội dung chuyển khoản.
+    """POS Invoice (docstatus 0, 1 hoặc 2 — đơn đã hủy vẫn tìm được để ghi tiền về sau) có payment_code khớp nội dung chuyển khoản.
 
     1. Khớp chính xác `payment_code = content` -> dùng index của cột payment_code.
     2. Dự phòng (ngân hàng bỏ "-", đổi hoa/thường): so mã đã chuẩn hóa bằng SQL, chỉ
@@ -408,7 +479,7 @@ def _find_invoice_by_code(content, normalized_content):
 
     exact = frappe.get_all(
         "POS Invoice",
-        filters={"payment_code": content.strip(), "docstatus": ["in", [0, 1]]},
+        filters={"payment_code": content.strip(), "docstatus": ["in", [0, 1, 2]]},
         fields=_LOOKUP_FIELDS,
         order_by="creation desc",
         limit=1,
@@ -424,7 +495,7 @@ def _find_invoice_by_code(content, normalized_content):
         f"""
         SELECT `name`, `docstatus`, `creation`
         FROM `tabPOS Invoice`
-        WHERE `docstatus` IN (0, 1)
+        WHERE `docstatus` IN (0, 1, 2)
           AND `creation` >= %(since)s
           AND IFNULL(`payment_code`, '') != ''
           AND {expr} = %(code)s

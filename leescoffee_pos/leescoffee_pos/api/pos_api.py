@@ -573,7 +573,7 @@ def get_pos_config(branch_name=None):
 
 
 def _pos_draft_auto_cancel_minutes():
-	from ..doctype.mypos_order_cancel_log.order_cancel import POS_DRAFT_AUTO_CANCEL_MINUTES
+	from ..doctype.pos_invoice_hooks.order_cancel import POS_DRAFT_AUTO_CANCEL_MINUTES
 
 	return POS_DRAFT_AUTO_CANCEL_MINUTES
 
@@ -1330,7 +1330,7 @@ def get_order_detail(invoice_name):
 		"kitchen_completed_by": invoice.get("kitchen_completed_by") or "",
 		"kitchen_completed_at": invoice.get("kitchen_completed_at"),
 		"kitchen_outcome_reason": invoice.get("kitchen_outcome_reason") or "",
-		"needs_review": cint(invoice.get("needs_review")),
+		"cancel_reason": invoice.get("custom_cancel_reason") or "",
 		"buzzer": invoice.buzzer,
 		"buzzer_number": _buzzer_number(invoice.buzzer),
 		"grand_total": flt(invoice.grand_total),
@@ -1378,16 +1378,17 @@ def pay_cash(invoice_name):
 
 @frappe.whitelist()
 def cancel_draft_order(invoice_name, force=0, reason=None, note=None):
-	"""Hủy (xóa hẳn) đơn Draft chưa thanh toán, ghi MYPOS Order Cancel Log (order_cancel.cancel_draft_with_log).
+	"""Hủy đơn Draft chưa thanh toán: đơn chuyển Cancelled, lý do lưu ở custom_cancel_reason (order_cancel.cancel_draft).
 
+	Dùng chung cho màn Orders (/pos) và nút "Hủy đơn" trên form POS Invoice (Desk, quản lý).
 	- Chỉ cho docstatus = 0. Đơn đã thanh toán không hủy được tại POS.
-	- Đơn đã sinh QR (đang chờ chuyển khoản) cần force=1 để tránh xóa nhầm
+	- Đơn đã sinh QR (đang chờ chuyển khoản) cần force=1 để tránh hủy nhầm
 	  đơn khách đã chuyển tiền.
-	- Thẻ rung tự được nhả vì _assign_buzzer chỉ xét các POS Invoice còn tồn tại.
-	- reason: giao diện Orders luôn gửi; phải thuộc order_cancel.MANUAL_REASONS, "Khác" bắt buộc note.
-	  reason=None (giao diện cũ chưa gửi) -> vẫn hủy, log ghi REASON_LEGACY.
+	- Thẻ rung tự được nhả vì _assign_buzzer / get_buzzers chỉ xét đơn docstatus 0/1.
+	- reason: phải thuộc order_cancel.MANUAL_REASONS, "Khác" bắt buộc note.
+	  reason=None (giao diện cũ chưa gửi) -> vẫn hủy, lý do REASON_LEGACY.
 	"""
-	from ..doctype.mypos_order_cancel_log import order_cancel as OC
+	from ..doctype.pos_invoice_hooks import order_cancel as OC
 
 	_require_sale_role()
 	if reason is None:
@@ -1412,93 +1413,15 @@ def cancel_draft_order(invoice_name, force=0, reason=None, note=None):
 		)
 
 	buzzer_number = _buzzer_number(invoice.buzzer)
-	result = OC.cancel_draft_with_log(invoice_name, reason, OC.SOURCE_MANUAL, note=note)
+	result = OC.cancel_draft(invoice_name, reason, OC.SOURCE_MANUAL, note=note)
 
 	return {
 		"invoice_name": invoice_name,
 		"buzzer_number": buzzer_number,
-		"log": result["log"],
+		"cancel_reason": result["cancel_reason"],
 		"message": _("Đã hủy đơn {0}.").format(invoice_name),
 	}
 
-
-@frappe.whitelist()
-def force_close_shift(opening_entry, reason=None):
-	"""Đóng ca bắt buộc (chỉ POS MANAGER / System Manager / Administrator).
-
-	Hủy MỌI đơn Draft của POS Profile của ca (log nguồn "Đóng ca", lý do "Hủy khi đóng ca", ghi chú = lý do nhập);
-	đơn đã thanh toán của ca còn Chưa làm / Đã làm -> "Đã đóng ca chưa xử lý" (needs_review, comment, không xóa);
-	rồi tạo + submit POS Closing Entry (đi qua pos_shift_hooks như đóng ca thường; Cashier = Cashier của ca).
-	Lỗi trước khi gộp hóa đơn -> rollback savepoint; lỗi khi ERPNext gộp hóa đơn -> ERPNext rollback toàn bộ.
-	"""
-	from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import make_closing_entry_from_opening
-
-	from ..doctype.mypos_order_cancel_log import order_cancel as OC
-
-	if not _pos_roles()["manager"]:
-		frappe.throw(_("Chỉ quản lý (POS MANAGER) được đóng ca bắt buộc."), frappe.PermissionError)
-	reason = (reason or "").strip()
-	if len(reason) < 3:
-		frappe.throw(_("Nhập lý do đóng ca bắt buộc (ít nhất 3 ký tự)."))
-
-	opening = frappe.get_doc("POS Opening Entry", opening_entry)
-	if opening.docstatus != 1 or opening.status != "Open":
-		frappe.throw(_("Ca {0} không còn mở.").format(opening_entry))
-
-	from ..doctype.pos_invoice_hooks import kitchen_status as KS
-
-	# Một giao dịch; savepoint để cả khi gọi trong console / hàm khác, lỗi giữa chừng cũng không để lại thay đổi dở.
-	frappe.db.savepoint("mypos_force_close")
-	try:
-		cancelled = []
-		for name in OC.all_drafts(opening.pos_profile):
-			OC.cancel_draft_with_log(name, OC.REASON_CLOSE, OC.SOURCE_CLOSE, note=reason)
-			cancelled.append(name)
-
-		# Đơn đã thanh toán của ca còn Chưa làm / Đã làm -> "Đã đóng ca chưa xử lý" (không xóa, không tính đã giao,
-		# needs_review = 1, comment, nhả thẻ rung).
-		groups = KS.shift_open_orders(opening.pos_profile, opening.period_start_date)
-		unresolved = groups["unprepared"] + groups["undelivered"]
-		for name in unresolved:
-			KS.set_terminal(frappe.get_doc("POS Invoice", name), KS.SHIFT_CLOSED, _("Đóng ca bắt buộc"), note=reason)
-
-		closing = make_closing_entry_from_opening(opening)
-		closing.insert()
-		closing.submit()
-		closing.add_comment(
-			"Info",
-			_("Đóng ca bắt buộc bởi {0}. Lý do: {1}. Đã hủy {2} đơn chưa thanh toán{3}. Chuyển {4} đơn chưa giao sang '{5}'{6}.").format(
-				frappe.session.user,
-				reason,
-				len(cancelled),
-				(": " + ", ".join(cancelled)) if cancelled else "",
-				len(unresolved),
-				KS.SHIFT_CLOSED,
-				(": " + ", ".join(unresolved)) if unresolved else "",
-			),
-		)
-	except Exception:
-		# ERPNext create_merge_logs (khi submit phiếu đóng ca) tự rollback TOÀN BỘ giao dịch nếu gộp hóa đơn lỗi —
-		# khi đó savepoint không còn; bỏ qua lỗi rollback savepoint để không che lỗi gốc.
-		try:
-			frappe.db.rollback(save_point="mypos_force_close")
-		except Exception:  # noqa: BLE001
-			pass
-		raise
-
-	# Báo quản lý của chi nhánh (không gửi toàn bộ). Lỗi gửi thông báo không làm hỏng việc đóng ca đã xong.
-	try:
-		KS.notify_profile_managers(
-			opening.pos_profile,
-			_("Đóng ca bắt buộc {0} ({1}): hủy {2} đơn chưa thanh toán, {3} đơn chuyển '{4}' cần xử lý.").format(
-				opening.name, frappe.session.user, len(cancelled), len(unresolved), KS.SHIFT_CLOSED
-			),
-			"POS Closing Entry",
-			closing.name,
-		)
-	except Exception:
-		frappe.log_error(title="MYPOS: lỗi gửi thông báo đóng ca bắt buộc", message=frappe.get_traceback())
-	return {"closing_entry": closing.name, "cancelled": cancelled, "unresolved": unresolved}
 
 @frappe.whitelist()
 def generate_qr(invoice_name):
@@ -1651,59 +1574,45 @@ def set_kitchen_status(invoice_name, status):
 	return {"invoice_name": invoice.name, "kitchen_status": status}
 
 
-def _resolve_review(invoice, outcome, reason, note=None):
-	"""Luồng xem lại (2026-11-21): quản lý xử lý đơn "Đã đóng ca chưa xử lý" / needs_review = 1 trên Desk.
-
-	Đơn có thể đã gộp khi đóng ca (Consolidated) -> ghi bằng db_set, không save() lại hóa đơn; thẻ rung đã nhả từ khi vào
-	trạng thái kết thúc. Lý do luôn bắt buộc. needs_review = 0 (đã xem lại) -> đơn rời hàng đợi "cần xử lý".
-	"""
+def _resolve_consolidated(invoice, outcome, text):
+	"""Đơn đã gộp khi đóng ca (Consolidated) mà còn Chưa làm / Đã làm (dữ liệu cũ): quản lý kết thúc bằng db_set —
+	không save() lại hóa đơn đã gộp. Thẻ rung: nhả nếu không còn đơn khác giữ."""
 	from ..doctype.pos_invoice_hooks import kitchen_status as KS
 
 	if not _pos_roles()["manager"]:
-		frappe.throw(_("Chỉ quản lý (POS MANAGER) được xử lý đơn cần xem lại."), frappe.PermissionError)
-	if outcome not in KS.REVIEW_OUTCOMES:
-		frappe.throw(_("Kết quả không hợp lệ. Chọn: {0}.").format(", ".join(KS.REVIEW_OUTCOMES)))
-	text = "; ".join(x.strip() for x in (reason or "", note or "") if x and x.strip())
-	if not text:
-		frappe.throw(_("Nhập lý do khi xử lý đơn {0}.").format(invoice.name))
-	previous = invoice.custom_kitchen_status or ""
-	old_reason = invoice.get("kitchen_outcome_reason") or ""
+		frappe.throw(_("Đơn {0} đã gộp khi đóng ca: chỉ quản lý (POS MANAGER) được xử lý.").format(invoice.name), frappe.PermissionError)
+	previous = invoice.custom_kitchen_status or KS.KS_TODO
 	actor = frappe.session.user
 	invoice.db_set(
 		{
 			"custom_kitchen_status": outcome,
-			"needs_review": 0,
 			"kitchen_completed_by": actor,
 			"kitchen_completed_at": now_datetime(),
-			"kitchen_outcome_reason": (old_reason + " | " if old_reason else "") + _("Quản lý: {0}").format(text),
+			"kitchen_outcome_reason": text,
 		},
 		update_modified=True,
 	)
 	invoice.add_comment(
-		"Info", _("Quản lý xử lý: {0} → {1}. Lý do: {2}. Bởi {3}.").format(previous, outcome, text, actor)
+		"Info", _("Kết thúc đơn: {0} → {1}. Lý do: {2}. Bởi {3}.").format(previous, outcome, text, actor)
 	)
-	return {
-		"invoice_name": invoice.name,
-		"kitchen_status": outcome,
-		"needs_review": 0,
-		"buzzer_number": _buzzer_number(invoice.buzzer),
-	}
+	# db_set không chạy hook on_update_after_submit (hook đó cũng chỉ xét đơn Paid) -> nhả thẻ bằng confirm_pickup.
+	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
+
+	PosInvoiceHooks.confirm_pickup(invoice, method="resolve_open_order")
 
 
 def _resolve_open_order(invoice_name, outcome, reason=None, note=None):
-	"""Kết thúc một đơn dở (đã thanh toán, đang Chưa làm / Đã làm) với kết quả + lý do (kitchen_status.set_terminal).
+	"""Kết thúc MỘT đơn dở (đã thanh toán, đang Chưa làm / Đã làm) với kết quả + lý do (kitchen_status.set_terminal).
 
-	Đơn đang cần quản lý xử lý ("Đã đóng ca chưa xử lý" / needs_review = 1) -> luồng xem lại `_resolve_review`.
+	Không có xử lý hàng loạt: mỗi đơn một lý do (Van chốt 2026-11-23).
 	"""
 	from ..doctype.pos_invoice_hooks import kitchen_status as KS
 
-	invoice = frappe.get_doc("POS Invoice", invoice_name)
-	if invoice.docstatus == 1 and KS.needs_manager_review(invoice.custom_kitchen_status, invoice.get("needs_review")):
-		return _resolve_review(invoice, outcome, reason, note)
 	if outcome not in KS.RESOLVE_OUTCOMES:
 		frappe.throw(_("Kết quả không hợp lệ. Chọn: {0}.").format(", ".join(KS.RESOLVE_OUTCOMES)))
-	if invoice.docstatus != 1 or invoice.status != "Paid":
-		frappe.throw(_("Đơn {0} chưa thanh toán hoặc đã gộp khi đóng ca.").format(invoice_name))
+	invoice = frappe.get_doc("POS Invoice", invoice_name)
+	if invoice.docstatus != 1 or cint(invoice.get("is_return")) or invoice.status not in ("Paid", "Consolidated"):
+		frappe.throw(_("Đơn {0} chưa thanh toán hoặc không phải đơn bán.").format(invoice_name))
 	current = invoice.custom_kitchen_status or KS.KS_TODO
 	if current not in KS.KITCHEN_BLOCK_STATUSES:
 		frappe.throw(_("Đơn {0} đã kết thúc ({1}).").format(invoice_name, current))
@@ -1711,38 +1620,26 @@ def _resolve_open_order(invoice_name, outcome, reason=None, note=None):
 	# Giao bình thường (Đã làm -> Đã hoàn thành) không cần lý do; mọi trường hợp khác bắt buộc.
 	if not (outcome == KS.KS_COMPLETED and current == KS.KS_PREPARED) and not reason:
 		frappe.throw(_("Nhập lý do khi chuyển đơn {0} từ '{1}' sang '{2}'.").format(invoice_name, current, outcome))
-	KS.set_terminal(invoice, outcome, reason, note)
+	if invoice.status == "Consolidated":
+		text = "; ".join(x.strip() for x in (reason, note or "") if x and x.strip())
+		if not text:
+			frappe.throw(_("Nhập lý do khi xử lý đơn {0}.").format(invoice_name))
+		_resolve_consolidated(invoice, outcome, text)
+	else:
+		KS.set_terminal(invoice, outcome, reason, note)
 	return {
 		"invoice_name": invoice.name,
 		"kitchen_status": outcome,
-		"needs_review": cint(invoice.get("needs_review")),
 		"buzzer_number": _buzzer_number(invoice.buzzer),
 	}
 
 
 @frappe.whitelist()
 def resolve_open_order(invoice_name, outcome, reason=None, note=None):
-	"""Thu ngân / quản lý kết thúc đơn dở: "Đã hoàn thành", "Khách không nhận", "Không thực hiện được".
+	"""Thu ngân / quản lý kết thúc một đơn dở: "Đã hoàn thành", "Khách không nhận", "Không thực hiện được".
 
-	Lý do bắt buộc trừ "Đã hoàn thành" từ "Đã làm". Ghi người/giờ, lý do, needs_review, comment; nhả thẻ rung.
+	Lý do bắt buộc trừ "Đã hoàn thành" từ "Đã làm". Ghi người/giờ, lý do (kitchen_outcome_reason), comment; nhả thẻ rung.
+	Dùng bởi nút "Xử lý đơn" trên form POS Invoice (Desk, quản lý).
 	"""
 	_require_sale_role()
 	return _resolve_open_order(invoice_name, outcome, reason, note)
-
-
-@frappe.whitelist()
-def resolve_open_orders(invoice_names, outcome, reason=None, note=None):
-	"""Kết thúc nhiều đơn dở cùng kết quả + lý do. Một đơn lỗi -> hoàn tác cả lô (savepoint) rồi báo lỗi."""
-	_require_sale_role()
-	names = frappe.parse_json(invoice_names) if isinstance(invoice_names, str) else invoice_names
-	if not isinstance(names, list) or not names:
-		frappe.throw(_("Chưa chọn đơn nào."))
-	frappe.db.savepoint("mypos_resolve_batch")
-	try:
-		return [_resolve_open_order(name, outcome, reason, note) for name in names]
-	except Exception:
-		try:
-			frappe.db.rollback(save_point="mypos_resolve_batch")
-		except Exception:  # noqa: BLE001
-			pass
-		raise

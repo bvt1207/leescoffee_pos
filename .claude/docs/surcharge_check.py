@@ -199,14 +199,23 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 		k = [o for o in P.get_kitchen_orders() if o["name"] == b2.name]
 		ok("G3 get_kitchen_orders có price trong options", bool(k) and k[0]["items"][0]["options"][0]["price"] == 10000)
 
-		print("== H. Hủy Draft / dọn đơn QR quá hạn: không để dòng mồ côi ==")
+		print("== H. Hủy Draft / job hủy đơn QR quá hạn: đơn Cancelled, dòng phụ thu giữ nguyên theo đơn ==")
+		# 2026-11-23: hủy KHÔNG xóa đơn (order_cancel.cancel_draft) -> dòng phụ thu còn, cùng docstatus 2 với đơn.
+		from leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks import order_cancel as OC
+
+		def cancelled_with_surcharge(name):
+			rows = frappe.get_all("Sales Taxes and Charges", filters={"parent": name, "parenttype": "POS Invoice",
+				"description": P.SURCHARGE_DESCRIPTION}, fields=["tax_amount", "docstatus"])
+			return frappe.db.get_value("POS Invoice", name, "docstatus") == 2 and len(rows) == 1 \
+				and flt(rows[0].tax_amount) == 10000 and rows[0].docstatus == 2
+
 		_p, h1 = run("H0 tạo đơn để hủy", [L(1, top(T10))], 59000)
-		P.cancel_draft_order(h1.name, 1)
-		ok("H1 cancel_draft_order: không còn hóa đơn, không còn dòng phụ thu",
-			not frappe.db.exists("POS Invoice", h1.name) and not surcharge_rows(h1.name))
-		_p, h2 = run("H2 tạo đơn để dọn", [L(1, top(T10))], 59000)
-		frappe.delete_doc("POS Invoice", h2.name, ignore_permissions=True)  # cùng lệnh job cleanup_expired_qr_orders dùng
-		ok("H3 delete_doc (như job dọn đơn QR): không còn dòng phụ thu", not surcharge_rows(h2.name))
+		P.cancel_draft_order(h1.name, 1, "Đặt nhầm")
+		ok("H1 cancel_draft_order: đơn Cancelled, 1 dòng phụ thu 10.000 (docstatus 2), không nhân đôi",
+			cancelled_with_surcharge(h1.name))
+		_p, h2 = run("H2 tạo đơn để job hủy", [L(1, top(T10))], 59000)
+		OC.cancel_draft(h2.name, OC.REASON_QR_EXPIRED, OC.SOURCE_AUTO_QR)  # cùng hàm job auto_cancel_qr_drafts dùng
+		ok("H3 cancel_draft (như job hủy đơn QR): đơn Cancelled, dòng phụ thu giữ nguyên", cancelled_with_surcharge(h2.name))
 
 		print("== I. Mẫu thuế trên POS Profile ==")
 		tpl = frappe.db.get_value("Sales Taxes and Charges Template", {"company": profile.company, "disabled": 0}, "name")

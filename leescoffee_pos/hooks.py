@@ -45,12 +45,14 @@ app_license = "mit"
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 # POS Opening Entry: tự điền Cashier = người đăng nhập, khóa với người không phải quản lý (server vẫn chặn).
-# POS Invoice: nút "Xử lý đơn" cho quản lý (đơn cần xử lý) -> pos_api.resolve_open_order (2026-11-20).
+# POS Invoice: nút "Hủy đơn" (Draft) và "Xử lý đơn" (đã thu tiền, Chưa làm / Đã làm) cho quản lý (2026-11-23).
 doctype_js = {
 	"POS Opening Entry": "public/js/pos_opening_entry.js",
 	"POS Invoice": "public/js/pos_invoice.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+# Danh sách POS Invoice: 3 nút lọc nhanh cho quản lý (Nháp cần hủy / Chưa pha chế / Đơn còn dở) — 2026-11-23.
+doctype_list_js = {"POS Invoice": "public/js/pos_invoice_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -181,16 +183,12 @@ website_route_rules = [
 
 # Scheduled Tasks
 # ---------------
-# Tự hủy + ghi log đơn Draft quá hạn: QR quá hạn thanh toán + đệm webhook, Draft kênh khác quá 120 phút
-# (mốc ở doctype/mypos_order_cancel_log/order_cancel.py).
+# Tự hủy (chuyển Cancelled, lưu lý do) đơn Draft quá hạn: QR quá hạn thanh toán + đệm webhook, Draft kênh khác quá 120 phút
+# (mốc ở doctype/pos_invoice_hooks/order_cancel.py).
 scheduler_events = {
 	"cron": {
 		"*/5 * * * *": [
-			"leescoffee_pos.leescoffee_pos.doctype.mypos_order_cancel_log.order_cancel.auto_cancel_stale_drafts",
-		],
-		# Nhắc quản lý đơn "Cần xử lý" quá 24 giờ (mỗi đơn một lần / 24 giờ) — kitchen_status.remind_overdue_reviews.
-		"0 * * * *": [
-			"leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.kitchen_status.remind_overdue_reviews",
+			"leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.order_cancel.auto_cancel_stale_drafts",
 		],
 	},
 }
@@ -285,6 +283,8 @@ fixtures = [
 		],
 	},
     {"dt": "Custom Field", "filters": [["dt", "=", "POS Invoice Item"]]},
+	# Bộ lọc chuẩn POS Profile trên danh sách POS Invoice (field chuẩn -> Property Setter), CHỈ đúng 1 dòng (2026-11-23).
+	{"dt": "Property Setter", "filters": [["name", "in", ["POS Invoice-pos_profile-in_standard_filter"]]]},
 	# Chỉ Role; quyền (Custom DocPerm) đặt qua patches/v1_create_pos_roles.py, KHÔNG dùng fixture.
 	{"dt": "Role", "filters": [["name", "in", ["POS CASHIER", "POS KITCHEN", "POS MANAGER"]]]},
 ]

@@ -1,5 +1,5 @@
 def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None):
-	"""Chặn đóng ca khi còn Draft, tự hủy Draft quá hạn, lý do hủy + MYPOS Order Cancel Log, giao dịch mồ côi.
+	"""Chặn đóng ca khi còn Draft, tự hủy Draft quá hạn, hủy = Cancelled + lý do, tiền về sau khi hủy (2026-11-23).
 
 	Dán CẢ hàm vào `bench --site <site> console` MỚI (SAU khi migrate) rồi gọi, ví dụ:
 	    check_draft_cancel("POS TEST", "CH-CFLON", "Cash", price_list="<Price List của MYPOS Menu>")
@@ -8,6 +8,7 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 	Job tự hủy được kiểm bằng hàm chọn đơn của job (`_stale_drafts`) rồi chỉ hủy đơn thử (`_cancel_batch`) — không hủy Draft thật.
 	Đơn QR được giả lập: Draft tạo ở /pos rồi đổi order_channel = "QR" + payment_code. Webhook cần Branch có sepay_api_key
 	(không có -> SKIP mục webhook). Lùi `creation` bằng db.set_value.
+	Hủy đơn KHÔNG xóa: đơn chuyển docstatus 2 / "Cancelled", lý do ở custom_cancel_reason (tiền tố nguồn), Comment trên đơn.
 	Có commit (job hủy commit từng đơn) -> cuối hàm dọn mọi dữ liệu thử: commit trước mỗi lần xóa, thử lại 3 lần khi
 	QueryDeadlockError, Contact trước User; lỗi dọn chỉ in WARN + lệnh xóa tay; dòng KẾT QUẢ luôn được in.
 	Sau khi PASS: chạy lại check_shift_owner(...), run_order_qr_selftest(), run_order_history_selftest().
@@ -22,13 +23,12 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 	from werkzeug.wrappers import Request
 
 	from leescoffee_pos.leescoffee_pos.api import pos_api as P
-	from leescoffee_pos.leescoffee_pos.doctype.mypos_order_cancel_log import order_cancel as OC
+	from leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks import order_cancel as OC
 	from leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks import pos_shift_hooks as H
 	from leescoffee_pos.leescoffee_pos.doctype.sepay import sepay as S
 
 	PREFIX = "zz.test.draft"
 	PROFILE_PREFIX = "ZZTEST Draft "
-	LOG = "MYPOS Order Cancel Log"
 	ROLE_OF = {"A": "POS CASHIER", "M": "POS MANAGER"}
 	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	results, users, ctx = [], {}, {"profile": None}
@@ -86,13 +86,12 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 		try:
 			frappe.db.commit()
 			for prof in frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name"):
+				for inv in frappe.get_all("POS Invoice", filters={"pos_profile": prof}, pluck="name"):
+					for nl in frappe.get_all("Notification Log", filters={"document_type": "POS Invoice", "document_name": inv}, pluck="name"):
+						delete_fresh("Notification Log", nl, removed, failed)
 				for dt in ("POS Closing Entry", "POS Invoice", "POS Opening Entry"):
 					for n in frappe.get_all(dt, filters={"pos_profile": prof}, pluck="name"):
 						delete_fresh(dt, n, removed, failed, cancel=True)
-				for log in frappe.get_all(LOG, filters={"pos_profile": prof}, pluck="name"):
-					for nl in frappe.get_all("Notification Log", filters={"document_type": LOG, "document_name": log}, pluck="name"):
-						delete_fresh("Notification Log", nl, removed, failed)
-					delete_fresh(LOG, log, removed, failed)
 				delete_fresh("POS Profile", prof, removed, failed)
 			contacts = set(frappe.get_all("Contact", filters={"user": ["like", PREFIX + ".%"]}, pluck="name"))
 			contacts |= set(frappe.get_all("Contact", filters={"email_id": ["like", PREFIX + ".%"]}, pluck="name"))
@@ -141,10 +140,23 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 		closing = make_closing_entry_from_opening(frappe.get_doc("POS Opening Entry", ctx["shift"]))
 		return as_user(key, H._check_closing, closing)
 
-	def log_of(invoice):
-		rows = frappe.get_all(LOG, filters={"invoice_name": invoice},
-			fields=["name", "source", "reason", "note", "cancelled_by", "needs_review", "orphan_transaction_ref", "payment_code"])
-		return rows[0] if rows else None
+	def inv(name):
+		return frappe.db.get_value("POS Invoice", name, ["name", "docstatus", "status", "custom_cancel_reason", "payment_code",
+			"custom_late_payment", "custom_late_payment_ref", "sepay_payment_log"], as_dict=True)
+
+	def is_cancelled(name, prefix):
+		row = inv(name)
+		return bool(row and row.docstatus == 2 and row.status == "Cancelled" and (row.custom_cancel_reason or "").startswith(prefix))
+
+	def children_cancelled(name):
+		bad = []
+		for df in frappe.get_meta("POS Invoice").get_table_fields():
+			if frappe.db.exists(df.options, {"parent": name, "parenttype": "POS Invoice", "docstatus": ["!=", 2]}):
+				bad.append(df.options)
+		return not bad, bad
+
+	def comments(name):
+		return frappe.get_all("Comment", filters={"reference_doctype": "POS Invoice", "reference_name": name}, pluck="content")
 
 	def webhook(code, amount, tid):
 		env = EnvironBuilder(method="POST", path="/api/method/leescoffee_pos.leescoffee_pos.doctype.sepay.sepay.sepay_webhook",
@@ -224,10 +236,22 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 		_r, err = as_user("A", P.cancel_draft_order, d1, 0, "Khác", "")
 		blocked("3b 'Khác' thiếu ghi chú -> từ chối", err, "nhập ghi chú")
 		_r, err = as_user("A", P.cancel_draft_order, d1, 0, "Đặt nhầm")
-		lg = log_of(d1)
-		ok("3c Lý do hợp lệ -> hủy + log Thủ công / Đặt nhầm / người hủy A",
-			err is None and not frappe.db.exists("POS Invoice", d1) and lg and lg.source == "Thủ công"
-			and lg.reason == "Đặt nhầm" and lg.cancelled_by == users["A"], f"({err or lg})")
+		ok("3c Lý do hợp lệ -> đơn CÒN, Cancelled, lý do 'Thủ công: Đặt nhầm'",
+			err is None and is_cancelled(d1, "Thủ công: Đặt nhầm"), f"({err or inv(d1)})")
+		good, bad = children_cancelled(d1)
+		ok("3c2 Bảng con của đơn cũng docstatus 2", good, f"({bad})")
+		ok("3c3 Comment 'Hủy đơn' ghi người hủy A", any("Hủy đơn" in (c or "") and users["A"] in (c or "") for c in comments(d1)))
+		_r, err = as_user("A", P.cancel_draft_order, d1, 0, "Đặt nhầm")
+		blocked("3c4 Hủy lại đơn đã hủy -> từ chối", err, "đã thanh toán")
+		_r, err = as_user("A", P.pay_cash, d1)
+		blocked("3c5 Thu tiền đơn đã hủy -> từ chối", err, "không ở trạng thái draft")
+		d1b = draft()
+		_r, err = as_user("A", P.cancel_draft_order, d1b, 0, "Khác", "Khách gọi lại sau")
+		ok("3c6 'Khác' + ghi chú -> 'Thủ công: Khác — Khách gọi lại sau'",
+			err is None and is_cancelled(d1b, "Thủ công: Khác — Khách gọi lại sau"), f"({err or inv(d1b)})")
+		orders, _e = as_user("A", P.get_orders, "all", 200)
+		ok("3c7 Orders (ca hiện tại) không còn hiện đơn đã hủy",
+			orders is not None and not {o["name"] for o in orders} & {d1, d1b})
 		_r, err = check_closing("A")
 		passed("3d Hết Draft -> đóng ca không bị chặn", err)
 
@@ -264,14 +288,14 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 		stale_qr = set(OC._stale_drafts(True, OC.QR_PAY_WINDOW_MINUTES + OC.QR_CLEANUP_GRACE_MINUTES)) & mine
 		ok("6a Job chọn Draft POS 121 phút, bỏ 30 phút, bỏ đơn QR và đơn Paid", stale_pos == {pos121}, f"({stale_pos})")
 		ok("6b Job chọn QR 21 phút, bỏ QR 19 phút, bỏ Draft POS và đơn Paid", stale_qr == {q}, f"({stale_qr})")
-		OC._cancel_batch(sorted(stale_pos), OC.reason_pos_stale())
-		OC._cancel_batch(sorted(stale_qr), OC.REASON_QR_EXPIRED)
-		lp, lq = log_of(pos121), log_of(q)
-		ok("6c POS 121 phút đã hủy, log 'Tự hủy quá 2 giờ' / Tự động",
-			not frappe.db.exists("POS Invoice", pos121) and lp and lp.reason == "Tự hủy quá 2 giờ" and lp.source == "Tự động", f"({lp})")
-		ok("6d QR 21 phút đã hủy, log 'QR hết hạn không thanh toán', giữ payment_code",
-			not frappe.db.exists("POS Invoice", q) and lq and lq.reason == "QR hết hạn không thanh toán" and lq.payment_code == code_q,
-			f"({lq})")
+		OC._cancel_batch(sorted(stale_pos), OC.reason_pos_stale(), OC.source_auto_pos())
+		OC._cancel_batch(sorted(stale_qr), OC.REASON_QR_EXPIRED, OC.SOURCE_AUTO_QR)
+		ok("6c POS 121 phút -> Cancelled, lý do 'Tự động (quá 2 giờ): Tự hủy quá 2 giờ'",
+			is_cancelled(pos121, "Tự động (quá 2 giờ): Tự hủy quá 2 giờ"), f"({inv(pos121)})")
+		ok("6d QR 21 phút -> Cancelled, lý do 'Tự động (QR hết hạn): …', giữ payment_code",
+			is_cancelled(q, "Tự động (QR hết hạn): QR hết hạn không thanh toán") and inv(q).payment_code == code_q, f"({inv(q)})")
+		ok("6d2 Chạy job lần nữa -> không chọn lại đơn đã hủy",
+			not (set(OC._stale_drafts(True, 20)) | set(OC._stale_drafts(False, 120))) & {pos121, q})
 		ok("6e Đơn Paid không bị đụng", frappe.db.get_value("POS Invoice", p2, "docstatus") == 1)
 		cancel_paid(p2)
 
@@ -288,16 +312,24 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			cancel_paid(g)
 			tid = "ZZTEST-" + frappe.generate_hash(length=8)
 			res, err = webhook(code_q, 50000, tid)
-			lq = log_of(q)
-			ok("7b Webhook sau khi đơn đã hủy -> needs_review, log mồ côi",
-				err is None and res and res.get("needs_review") and lq.needs_review and tid in (lq.orphan_transaction_ref or ""),
-				f"({err or res})")
-			nl = frappe.get_all("Notification Log", filters={"document_type": LOG, "document_name": lq.name, "for_user": users["M"]})
-			ok("7c MANAGER nhận Notification Log", bool(nl))
+			r1 = inv(q)
+			ok("7b Webhook sau khi đơn đã hủy -> custom_late_payment = 1, mã giao dịch, đơn vẫn Cancelled",
+				err is None and res and res.get("needs_review") and r1.custom_late_payment and tid in (r1.custom_late_payment_ref or "")
+				and r1.docstatus == 2, f"({err or res})")
+			ok("7b2 Giao dịch lưu trong sepay_payment_log + Comment 'Tiền về sau khi hủy'",
+				tid in (r1.sepay_payment_log or "") and any("Tiền về sau khi hủy" in (c or "") for c in comments(q)))
+			nl = frappe.get_all("Notification Log", filters={"document_type": "POS Invoice", "document_name": q, "for_user": users["M"]})
+			ok("7c MANAGER của profile nhận Notification Log", bool(nl))
+			n_comments = len(comments(q))
 			_res, err = webhook(code_q, 50000, tid)
-			lq2 = log_of(q)
-			ok("7d Gọi lại cùng giao dịch -> không nhân đôi", err is None and lq2.orphan_transaction_ref == lq.orphan_transaction_ref,
-				f"({lq2.orphan_transaction_ref})")
+			r2 = inv(q)
+			ok("7d Gọi lại cùng giao dịch -> không nhân đôi (ref, log, comment)",
+				err is None and r2.custom_late_payment_ref == r1.custom_late_payment_ref
+				and r2.sepay_payment_log == r1.sepay_payment_log and len(comments(q)) == n_comments, f"({r2.custom_late_payment_ref})")
+			tid2 = "ZZTEST-" + frappe.generate_hash(length=8)
+			_res, err = webhook(code_q, 50000, tid2)
+			ok("7e Giao dịch thứ hai khác mã -> nối thêm mã", err is None and tid in (inv(q).custom_late_payment_ref or "")
+				and tid2 in (inv(q).custom_late_payment_ref or ""))
 
 		print("== 8. Thẻ rung được nhả khi hủy ==")
 		bz = [b for b in (as_user("A", P.get_buzzers)[0] or []) if b.get("available")]
@@ -310,27 +342,13 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			ok("8a Draft Dine In đang giữ thẻ", not held["available"] and held["used_by"] == dd)
 			as_user("A", P.cancel_draft_order, dd, 0, "Khách đổi ý")
 			free = [b for b in as_user("A", P.get_buzzers)[0] if b["name"] == bname][0]
-			ok("8b Hủy đơn -> thẻ trống lại; log ghi thẻ", free["available"] and (log_of(dd) or {}).get("name"))
+			ok("8b Hủy đơn -> thẻ trống lại; đơn còn (Cancelled) và giữ mã thẻ",
+				free["available"] and is_cancelled(dd, "Thủ công: Khách đổi ý") and frappe.db.get_value("POS Invoice", dd, "buzzer") == bname)
 
-		print("== 9. Đóng ca bắt buộc ==")
-		d2 = draft()
-		_r, err = as_user("A", P.force_close_shift, ctx["shift"], "Hết giờ")
-		blocked("9a CASHIER gọi đóng ca bắt buộc -> chặn", err, "chỉ quản lý")
-		_r, err = as_user("M", P.force_close_shift, ctx["shift"], "")
-		blocked("9b MANAGER thiếu lý do -> từ chối", err, "nhập lý do")
-		res, err = as_user("M", P.force_close_shift, ctx["shift"], "Hết giờ, khách bỏ đơn")
-		ld = log_of(d2)
-		ok("9c MANAGER có lý do -> đóng ca + hủy mọi Draft (log 'Đóng ca' / 'Hủy khi đóng ca' / ghi chú)",
-			err is None and res and res.get("closing_entry") and not OC.all_drafts(prof.name)
-			and ld and ld.source == "Đóng ca" and ld.reason == "Hủy khi đóng ca" and "Hết giờ" in (ld.note or ""),
-			f"({err or res})")
-		if res and res.get("closing_entry"):
-			ok("9d Phiếu đóng ca đã submit, ca Closed",
-				frappe.db.get_value("POS Closing Entry", res["closing_entry"], "docstatus") == 1
-				and frappe.db.get_value("POS Opening Entry", ctx["shift"], "status") == "Closed")
-			ok("9e Comment lý do trên phiếu đóng ca", any("Đóng ca bắt buộc" in (c or "") for c in frappe.get_all("Comment",
-				filters={"reference_doctype": "POS Closing Entry", "reference_name": res["closing_entry"]}, pluck="content")))
-		ok("9f QR 19 phút cũng bị hủy khi đóng bắt buộc", not frappe.db.exists("POS Invoice", q19) and log_of(q19))
+		print("== 9. Không còn đóng ca bắt buộc ==")
+		ok("9a pos_api không còn force_close_shift / resolve_open_orders",
+			not hasattr(P, "force_close_shift") and not hasattr(P, "resolve_open_orders"))
+		ok("9b DocType MYPOS Order Cancel Log đã xóa", not frappe.db.exists("DocType", "MYPOS Order Cancel Log"))
 	except Exception:
 		ok("Lỗi ngoài dự kiến", False)
 		traceback.print_exc()
@@ -343,8 +361,8 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			frappe.db.commit()
 			left = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name") \
 				+ frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name") \
-				+ (frappe.get_all(LOG, filters={"pos_profile": ctx["profile"]}, pluck="name") if ctx["profile"] else [])
-			ok("10 Dọn dữ liệu: không còn profile / user / log hủy thử trong DB", not left, f"({left})")
+				+ (frappe.get_all("POS Invoice", filters={"pos_profile": ctx["profile"]}, pluck="name") if ctx["profile"] else [])
+			ok("10 Dọn dữ liệu: không còn profile / user / đơn thử trong DB", not left, f"({left})")
 		except Exception:  # noqa: BLE001
 			ok("10 Dọn dữ liệu (lỗi khi dọn — xem WARN / traceback)", False)
 			traceback.print_exc()

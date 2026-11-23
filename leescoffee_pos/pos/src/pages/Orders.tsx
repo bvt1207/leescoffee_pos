@@ -20,7 +20,7 @@ const SHIFT_LIMIT = 200;
 const HISTORY_PAGE = 100;
 /** Chờ người dùng gõ xong ô tìm kiếm trước khi hỏi server (chế độ Lịch sử). */
 const SEARCH_DEBOUNCE_MS = 350;
-/** Lý do hủy đơn Draft — khớp order_cancel.MANUAL_REASONS ở backend. "Khác" bắt buộc ghi chú. */
+/** Lý do hủy đơn Draft — khớp order_cancel.MANUAL_REASONS ở backend (pos_invoice_hooks/order_cancel.py). "Khác" bắt buộc ghi chú. */
 const CANCEL_REASONS = ["Khách đổi ý", "Đặt nhầm", "Khách không lấy", "Khác"] as const;
 const REASON_OTHER = "Khác";
 /** Thẻ đơn hiện nhãn "Tự hủy sau …" khi còn ít hơn số phút này. */
@@ -579,7 +579,7 @@ export default function Orders() {
 						</div>
 						<div className="pos-confirm">
 							<p>
-								Đơn sẽ bị xóa hẳn và không khôi phục được (lý do được lưu vào nhật ký hủy).
+								Đơn sẽ bị hủy và lưu lại để đối soát.
 								{detail.order_type === "Dine In" ? " Thẻ rung sẽ được trả về." : ""}
 							</p>
 							<fieldset className="pos-reason">

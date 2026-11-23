@@ -143,9 +143,9 @@ export const api = {
 	createCustomer: (customer_name: string, mobile_no?: string) =>
 		call<CustomerOption>("create_customer", { customer_name, mobile_no }),
 	getStatusBoard: () => call<StatusBoardRow[]>("get_status_board"),
-	/** reason: một trong CANCEL_REASONS (Orders); "Khác" bắt buộc note. Server ghi MYPOS Order Cancel Log. */
+	/** reason: một trong CANCEL_REASONS (Orders); "Khác" bắt buộc note. Server chuyển đơn sang Cancelled, lưu lý do trên đơn. */
 	cancelDraftOrder: (invoice_name: string, force = 0, reason?: string, note?: string) =>
-	call<{ invoice_name: string; buzzer_number: string | null; log?: string; message: string }>(
+	call<{ invoice_name: string; buzzer_number: string | null; cancel_reason?: string; message: string }>(
 		"cancel_draft_order",
 		{ invoice_name, force, reason, note }
 	),

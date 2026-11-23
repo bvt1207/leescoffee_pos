@@ -1,0 +1,14 @@
+[
+  {
+    "doctype": "Property Setter",
+    "name": "POS Invoice-pos_profile-in_standard_filter",
+    "doc_type": "POS Invoice",
+    "doctype_or_field": "DocField",
+    "field_name": "pos_profile",
+    "property": "in_standard_filter",
+    "property_type": "Check",
+    "value": "1",
+    "is_system_generated": 0,
+    "module": "Leescoffee POS"
+  }
+]

@@ -28,15 +28,15 @@ from frappe import _
 from frappe.utils import add_to_date, cint, flt, get_datetime, now_datetime
 
 from ..doctype.branch_config.branch_config import get_brand_info
-from ..doctype.mypos_order_cancel_log.order_cancel import QR_PAY_WINDOW_MINUTES
+from ..doctype.pos_invoice_hooks.order_cancel import QR_PAY_WINDOW_MINUTES
 from . import pos_api as P
 
 CHANNEL_QR = "QR"
 DEFAULT_SESSION_TTL_SECONDS = 12 * 3600
 SESSION_TTL_SECONDS = DEFAULT_SESSION_TTL_SECONDS
 # Sau PAY_WINDOW_MINUTES: khách không thấy/không sinh QR nữa (đơn "Hết hạn"). Mốc khai ở MỘT nơi:
-# doctype/mypos_order_cancel_log/order_cancel.py (QR_PAY_WINDOW_MINUTES, QR_CLEANUP_GRACE_MINUTES).
-# Sau hạn + đệm, job order_cancel.auto_cancel_stale_drafts hủy đơn + ghi log (thay mốc xóa 60 phút cũ).
+# doctype/pos_invoice_hooks/order_cancel.py (QR_PAY_WINDOW_MINUTES, QR_CLEANUP_GRACE_MINUTES).
+# Sau hạn + đệm, job order_cancel.auto_cancel_stale_drafts chuyển đơn sang Cancelled (giữ đơn, lý do ở custom_cancel_reason).
 PAY_WINDOW_MINUTES = QR_PAY_WINDOW_MINUTES
 MAX_OPEN_DRAFTS = 2  # đơn chờ thanh toán còn hạn tối đa mỗi phiên
 MAX_LINES = 30
@@ -66,16 +66,17 @@ RATE_LIMITS = {
 QR_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 # --- Trạng thái đơn hiển thị cho khách (2026-11-20) -------------------------------------------------
 # custom_kitchen_status (nội bộ, kitchen_status.py) -> stage + stage_label (+ stage_message) cho khách.
-# Khách KHÔNG nhận: needs_review, lý do nội bộ, tên nhân viên, giá trị custom_kitchen_status thô.
+# Khách KHÔNG nhận: lý do nội bộ (kitchen_outcome_reason, custom_cancel_reason), tên nhân viên, giá trị custom_kitchen_status thô,
+# cờ tiền về sau hủy (custom_late_payment*).
 STAGE_LABELS = {
 	"awaiting_payment": "Chờ thanh toán",
 	"expired": "Hết hạn thanh toán",
+	"cancelled": "Đã hủy / hết hạn",  # chỉ là nhãn: đơn docstatus 2 trả stage "expired" (frontend đã xử lý stage này)
 	"queued": "Chưa làm",
 	"ready": "Đã làm",
 	"done": "Đã hoàn thành",
 	"closed": "Đã đóng đơn",  # Khách không nhận (trung tính)
 	"failed": "Không thực hiện được",
-	"review": "Đang chờ quầy xác nhận",  # Đã đóng ca chưa xử lý
 	"processing": "Đang xử lý",  # trạng thái lạ: nhãn an toàn
 }
 KITCHEN_STAGE = {
@@ -84,24 +85,20 @@ KITCHEN_STAGE = {
 	"Đã hoàn thành": "done",
 	"Khách không nhận": "closed",
 	"Không thực hiện được": "failed",
-	"Đã đóng ca chưa xử lý": "review",
 }
 STAGE_FALLBACK = "processing"
 # Thông điệp nổi bật ({invoice} = mã đơn khách đang thấy). Branch có brand_phone -> bản có liên hệ
 # ({shop} = brand_name, thiếu thì "quán"; {phone} = brand_phone); không có số -> bản cũ.
 STAGE_MESSAGES = {
 	"failed": "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: {invoice}",
-	"review": "Đơn đang được quầy xác nhận, vui lòng liên hệ nhân viên. Mã đơn: {invoice}",
 }
 STAGE_MESSAGES_WITH_PHONE = {
 	"failed": "Quán không thể thực hiện đơn này. Vui lòng liên hệ {shop} qua {phone} để được hỗ trợ/hoàn tiền. Mã đơn: {invoice}",
-	"review": "Đơn đang được quầy xác nhận. Vui lòng liên hệ {shop} qua {phone}. Mã đơn: {invoice}",
 }
 SHOP_FALLBACK = "quán"
-# Nhóm "Đang xử lý": đơn đang làm trong ACTIVE_PAID_HOURS giờ; đơn lỗi / chờ quầy xác nhận còn active
-# tới khi quầy giải quyết (quản lý bỏ cờ needs_review trên POS Invoice).
-STAGES_IN_PROGRESS = ("queued", "ready", "processing")
-STAGES_UNTIL_RESOLVED = ("failed", "review")
+# Nhóm "Đang xử lý": đơn đang làm / không thực hiện được trong ACTIVE_PAID_HOURS giờ (2026-11-23: bỏ cờ needs_review),
+# sau đó sang Lịch sử (thông điệp liên hệ quán vẫn hiện).
+STAGES_IN_PROGRESS = ("queued", "ready", "processing", "failed")
 
 MSG_QR_INVALID = "Mã QR không hợp lệ hoặc đã ngưng sử dụng. Vui lòng quét lại mã tại quán."
 MSG_SESSION = "Phiên đặt món đã hết hạn. Vui lòng quét lại mã QR và đăng nhập."
@@ -436,16 +433,18 @@ def _expires_in(creation):
 _ORDER_FIELDS = [
 	"name", "order_type", "docstatus", "status", "custom_kitchen_status", "payment_code",
 	"grand_total", "rounded_total", "currency", "creation", "order_note",
-	"needs_review",  # chỉ dùng chia nhóm ở server, không trả cho khách
 ]
 
 
 def _own_invoice(s, invoice_name):
-	"""Đơn thuộc phiên `s`; không thuộc hoặc không tồn tại -> cùng một lỗi (chống dò mã đơn)."""
+	"""Đơn thuộc phiên `s`; không thuộc hoặc không tồn tại -> cùng một lỗi (chống dò mã đơn).
+
+	Gồm cả đơn đã hủy (docstatus 2) để màn thanh toán đang poll thấy "Đã hủy / hết hạn" thay vì lỗi.
+	"""
 	row = frappe.db.get_value(
 		"POS Invoice",
 		{"name": str(invoice_name or ""), "guest_session": s.sid, "order_channel": CHANNEL_QR,
-			"docstatus": ["in", [0, 1]]},
+			"docstatus": ["in", [0, 1, 2]]},
 		_ORDER_FIELDS,
 		as_dict=True,
 	)
@@ -455,6 +454,8 @@ def _own_invoice(s, invoice_name):
 
 
 def _stage(row):
+	if row.docstatus == 2:
+		return "expired"  # đã hủy (tay / job hết hạn): khách thấy như hết hạn, không thanh toán được nữa
 	if row.docstatus == 0:
 		return "expired" if _expired(row.creation) else "awaiting_payment"
 	return KITCHEN_STAGE.get(row.custom_kitchen_status or "Chưa làm", STAGE_FALLBACK)
@@ -473,8 +474,6 @@ def _stage_message(stage, invoice, brand):
 def _is_active_paid(row, active_since):
 	"""Đơn đã thanh toán còn thuộc nhóm "Đang xử lý" của khách."""
 	stage = _stage(row)
-	if stage in STAGES_UNTIL_RESOLVED:
-		return bool(cint(row.get("needs_review")))
 	return stage in STAGES_IN_PROGRESS and get_datetime(row.creation) >= active_since
 
 
@@ -518,9 +517,9 @@ def _orders_payload(s, rows, groups=None):
 				"invoice_name": r.name,
 				"order_type": r.order_type,
 				"stage": stage,
-				"stage_label": _(STAGE_LABELS.get(stage) or STAGE_LABELS[STAGE_FALLBACK]),
+				"stage_label": _(STAGE_LABELS["cancelled"] if r.docstatus == 2 else (STAGE_LABELS.get(stage) or STAGE_LABELS[STAGE_FALLBACK])),
 				"stage_message": _stage_message(stage, r.name, brand),
-				# Không trả giá trị nội bộ (vd. "Đã đóng ca chưa xử lý"); khóa giữ để tương thích, luôn rỗng.
+				# Không trả giá trị nội bộ (trạng thái pha chế thô); khóa giữ để tương thích, luôn rỗng.
 				"kitchen_status": "",
 				"customer_name": s.display_name,
 				"amount": flt(r.rounded_total or r.grand_total),
@@ -703,6 +702,8 @@ def create_payment_qr(session_token, invoice_name):
 	s = _session(session_token)
 	_rate("qr_session", s.sid)
 	row = _own_invoice(s, invoice_name)
+	if row.docstatus == 2:
+		frappe.throw(_("Đơn đã hủy hoặc hết hạn. Vui lòng đặt lại."))
 	if row.docstatus != 0:
 		frappe.throw(_("Đơn đã được thanh toán."))
 	if _expired(row.creation):
@@ -794,11 +795,11 @@ def get_order(session_token, invoice_name):
 
 
 def cleanup_expired_qr_orders(older_than_minutes=None):
-	"""Hủy + ghi log đơn QR Draft chưa thanh toán quá QR_PAY_WINDOW_MINUTES + QR_CLEANUP_GRACE_MINUTES. Idempotent.
+	"""Hủy (chuyển Cancelled) đơn QR Draft chưa thanh toán quá QR_PAY_WINDOW_MINUTES + QR_CLEANUP_GRACE_MINUTES. Idempotent.
 
 	Giữ tên hàm để tương thích (self-test cũ). Job định kỳ gọi order_cancel.auto_cancel_stale_drafts (gồm cả phần này).
 	Chỉ: docstatus = 0, order_channel = QR, không phải trả hàng, payment_status khác "Đã thanh toán".
 	"""
-	from ..doctype.mypos_order_cancel_log.order_cancel import auto_cancel_qr_drafts
+	from ..doctype.pos_invoice_hooks.order_cancel import auto_cancel_qr_drafts
 
 	return auto_cancel_qr_drafts(None if older_than_minutes is None else cint(older_than_minutes))

@@ -127,7 +127,7 @@ export default function PaymentView({
 
 			{expired ? (
 				<div className="qo-pay__expired" role="status">
-					<strong>Đơn đã hết hạn thanh toán.</strong>
+					<strong>Đơn đã hủy hoặc hết hạn thanh toán.</strong>
 					<span>Nếu bạn đã chuyển khoản, vui lòng báo nhân viên tại quầy kèm mã đơn. Nếu chưa, hãy đặt lại.</span>
 					<button type="button" className="qo-btn qo-btn--primary" onClick={onBack}>
 						Đặt lại
