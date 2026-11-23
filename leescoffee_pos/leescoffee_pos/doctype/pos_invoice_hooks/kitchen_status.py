@@ -1,12 +1,12 @@
 """Trạng thái pha chế (POS Invoice.custom_kitchen_status) — MỘT nơi cho hằng, đơn dở của ca và kết thúc đơn.
 
-Dùng bởi: pos_api (set_kitchen_status, resolve_open_order, giữ thẻ rung), pos_invoice_hooks (nhả thẻ rung),
+Dùng bởi: pos_api (set_kitchen_status, resolve_open_order, giữ thẻ bàn), pos_invoice_hooks (nhả thẻ bàn),
 pos_shift_hooks (chặn đóng ca), customer_order_api (stage của khách QR), sepay (báo tiền về sau khi hủy).
 Quy tắc: .claude/rules/leescoffee_pos/pos_invoice_hooks.md.
 
 Vòng đời (2026-11-20): (trống) -> Chưa làm -> Đã làm -> Đã hoàn thành; hoặc kết thúc có lý do:
 "Khách không nhận", "Không thực hiện được" (thu ngân / quản lý xử lý từng đơn, lý do ở kitchen_outcome_reason).
-Trạng thái kết thúc = không còn giữ thẻ rung, không chặn đóng ca. 2026-11-23: bỏ cờ needs_review, "Đã đóng ca chưa xử lý",
+Trạng thái kết thúc = không còn giữ thẻ bàn, không chặn đóng ca. 2026-11-23: bỏ cờ needs_review, "Đã đóng ca chưa xử lý",
 hàng đợi "Cần xử lý" (patch v1_simplify_cancel_review dọn dữ liệu cũ).
 """
 
@@ -26,7 +26,7 @@ LEGACY_SHIFT_CLOSED = "Đã đóng ca chưa xử lý"
 KITCHEN_FLOW = [KS_TODO, KS_PREPARED, KS_COMPLETED]
 # Đơn đã thanh toán ở các trạng thái này chặn đóng ca ("đơn dở").
 KITCHEN_BLOCK_STATUSES = [KS_TODO, KS_PREPARED]
-# Trạng thái kết thúc: không giữ thẻ rung, không chặn đóng ca.
+# Trạng thái kết thúc: không giữ thẻ bàn, không chặn đóng ca.
 KITCHEN_TERMINAL_STATUSES = [KS_COMPLETED, OUTCOME_NOT_PICKED, OUTCOME_FAILED]
 # Kết quả thu ngân / quản lý được chọn khi xử lý đơn dở (resolve_open_order).
 RESOLVE_OUTCOMES = [KS_COMPLETED, OUTCOME_NOT_PICKED, OUTCOME_FAILED]
@@ -114,7 +114,7 @@ def open_orders_message(groups):
 def set_terminal(invoice, outcome, reason=None, note=None):
 	"""Đặt trạng thái kết thúc cho đơn đã thanh toán (doc POS Invoice): người/giờ kết thúc, lý do, comment.
 
-	save() -> hook on_update_after_submit nhả thẻ rung (trạng thái kết thúc). Không commit (giao dịch của người gọi).
+	save() -> hook on_update_after_submit nhả thẻ bàn (trạng thái kết thúc). Không commit (giao dịch của người gọi).
 	"""
 	if outcome not in KITCHEN_TERMINAL_STATUSES:
 		frappe.throw(_("Trạng thái kết thúc không hợp lệ: {0}.").format(outcome))

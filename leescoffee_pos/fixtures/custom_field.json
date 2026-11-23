@@ -132,7 +132,7 @@
     "name": "POS Invoice-buzzer",
     "dt": "POS Invoice",
     "fieldname": "buzzer",
-    "label": "Thẻ rung",
+    "label": "Thẻ bàn",
     "fieldtype": "Link",
     "options": "MYPOS Buzzer",
     "insert_after": "custom_kitchen_status",

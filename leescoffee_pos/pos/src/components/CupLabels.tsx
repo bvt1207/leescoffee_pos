@@ -58,7 +58,7 @@ export function buildCups(order: KitchenOrder, detail: OrderDetail | null): Cup[
 export default function CupLabels({ job }: { job: LabelJob | null }) {
 	if (!job) return null;
 	const { order, cups } = job;
-	const who = order.buzzer_number ? `Thẻ #${order.buzzer_number}` : order.customer_name;
+	const who = order.buzzer_number ? `Bàn #${order.buzzer_number}` : order.customer_name;
 
 	return createPortal(
 		<div className="pos-print-only">

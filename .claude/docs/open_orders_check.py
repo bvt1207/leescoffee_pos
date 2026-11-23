@@ -252,11 +252,11 @@ def check_open_orders(pos_profile, item_code, mode_of_payment, price_list=None):
 			not hasattr(KS, "review_orders") and not hasattr(KS, "NEEDS_REVIEW_STATUSES")
 			and "Đã đóng ca chưa xử lý" not in KS.KITCHEN_TERMINAL_STATUSES)
 
-		print("== 5. Thẻ rung nhả khi kết thúc ==")
+		print("== 5. Thẻ bàn nhả khi kết thúc ==")
 		bz = [b for b in (as_user("A", P.get_buzzers)[0] or []) if b.get("available")]
 		pd = None
 		if not bz:
-			print("SKIP 5: chi nhánh không có thẻ rung đang trống")
+			print("SKIP 5: chi nhánh không có thẻ bàn đang trống")
 		else:
 			bname = bz[0]["name"]
 			pd = paid("Dine In", buzzer=bname)

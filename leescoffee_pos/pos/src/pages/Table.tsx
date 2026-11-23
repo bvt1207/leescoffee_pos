@@ -1,6 +1,6 @@
 // Trang quản lý bàn — hoãn sang giai đoạn sau.
 // Xem CLAUDE.md mục 3 (mô hình nghiệp vụ): giai đoạn hiện tại chỉ có
-// Take Away quầy + Dine In quầy (thẻ rung), chưa dùng entity "bàn".
+// Take Away quầy + Dine In quầy (thẻ bàn), chưa dùng entity "bàn".
 export default function Table() {
 	return (
 		<div className="pos-page">

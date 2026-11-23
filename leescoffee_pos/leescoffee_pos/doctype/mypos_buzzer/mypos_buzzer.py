@@ -4,7 +4,9 @@ from frappe.model.document import Document
 
 
 class MYPOSBuzzer(Document):
-	"""Thẻ rung vật lý cho khách Dine In tại quầy.
+	"""Thẻ bàn (đổi từ thẻ rung 2026-11-23; tên kỹ thuật giữ MYPOS Buzzer) cho khách Dine In tại quầy.
+
+	Trạng thái "đang dùng" thật tính theo đơn còn giữ (pos_api._held_buzzers); field status chỉ để hiện trên Desk.
 
 	Mỗi thẻ có một số duy nhất trong 1 chi nhánh (branch).
 	Trạng thái: Sẵn sàng / Đang dùng (khi đã được gán cho đơn POS Invoice hiện tại).
@@ -26,7 +28,7 @@ class MYPOSBuzzer(Document):
 		)
 		if existing:
 			frappe.throw(
-				_("Buzzer số {0} đã tồn tại trong chi nhánh {1}."),
+				_("Thẻ bàn số {0} đã tồn tại trong chi nhánh {1}."),
 				params=[self.buzzer_number, self.branch],
 			)
 
@@ -45,7 +47,7 @@ class MYPOSBuzzer(Document):
 		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
 		if buzzer.status != "Sẵn sàng":
 			frappe.throw(
-				_("Buzzer {0} không ở trạng thái Sẵn sàng.").format(buzzer_name)
+				_("Thẻ bàn {0} không ở trạng thái Sẵn sàng.").format(buzzer_name)
 			)
 		buzzer.status = "Đang dùng"
 		buzzer.save(ignore_permissions=True)

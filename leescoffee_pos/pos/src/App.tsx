@@ -1,6 +1,9 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppHeader from "./components/AppHeader";
 import { navOf, usePos } from "./lib/pos-context";
+import { useServeQueuePoller } from "./lib/serve";
+import { useServeQueue } from "./store/serveQueue";
 import type { NavKey } from "./types";
 
 // Đường dẫn (trong basename /pos) -> mục điều hướng cần quyền.
@@ -26,6 +29,26 @@ export default function App() {
 	// Route guard (chỉ để gọn UI — backend vẫn chặn thật): mục không được phép -> mục đầu tiên được phép.
 	const redirect = !loading && config && need && !nav.includes(need) && nav.length ? NAV_PATH[nav[0]] : null;
 	const noRole = !loading && !!config && nav.length === 0;
+
+	// Hàng chờ phục vụ (2026-11-23): chỉ máy có quyền Orders (CASHIER / MANAGER) poll; KITCHEN không thêm request.
+	useServeQueuePoller(!loading && !!config && nav.includes("orders"));
+	const toast = useServeQueue((s) => s.toast);
+	const setToast = useServeQueue((s) => s.setToast);
+	const setFocusServe = useServeQueue((s) => s.setFocusServe);
+	const navigate = useNavigate();
+
+	// Toast tự tắt sau 8 giây; thông báo bền là chấm đỏ ở "Đơn hàng" + tab "Chờ phục vụ".
+	useEffect(() => {
+		if (!toast) return;
+		const t = window.setTimeout(() => setToast(null), 8000);
+		return () => window.clearTimeout(t);
+	}, [toast, setToast]);
+
+	const openServe = () => {
+		setToast(null);
+		setFocusServe(true);
+		navigate("/orders");
+	};
 
 	return (
 		<div className="pos-app">
@@ -53,6 +76,13 @@ export default function App() {
 					<Outlet />
 				)}
 			</main>
+
+			{toast ? (
+				<button type="button" className="pos-toast pos-toast--serve" role="status" onClick={openServe}>
+					{toast}
+					<span className="pos-toast__hint">Bấm để xem</span>
+				</button>
+			) : null}
 		</div>
 	);
 }

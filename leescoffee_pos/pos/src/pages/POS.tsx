@@ -153,7 +153,7 @@ export default function POS() {
 			return;
 		}
 		if (needBuzzer) {
-			setFormError("Chọn thẻ rung cho đơn tại quán.");
+			setFormError("Chọn thẻ bàn cho đơn tại quán.");
 			return;
 		}
 		if (missingLine) {
@@ -222,7 +222,7 @@ export default function POS() {
 							className="pos-buzzer-chosen"
 							onClick={() => setPickerOpen(true)}
 						>
-							{buzzer ? `Thẻ rung #${buzzer.buzzer_number} · Đổi thẻ` : "Chọn thẻ rung"}
+							{buzzer ? `Thẻ bàn #${buzzer.buzzer_number} · Đổi thẻ` : "Chọn thẻ bàn"}
 						</button>
 					) : null}
 
@@ -249,7 +249,7 @@ export default function POS() {
 						</div>
 					) : null}
 					{needBuzzer && lines.length > 0 ? (
-						<div className="pos-alert pos-alert--error">Chọn thẻ rung cho đơn tại quán.</div>
+						<div className="pos-alert pos-alert--error">Chọn thẻ bàn cho đơn tại quán.</div>
 					) : null}
 					{!loading && !priceList ? (
 						<div className="pos-alert pos-alert--error">

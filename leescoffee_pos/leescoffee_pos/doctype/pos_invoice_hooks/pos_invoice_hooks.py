@@ -13,7 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-# Trạng thái kết thúc (Đã hoàn thành + kết thúc có lý do) không giữ thẻ rung — kitchen_status.py.
+# Trạng thái kết thúc (Đã hoàn thành + kết thúc có lý do) không giữ thẻ bàn — kitchen_status.py.
 from .kitchen_status import KITCHEN_TERMINAL_STATUSES, is_terminal
 
 
@@ -58,7 +58,7 @@ class PosInvoiceHooks:
                 pass
             else:
                 frappe.throw(
-                    _("Buzzer {0} không ở trạng thái Sẵn sàng.").format(
+                    _("Thẻ bàn {0} không ở trạng thái Sẵn sàng.").format(
                         doc.buzzer
                     )
                 )
@@ -162,7 +162,7 @@ class PosInvoiceHooks:
             buzzer.save(ignore_permissions=True)
 
             frappe.msgprint(
-                _("Buzzer {0} đã trở về trạng thái Sẵn sàng.").format(
+                _("Thẻ bàn {0} đã trở về trạng thái Sẵn sàng.").format(
                     doc.buzzer
                 )
             )

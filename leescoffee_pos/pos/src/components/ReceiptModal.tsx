@@ -187,10 +187,10 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 							</div>
 						) : order.order_type === "Dine In" ? (
 							isKitchen ? (
-								<div className="pos-receipt__buzzer">Thẻ #{order.buzzer_number || "—"}</div>
+								<div className="pos-receipt__buzzer">Bàn #{order.buzzer_number || "—"}</div>
 							) : (
 								<div className="pos-receipt__row">
-									<span>Thẻ rung</span>
+									<span>Thẻ bàn</span>
 									<strong>#{order.buzzer_number || "—"}</strong>
 								</div>
 							)

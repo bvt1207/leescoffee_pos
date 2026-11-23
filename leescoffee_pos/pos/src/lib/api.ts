@@ -14,6 +14,7 @@ import type {
 	BuzzerOption,
 	LoyaltyInfo,
 	PricingPreview,
+	ServeQueueItem,
 } from "../types";
 
 const API_BASE =
@@ -150,6 +151,8 @@ export const api = {
 		{ invoice_name, force, reason, note }
 	),
 	getKitchenOrders: () => call<KitchenOrder[]>("get_kitchen_orders"),
+	/** Hàng chờ phục vụ của thu ngân (đơn "Đã làm" tại quầy, đúng POS Profile). KITCHEN bị chặn ở server. */
+	getServeQueue: () => call<ServeQueueItem[]>("get_serve_queue"),
 	setKitchenStatus: (invoice_name: string, status: KitchenStep) =>
 		call<{ invoice_name: string; kitchen_status: string }>("set_kitchen_status", { invoice_name, status }),
 };

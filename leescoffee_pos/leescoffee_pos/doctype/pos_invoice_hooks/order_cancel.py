@@ -10,7 +10,7 @@ Quy tắc (Van chốt 2026-11-20, đổi cách hủy 2026-11-23):
   QR còn trong hạn chặn đóng ca, quá hạn thì không.
 - Draft kênh khác QR: chặn đóng ca khi còn tồn; job tự hủy sau POS_DRAFT_AUTO_CANCEL_MINUTES.
 - Frappe không cho save() đổi docstatus 0 -> 2 nên ghi bằng frappe.db.set_value (cả bảng con). Hook on_cancel không chạy:
-  Draft chưa có GL / tồn kho / điểm, thẻ rung chưa đổi trạng thái (chỉ on_submit đổi) — "đang giữ" chỉ tính docstatus 0/1.
+  Draft chưa có GL / tồn kho / điểm, thẻ bàn chưa đổi trạng thái (chỉ on_submit đổi) — "đang giữ" chỉ tính docstatus 0/1.
 """
 
 import frappe

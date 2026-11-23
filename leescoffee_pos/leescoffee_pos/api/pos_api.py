@@ -371,27 +371,40 @@ def _ensure_opening_entry(profile):
 
 
 def _assign_buzzer(profile, buzzer=None):
-	"""Gán thẻ rung cho đơn Dine In. Thẻ do cashier chọn, được kiểm tra lại."""
+	"""Gán thẻ bàn (kỹ thuật: MYPOS Buzzer) cho đơn Dine In. Thẻ do cashier chọn, được kiểm tra lại.
+
+	2026-11-23: "đang dùng" tính theo ĐƠN CÒN GIỮ (Draft / đã thanh toán, pha chế chưa kết thúc) — không đọc field
+	status của thẻ, để thẻ kẹt "Đang dùng" (dữ liệu cũ, sửa tay) không bị khóa mãi.
+	"""
 	branch = getattr(profile, "branch", None)
 	if not branch:
-		frappe.throw(_("POS Profile {0} chưa được gán chi nhánh nên chưa thể gán thẻ rung.").format(profile.name))
+		frappe.throw(_("POS Profile {0} chưa được gán chi nhánh nên chưa thể gán thẻ bàn.").format(profile.name))
 	if not buzzer:
-		frappe.throw(_("Đơn tại quán cần chọn thẻ rung."))
+		frappe.throw(_("Đơn tại quán cần chọn thẻ bàn."))
 
-	data = frappe.db.get_value("MYPOS Buzzer", buzzer, ["branch", "status", "buzzer_number"], as_dict=True)
+	data = frappe.db.get_value("MYPOS Buzzer", buzzer, ["branch", "buzzer_number"], as_dict=True)
 	if not data or data.branch != branch:
-		frappe.throw(_("Thẻ rung {0} không thuộc chi nhánh {1}.").format(buzzer, branch))
-	if data.status != "Sẵn sàng":
-		frappe.throw(_("Thẻ rung số {0} đang được sử dụng.").format(data.buzzer_number))
+		frappe.throw(_("Thẻ bàn {0} không thuộc chi nhánh {1}.").format(buzzer, branch))
 
-	for other in frappe.get_all(
-		"POS Invoice",
-		filters={"buzzer": buzzer, "order_type": "Dine In", "docstatus": ["in", [0, 1]]},
-		fields=["name", "custom_kitchen_status"],
-	):
-		if (other.custom_kitchen_status or "") not in KITCHEN_TERMINAL_STATUSES:
-			frappe.throw(_("Thẻ rung số {0} đang giữ cho đơn {1}.").format(data.buzzer_number, other.name))
+	holder = _held_buzzers([buzzer]).get(buzzer)
+	if holder:
+		frappe.throw(_("Thẻ bàn số {0} đang giữ cho đơn {1}.").format(data.buzzer_number, holder))
 	return buzzer
+
+
+def _held_buzzers(buzzers=None):
+	"""{thẻ: đơn đang giữ}. Giữ = đơn Dine In docstatus 0/1 có thẻ, pha chế chưa kết thúc (đơn Cancelled = docstatus 2 không giữ).
+
+	Nguồn sự thật duy nhất cho "thẻ đang dùng" (get_buzzers, _assign_buzzer)."""
+	filters = {"order_type": "Dine In", "docstatus": ["in", [0, 1]], "buzzer": ["is", "set"]}
+	if buzzers is not None:
+		filters["buzzer"] = ["in", list(buzzers)]
+	held = {}
+	for r in frappe.get_all("POS Invoice", filters=filters, fields=["name", "buzzer", "custom_kitchen_status"],
+			order_by="creation asc"):
+		if (r.custom_kitchen_status or "") not in KITCHEN_TERMINAL_STATUSES:
+			held.setdefault(r.buzzer, r.name)
+	return held
 
 
 def _buzzer_number(buzzer_name):
@@ -588,7 +601,9 @@ def get_menu_items(price_list=None):
 
 @frappe.whitelist()
 def get_buzzers(branch_name=None):
-	"""Danh sách thẻ rung kèm trạng thái thực tế cho popup chọn thẻ."""
+	"""Danh sách thẻ bàn kèm trạng thái thực tế cho popup chọn thẻ.
+
+	status trả về tính theo đơn còn giữ ("Đang dùng" / "Sẵn sàng"), không theo field status lưu trên thẻ."""
 	profile = _get_pos_profile(branch_name)
 	branch = getattr(profile, "branch", None) or branch_name
 
@@ -599,20 +614,13 @@ def get_buzzers(branch_name=None):
 		order_by="buzzer_number asc",
 	)
 
-	# Thẻ đang bị đơn chưa hoàn thành giữ (Draft hoặc đã thanh toán, bếp chưa xong).
-	held = {}
-	rows = frappe.get_all(
-		"POS Invoice",
-		filters={"order_type": "Dine In", "docstatus": ["in", [0, 1]], "buzzer": ["is", "set"]},
-		fields=["name", "buzzer", "custom_kitchen_status"],
-	)
-	for r in rows:
-		if (r.custom_kitchen_status or "") not in KITCHEN_TERMINAL_STATUSES:
-			held[r.buzzer] = r.name
+	# Thẻ đang bị đơn chưa kết thúc giữ (Draft hoặc đã thanh toán, pha chế chưa xong).
+	held = _held_buzzers([b.name for b in buzzers]) if buzzers else {}
 
 	for b in buzzers:
 		b["used_by"] = held.get(b.name)
-		b["available"] = b.status == "Sẵn sàng" and b.name not in held
+		b["available"] = b.name not in held
+		b["status"] = "Đang dùng" if b["used_by"] else "Sẵn sàng"
 	return buzzers
 
 @frappe.whitelist()
@@ -1277,7 +1285,7 @@ def get_orders_summary(scope="shift", from_date=None, to_date=None, search=None)
 
 @frappe.whitelist()
 def get_order_detail(invoice_name):
-	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ rung, CTKM)."""
+	"""Chi tiết một đơn (món, tổng tiền, thanh toán, trạng thái bếp, thẻ bàn, CTKM)."""
 	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 	from ..doctype.mypos_option_group.option_resolver import read_line_options
@@ -1384,7 +1392,7 @@ def cancel_draft_order(invoice_name, force=0, reason=None, note=None):
 	- Chỉ cho docstatus = 0. Đơn đã thanh toán không hủy được tại POS.
 	- Đơn đã sinh QR (đang chờ chuyển khoản) cần force=1 để tránh hủy nhầm
 	  đơn khách đã chuyển tiền.
-	- Thẻ rung tự được nhả vì _assign_buzzer / get_buzzers chỉ xét đơn docstatus 0/1.
+	- Thẻ bàn tự được nhả vì _assign_buzzer / get_buzzers chỉ xét đơn docstatus 0/1.
 	- reason: phải thuộc order_cancel.MANUAL_REASONS, "Khác" bắt buộc note.
 	  reason=None (giao diện cũ chưa gửi) -> vẫn hủy, lý do REASON_LEGACY.
 	"""
@@ -1433,7 +1441,7 @@ def generate_qr(invoice_name):
 
 @frappe.whitelist()
 def confirm_pickup(invoice_name):
-	"""Nhân viên xác nhận khách đã lấy món → trả thẻ rung về kho."""
+	"""Dự phòng: trả thẻ bàn về Sẵn sàng khi đơn đã kết thúc (frontend không còn nút; _resolve_consolidated vẫn dùng hook)."""
 	from ..doctype.pos_invoice_hooks.pos_invoice_hooks import PosInvoiceHooks
 
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
@@ -1445,6 +1453,78 @@ def confirm_pickup(invoice_name):
 		"buzzer_number": _buzzer_number(invoice.buzzer),
 		"message": _("Đã xác nhận khách lấy món."),
 	}
+
+
+SERVE_QUEUE_LIMIT = 50
+SERVE_PREVIEW_ITEMS = 2
+
+
+@frappe.whitelist()
+def get_serve_queue():
+	"""Hàng chờ phục vụ cho thu ngân (2026-11-23): đơn tại quầy (kênh khác QR) đã thanh toán, pha chế "Đã làm",
+	của POS Profile hiện tại — đơn cũ nhất trước.
+
+	Dine In: phục vụ mang tới thẻ bàn; Take Away: gọi khách lấy. Đơn QR không vào (khách tự tới quầy, luồng QR không đổi).
+	Chặn KITCHEN (_require_sale_role). Không gửi chéo chi nhánh: lọc theo resolve_pos_profile_name() của người gọi.
+	Mỗi đơn: name, order_type, buzzer_number, customer_name ("" nếu Walk-in), item_count, items_preview,
+	done_at, waiting_seconds (tính ở server, không phụ thuộc đồng hồ máy quầy).
+	"""
+	from frappe.utils import get_datetime, time_diff_in_seconds
+
+	from ..doctype.pos_invoice_hooks.kitchen_status import KS_PREPARED
+
+	_require_sale_role()
+	profile_name = resolve_pos_profile_name()
+	rows = frappe.get_all(
+		"POS Invoice",
+		filters={
+			"pos_profile": profile_name,
+			"docstatus": 1,
+			"status": "Paid",
+			"is_return": 0,
+			"custom_kitchen_status": KS_PREPARED,
+			"order_channel": ["!=", "QR"],
+		},
+		fields=["name", "order_type", "customer", "customer_name", "buzzer", "kitchen_done_at", "creation"],
+		order_by="creation asc",
+		limit=SERVE_QUEUE_LIMIT,
+	)
+	if not rows:
+		return []
+
+	names = [r.name for r in rows]
+	items = {}
+	for it in frappe.get_all(
+		"POS Invoice Item",
+		filters={"parent": ["in", names], "parenttype": "POS Invoice"},
+		fields=["parent", "item_name", "qty"],
+		order_by="parent asc, idx asc",
+	):
+		items.setdefault(it.parent, []).append(it)
+
+	buzzers = {r.buzzer for r in rows if r.buzzer}
+	numbers = dict(frappe.get_all("MYPOS Buzzer", filters={"name": ["in", list(buzzers)]},
+		fields=["name", "buzzer_number"], as_list=True)) if buzzers else {}
+
+	now = now_datetime()
+	result = []
+	for r in rows:
+		lines = items.get(r.name, [])
+		done_at = r.kitchen_done_at or r.creation
+		result.append({
+			"name": r.name,
+			"order_type": r.order_type,
+			"buzzer_number": numbers.get(r.buzzer) if r.buzzer else None,
+			"customer_name": "" if r.customer == WALK_IN else (r.customer_name or r.customer or ""),
+			"item_count": int(sum(flt(x.qty) for x in lines)),
+			"items_preview": [f"{x.item_name} x{int(flt(x.qty))}" for x in lines[:SERVE_PREVIEW_ITEMS]],
+			"more_lines": max(len(lines) - SERVE_PREVIEW_ITEMS, 0),
+			"done_at": str(done_at) if done_at else None,
+			"waiting_seconds": max(int(time_diff_in_seconds(now, get_datetime(done_at))), 0) if done_at else 0,
+		})
+	# Cũ nhất (theo giờ "Đã làm") trước.
+	result.sort(key=lambda o: -o["waiting_seconds"])
+	return result
 
 
 @frappe.whitelist()
@@ -1570,13 +1650,13 @@ def set_kitchen_status(invoice_name, status):
 	elif status == KITCHEN_FLOW[-1]:
 		invoice.kitchen_completed_by = frappe.session.user
 		invoice.kitchen_completed_at = now_datetime()
-	invoice.save(ignore_permissions=True)  # hook on_update_after_submit tự nhả thẻ rung
+	invoice.save(ignore_permissions=True)  # hook on_update_after_submit tự nhả thẻ bàn
 	return {"invoice_name": invoice.name, "kitchen_status": status}
 
 
 def _resolve_consolidated(invoice, outcome, text):
 	"""Đơn đã gộp khi đóng ca (Consolidated) mà còn Chưa làm / Đã làm (dữ liệu cũ): quản lý kết thúc bằng db_set —
-	không save() lại hóa đơn đã gộp. Thẻ rung: nhả nếu không còn đơn khác giữ."""
+	không save() lại hóa đơn đã gộp. Thẻ bàn: nhả nếu không còn đơn khác giữ."""
 	from ..doctype.pos_invoice_hooks import kitchen_status as KS
 
 	if not _pos_roles()["manager"]:
@@ -1638,7 +1718,7 @@ def _resolve_open_order(invoice_name, outcome, reason=None, note=None):
 def resolve_open_order(invoice_name, outcome, reason=None, note=None):
 	"""Thu ngân / quản lý kết thúc một đơn dở: "Đã hoàn thành", "Khách không nhận", "Không thực hiện được".
 
-	Lý do bắt buộc trừ "Đã hoàn thành" từ "Đã làm". Ghi người/giờ, lý do (kitchen_outcome_reason), comment; nhả thẻ rung.
+	Lý do bắt buộc trừ "Đã hoàn thành" từ "Đã làm". Ghi người/giờ, lý do (kitchen_outcome_reason), comment; nhả thẻ bàn.
 	Dùng bởi nút "Xử lý đơn" trên form POS Invoice (Desk, quản lý).
 	"""
 	_require_sale_role()

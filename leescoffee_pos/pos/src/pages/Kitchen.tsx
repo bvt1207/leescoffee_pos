@@ -8,6 +8,8 @@ import { api } from "../lib/api";
 import { optionParts } from "../lib/options";
 import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context";
 import { cssVar, printWithPage } from "../lib/print";
+import { refreshServeQueue } from "../lib/serve";
+import { shortOrderNo } from "../lib/format";
 import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
 type Step = KitchenStep;
@@ -111,12 +113,18 @@ export default function Kitchen() {
 		setBusy(o.name);
 		try {
 			await api.setKitchenStatus(o.name, step.to);
-			// Thông báo khi chuyển Chưa làm -> Đã làm
+			// Chưa làm -> Đã làm: thu ngân nhận thông báo (hàng chờ phục vụ, poll ở máy quầy). Màn này chỉ xác nhận đã báo.
+			// Đơn QR: khách tự nhận thông báo trên điện thoại và tới quầy (luồng QR không đổi).
 			if (step.to === "Đã làm") {
 				setToast(
-					`Mời khách ${o.customer_name} đến quầy nhận món` +
-						(o.buzzer_number ? ` (thẻ #${o.buzzer_number})` : "")
+					o.order_channel === "QR"
+						? `Đã báo khách ${o.customer_name} (đặt QR) tới quầy nhận món`
+						: o.order_type === "Dine In" && o.buzzer_number
+							? `Đã báo quầy phục vụ: Bàn ${o.buzzer_number}`
+							: `Đã báo quầy gọi khách ${shortOrderNo(o.name)}`
 				);
+				// Cùng máy có quyền Orders (MANAGER) -> cập nhật chấm đỏ ngay; KITCHEN: store tắt, không gọi API.
+				void refreshServeQueue().catch(() => undefined);
 			}
 			await load();
 		} catch (err) {
@@ -228,7 +236,7 @@ export default function Kitchen() {
 									<div className="pos-kcard__tags">
 										<OrderTypeChip type={o.order_type} />
 										<ChannelChip channel={o.order_channel} />
-										{o.buzzer_number ? <span className="pos-tag">Thẻ #{o.buzzer_number}</span> : null}
+										{o.buzzer_number ? <span className="pos-tag">Bàn #{o.buzzer_number}</span> : null}
 									</div>
 								</header>
 

@@ -44,7 +44,7 @@ export default function BuzzerPicker({ open, selected, onClose, onPick }: Props)
 		<div className="pos-modal-backdrop" onClick={onClose}>
 			<div className="pos-modal pos-modal--buzzer" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
 				<div className="pos-modal__header">
-					<h3>Chọn thẻ rung</h3>
+					<h3>Chọn thẻ bàn</h3>
 					<button type="button" className="pos-modal__close" aria-label="Đóng" onClick={onClose}>×</button>
 				</div>
 				<div className="pos-buzzer-body">
@@ -70,7 +70,7 @@ export default function BuzzerPicker({ open, selected, onClose, onPick }: Props)
 							))}
 						</div>
 					) : (
-						<div className="pos-empty">Chưa có thẻ rung nào.</div>
+						<div className="pos-empty">Chưa có thẻ bàn nào. Quản lý thêm thẻ trên Desk (Thẻ bàn).</div>
 					)}
 				</div>
 			</div>

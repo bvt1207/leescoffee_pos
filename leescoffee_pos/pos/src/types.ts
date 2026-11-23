@@ -326,6 +326,24 @@ export interface KitchenOrder {
 	creation: string;
 	items: KitchenItem[];
 }
+/** Đơn chờ phục vụ (get_serve_queue): tại quầy, đã thanh toán, pha chế "Đã làm". Dine In = mang tới thẻ bàn. */
+export interface ServeQueueItem {
+	name: string;
+	order_type: OrderType;
+	/** Số thẻ bàn (Dine In); Take Away = null. */
+	buzzer_number: string | null;
+	/** "" khi khách lẻ (Walk-in) — hiện mã ngắn của đơn. */
+	customer_name: string;
+	item_count: number;
+	/** 2 món đầu, dạng "Tên xN". */
+	items_preview: string[];
+	/** Số dòng món còn lại ngoài items_preview. */
+	more_lines: number;
+	done_at: string | null;
+	/** Số giây từ lúc "Đã làm" tới lúc server trả (không dựa vào đồng hồ máy quầy). */
+	waiting_seconds: number;
+}
+/** Thẻ bàn (tên kỹ thuật buzzer, DocType MYPOS Buzzer). status/available tính theo đơn còn giữ. */
 export interface BuzzerOption {
 	name: string;
 	buzzer_number: string;

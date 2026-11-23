@@ -331,10 +331,10 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			ok("7e Giao dịch thứ hai khác mã -> nối thêm mã", err is None and tid in (inv(q).custom_late_payment_ref or "")
 				and tid2 in (inv(q).custom_late_payment_ref or ""))
 
-		print("== 8. Thẻ rung được nhả khi hủy ==")
+		print("== 8. Thẻ bàn được nhả khi hủy ==")
 		bz = [b for b in (as_user("A", P.get_buzzers)[0] or []) if b.get("available")]
 		if not bz:
-			print("SKIP 8: chi nhánh không có thẻ rung đang trống")
+			print("SKIP 8: chi nhánh không có thẻ bàn đang trống")
 		else:
 			bname = bz[0]["name"]
 			dd = draft("Dine In", buzzer=bname)

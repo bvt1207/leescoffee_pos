@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { navOf, usePos } from "../lib/pos-context";
 import { useSearch } from "../store/search";
+import { useServeQueue } from "../store/serveQueue";
 
 export default function AppHeader() {
 	const search = useSearch((s) => s.search);
@@ -14,6 +15,8 @@ export default function AppHeader() {
 	const initial = (displayName || "?").trim().slice(0, 1).toUpperCase();
 
 	const nav = navOf(config);
+	// Số đơn chờ phục vụ (chỉ có dữ liệu khi máy có quyền Orders, xem App.tsx).
+	const serveCount = useServeQueue((s) => s.items.length);
 	const isKitchen = pathname.startsWith("/kitchen");
 	const placeholder = pathname.startsWith("/orders") ? "Tìm đơn…" : "Tìm món…";
 
@@ -88,7 +91,14 @@ export default function AppHeader() {
 			<div className="pos-header__right">
 				<nav className="pos-header__nav">
 					{nav.includes("sell") ? <NavLink to="/" end className="pos-navlink">Bán món</NavLink> : null}
-					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink> : null}
+					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">
+							Đơn hàng
+							{serveCount > 0 ? (
+								<span className="pos-navlink__badge" aria-label={`${serveCount} đơn chờ phục vụ`}>
+									{serveCount}
+								</span>
+							) : null}
+						</NavLink> : null}
 					{nav.includes("kitchen") ? <NavLink to="/kitchen" className="pos-navlink">Pha chế</NavLink> : null}
 				</nav>
 

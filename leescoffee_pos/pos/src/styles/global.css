@@ -197,7 +197,7 @@ body {
 	border-color: var(--pos-dinein-border);
 }
 
-/* Chip kênh QR (ChannelChip): khách tự đặt qua web, không có thẻ rung */
+/* Chip kênh QR (ChannelChip): khách tự đặt qua web, không có thẻ bàn */
 .pos-tag--qr {
 	background: var(--pos-qr-bg);
 	color: var(--pos-qr-fg);
@@ -1975,7 +1975,7 @@ button.pos-cart-line__main:hover {
 	}
 }
 
-/* ===== Modal — khung chung, QR, chọn size, xác nhận, chọn thẻ rung ===== */
+/* ===== Modal — khung chung, QR, chọn size, xác nhận, chọn thẻ bàn ===== */
 
 .pos-modal-backdrop {
 	position: fixed;
@@ -2669,4 +2669,139 @@ button.pos-cart-line__main:hover {
 	body.is-printing-labels .pos-print-only {
 		display: block;
 	}
+}
+
+/* ===== Hàng chờ phục vụ (2026-11-23): đơn tại quầy "Đã làm" — thu ngân mang tới thẻ bàn / gọi khách lấy ===== */
+.pos-navlink {
+	position: relative;
+	gap: 6px;
+}
+
+/* Chấm đỏ + số trên mục "Đơn hàng" */
+.pos-navlink__badge {
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	background: var(--pos-primary);
+	color: var(--pos-primary-contrast);
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.pos-tab--alert .pos-tab__count {
+	background: var(--pos-primary);
+	color: var(--pos-primary-contrast);
+}
+
+.pos-toast--serve {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	border: 0;
+	font-family: inherit;
+	text-align: center;
+}
+
+.pos-toast__hint {
+	font-size: 13px;
+	font-weight: 500;
+	opacity: 0.8;
+}
+
+.pos-serve-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 12px;
+}
+
+.pos-serve-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px;
+	background: var(--pos-bg);
+	border: 1px solid var(--pos-dinein-border);
+	border-left: 6px solid var(--pos-dinein-fg);
+	border-radius: var(--pos-radius);
+}
+
+.pos-serve-card.is-active {
+	box-shadow: var(--pos-shadow);
+	border-color: var(--pos-primary);
+}
+
+/* Chờ quá 3 phút */
+.pos-serve-card.is-late {
+	background: var(--pos-warning-soft);
+	border-color: var(--pos-warning);
+	border-left-color: var(--pos-warning);
+}
+
+.pos-serve-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 0;
+	min-height: 44px;
+	text-align: left;
+	font: inherit;
+	color: var(--pos-text);
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+
+.pos-serve-card__title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 10px;
+	text-transform: uppercase;
+}
+
+/* Số thẻ bàn: chữ nổi bật nhất của thẻ */
+.pos-serve-card__target {
+	font-size: 26px;
+	font-weight: 800;
+	line-height: 1.1;
+}
+
+.pos-serve-card__action {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--pos-dinein-fg);
+}
+
+.pos-serve-card.is-late .pos-serve-card__action {
+	color: var(--pos-text);
+}
+
+.pos-serve-card__who {
+	font-weight: 600;
+}
+
+.pos-serve-card__items {
+	color: var(--pos-text-muted);
+	font-size: 14px;
+}
+
+.pos-serve-card__time {
+	font-size: 13px;
+	color: var(--pos-text-muted);
+}
+
+.pos-serve-card.is-late .pos-serve-card__time {
+	color: var(--pos-text);
+	font-weight: 700;
+}
+
+.pos-serve-card__done {
+	min-height: 44px;
+	width: 100%;
 }
