@@ -2677,7 +2677,7 @@ button.pos-cart-line__main:hover {
 	gap: 6px;
 }
 
-/* Chấm đỏ + số trên mục "Pha chế" */
+/* Chấm đỏ + số trên mục "Pha chế" (đơn "Đã làm" chờ giao, kênh tại quầy) */
 .pos-navlink__badge {
 	min-width: 20px;
 	height: 20px;
@@ -2693,18 +2693,9 @@ button.pos-cart-line__main:hover {
 	line-height: 1;
 }
 
+/* Toast thông báo đơn "Đã làm" cho thu ngân: chỉ hiển thị, không bấm được */
 .pos-toast--serve {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 2px;
-	border: 0;
-	font-family: inherit;
 	text-align: center;
-}
-
-.pos-toast__hint {
-	font-size: 13px;
-	font-weight: 500;
-	opacity: 0.8;
+	cursor: default;
+	pointer-events: none;
 }

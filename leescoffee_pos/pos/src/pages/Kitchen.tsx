@@ -9,6 +9,7 @@ import { optionParts } from "../lib/options";
 import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context";
 import { cssVar, printWithPage } from "../lib/print";
 import { refreshServeQueue } from "../lib/serve";
+import { useServeQueue } from "../store/serveQueue";
 import { shortOrderNo } from "../lib/format";
 import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
@@ -113,6 +114,8 @@ export default function Kitchen() {
 		setBusy(o.name);
 		try {
 			await api.setKitchenStatus(o.name, step.to);
+			// Chấm đỏ "Pha chế" (hàng chờ của thu ngân): đơn rời "Đã làm" -> bỏ khỏi store ngay, không đợi poll, không thêm request.
+			if (step.to !== "Đã làm") useServeQueue.getState().dropItems([o.name]);
 			// Chưa làm -> Đã làm: thu ngân nhận thông báo (hàng chờ phục vụ, poll ở máy quầy). Màn này chỉ xác nhận đã báo.
 			// Đơn QR: khách tự nhận thông báo trên điện thoại và tới quầy (luồng QR không đổi).
 			if (step.to === "Đã làm") {
@@ -123,8 +126,9 @@ export default function Kitchen() {
 							? `Đã báo quầy phục vụ: Bàn ${o.buzzer_number}`
 							: `Đã báo quầy gọi khách ${shortOrderNo(o.name)}`
 				);
-				// Cùng máy có quyền Orders (MANAGER) -> cập nhật chấm đỏ ngay; KITCHEN: store tắt, không gọi API.
-				void refreshServeQueue().catch(() => undefined);
+				// Máy có role CASHIER -> cập nhật chấm đỏ ngay, KHÔNG bật toast thứ hai cho chính đơn này (đã có toast ở trên).
+				// KITCHEN-only: store tắt, không gọi API.
+				void refreshServeQueue([o.name]).catch(() => undefined);
 			}
 			await load();
 		} catch (err) {
@@ -134,12 +138,6 @@ export default function Kitchen() {
 		}
 	};
 
-	// Toast tự tắt sau 5 giây
-	useEffect(() => {
-		if (!toast) return;
-		const t = window.setTimeout(() => setToast(null), 5000);
-		return () => window.clearTimeout(t);
-	}, [toast]);
 
 	const markPrinted = useCallback((name: string) => {
 		setPrinted((prev) => new Set(prev).add(name));

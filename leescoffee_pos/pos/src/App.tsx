@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import AppHeader from "./components/AppHeader";
 import { navOf, usePos } from "./lib/pos-context";
 import { useServeQueuePoller } from "./lib/serve";
@@ -30,11 +30,11 @@ export default function App() {
 	const redirect = !loading && config && need && !nav.includes(need) && nav.length ? NAV_PATH[nav[0]] : null;
 	const noRole = !loading && !!config && nav.length === 0;
 
-	// Hàng chờ phục vụ (2026-11-23): chỉ máy có quyền Orders (CASHIER / MANAGER) poll; KITCHEN không thêm request.
-	useServeQueuePoller(!loading && !!config && nav.includes("orders"));
+	// Thông báo đơn "Đã làm" (2026-11-23): CHỈ user có role POS CASHIER poll + nhận toast / chấm đỏ (server lọc đúng
+	// POS Profile). KITCHEN-only, MANAGER không có role CASHIER: không poll, không toast. User có cả CASHIER + role khác: vẫn nhận.
+	useServeQueuePoller(!loading && !!config?.roles?.cashier && nav.includes("orders"));
 	const toast = useServeQueue((s) => s.toast);
 	const setToast = useServeQueue((s) => s.setToast);
-	const navigate = useNavigate();
 
 	// Toast tự tắt sau 8 giây; thông báo bền là chấm đỏ ở "Pha chế" (tab Đã làm có nút Đã hoàn thành).
 	useEffect(() => {
@@ -42,11 +42,6 @@ export default function App() {
 		const t = window.setTimeout(() => setToast(null), 8000);
 		return () => window.clearTimeout(t);
 	}, [toast, setToast]);
-
-	const openServe = () => {
-		setToast(null);
-		navigate("/kitchen");
-	};
 
 	return (
 		<div className="pos-app">
@@ -76,10 +71,9 @@ export default function App() {
 			</main>
 
 			{toast ? (
-				<button type="button" className="pos-toast pos-toast--serve" role="status" onClick={openServe}>
+				<div className="pos-toast pos-toast--serve" role="status" aria-live="polite">
 					{toast}
-					<span className="pos-toast__hint">Bấm để xem</span>
-				</button>
+				</div>
 			) : null}
 		</div>
 	);

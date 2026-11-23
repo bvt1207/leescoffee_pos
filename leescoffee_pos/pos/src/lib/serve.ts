@@ -24,9 +24,10 @@ function toastText(items: ServeQueueItem[], fresh: string[]): string {
 }
 
 /** Sau một lần refresh: có đơn mới -> toast + bíp (âm thanh chỉ phát sau lần chạm đầu, xem order/alert.ts). */
-export async function refreshServeQueue(): Promise<void> {
+export async function refreshServeQueue(quiet: string[] = []): Promise<void> {
 	const store = useServeQueue.getState();
-	const fresh = await store.refresh();
+	// quiet: đơn chính máy này vừa chuyển "Đã làm" — màn Pha chế đã có toast xác nhận, không báo trùng lớp thứ hai.
+	const fresh = await store.refresh(quiet);
 	if (fresh.length === 0) return;
 	const text = toastText(useServeQueue.getState().items, fresh);
 	if (!text) return;
@@ -35,7 +36,7 @@ export async function refreshServeQueue(): Promise<void> {
 }
 
 /**
- * Gắn MỘT lần ở App: poll get_serve_queue mỗi SERVE_POLL_MS khi `enabled` (role có quyền Orders), dừng khi tab ẩn,
+ * Gắn MỘT lần ở App: poll get_serve_queue mỗi SERVE_POLL_MS khi `enabled` (user có role POS CASHIER), dừng khi tab ẩn,
  * gọi ngay khi tab hiện lại. Không chồng request (setTimeout nối tiếp + store gộp lần gọi trùng).
  */
 export function useServeQueuePoller(enabled: boolean): void {
