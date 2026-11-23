@@ -101,15 +101,14 @@ File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.jso
 
 - **Quy tắc module:** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
 
-- 1 card "MYPOS Setup" (đổi từ "Lee's Coffee Setup" 2026-11-15; `link_count: 8`, `modified` 2026-11-15 15:00), thứ tự link: Branch, POS Profile,
+- 1 card "MYPOS Setup" (đổi từ "Lee's Coffee Setup" 2026-11-15; `link_count: 8`, `modified` 2026-11-23 16:00), thứ tự link: Branch, POS Profile,
   POS Opening Entry, POS Closing Entry, MYPOS Menu, MYPOS Buzzer, MYPOS Option Group, MYPOS Order QR.
   Sau migrate: `Workspace Link` của `leescoffee_pos` = **9 dòng** (8 Link + 1 Card Break).
-- **2026-11-21 — ĐÃ TEST PASS trên bench DEV (`66efbd6` + `b8b8056`):** đã link Report "MYPOS Review Queue" — thêm link thứ 9 cuối card "MYPOS Setup": label "MYPOS Review Queue"
-  (đổi từ "Đơn cần xử lý" 2026-11-21, `modified` 10:00), `link_type: Report`, `is_query_report: 1` (`link_count: 9`). Sau migrate: `Workspace Link` = **10 dòng**
-  (9 Link + 1 Card Break). Link chỉ hiện với role của Report (POS MANAGER, System Manager).
-- **2026-11-21 (CHỜ VAN TEST):** đã link log hủy đơn — link thứ 10 ngay sau "MYPOS Review Queue": label/link_to "MYPOS Order Cancel Log",
-  `link_type: DocType` (`link_count: 10`, `modified` 11:00). Sau migrate: `Workspace Link` = **11 dòng** (10 Link + 1 Card Break).
-  Chỉ người có quyền Read DocType này (POS MANAGER, System Manager) thấy link.
+- 2026-11-21 đã thêm link Report "MYPOS Review Queue" (`66efbd6` + `b8b8056`, Pass) và link DocType "MYPOS Order Cancel Log" (`2c481d3`).
+  **2026-11-23 đã bỏ cả hai** (Report + DocType đã xóa, patch `v1_simplify_cancel_review` xóa cả Workspace Link) — ĐÃ TEST PASS trên bench DEV (`0553fd2`):
+  card về 8 link, `link_count: 8`. Sau migrate: `Workspace Link` = **9 dòng** (8 Link + 1 Card Break).
+- Link "MYPOS Buzzer" (thẻ bàn): giữ label **"MYPOS Buzzer"** — Desk dùng tên kỹ thuật, chỉ POS / hóa đơn in dùng "Thẻ bàn". (`f2236b4` đổi label thành
+  "Thẻ bàn", `adcb92d` đặt lại "MYPOS Buzzer"; `modified` 2026-11-23 16:00) — ĐÃ TEST PASS trên bench DEV.
 - 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
 
 Quy tắc khi sửa JSON workspace:

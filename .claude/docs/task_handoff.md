@@ -1,9 +1,26 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-14 (web đặt món QR giai đoạn 1). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-23 (thẻ bàn + đơn giản hóa hủy đơn). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0m. Link DocType "MYPOS Order Cancel Log" vào workspace leescoffee_pos (2026-11-21) — CHỜ VAN TEST
+## 0o. Thẻ rung → thẻ bàn + thông báo thu ngân khi đơn "Đã làm" (2026-11-23) — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `adcb92d`, `3736f85`, `4712d68`)
+- Tên kỹ thuật giữ (`MYPOS Buzzer`, field `buzzer`); Desk dùng "MYPOS Buzzer" (`adcb92d` đặt lại label), POS / hóa đơn in dùng "Thẻ bàn" / "Bàn #".
+- "Đang dùng" tính theo đơn còn giữ (`pos_api._held_buzzers`); patch `v1_table_card_cleanup` trả thẻ kẹt. Thẻ tự nhả khi đơn kết thúc / bị hủy;
+  không có bước nhả thủ công (`3736f85` bỏ `confirm_pickup`, tab "Chờ phục vụ", nút "Đã phục vụ"; `on_cancel` nhả ở mọi trạng thái).
+- `pos_api.get_serve_queue` + `lib/serve.ts` / `store/serveQueue.ts`: user có role POS CASHIER poll 15 giây → toast chỉ hiển thị + bíp, chấm đỏ ở "Pha chế"
+  (đơn "Đã làm" kênh tại quầy, không tính QR); màn Pha chế giảm chấm đỏ ngay sau khi chuyển trạng thái (`4712d68`). Luồng QR không đổi.
+- Chi tiết: `pos_invoice_hooks.md` §2.2, `roles.md` §7b. Kiểm tra: `.claude/docs/table_card_check.py`.
+
+## 0n. Đơn giản hóa hủy đơn / xử lý đơn dở (2026-11-23) — ĐÃ TEST PASS trên bench DEV (`0553fd2`)
+- Hủy Draft = Cancelled + `custom_cancel_reason` (tiền tố Thủ công / Tự động), một hàm `pos_invoice_hooks/order_cancel.cancel_draft` cho mọi đường hủy.
+- Bỏ: DocType `MYPOS Order Cancel Log` (sao lưu JSON rồi xóa), Report `MYPOS Review Queue`, đóng ca bắt buộc, `resolve_open_orders`, cờ `needs_review`,
+  trạng thái "Đã đóng ca chưa xử lý", job nhắc mỗi giờ (patch `v1_simplify_cancel_review`).
+- Desk: list POS Invoice có bộ lọc chuẩn + 3 nút "Lọc nhanh" (`pos_invoice_list.js`), form có "Hủy đơn" / "Xử lý đơn" (manager).
+- Webhook tiền về sau khi hủy → `custom_late_payment` / `custom_late_payment_ref`, Comment, Notification Log, idempotent. Khách QR thấy "Đã hủy / hết hạn".
+- Chi tiết: `roles.md` §2c–2e, `order-qr.md` §1, §5, `sepay.md` §3. Kiểm tra: `draft_cancel_check`, `open_orders_check`, `order_qr_selftest`, `order_history_selftest`.
+- Dấu vết sót (không ảnh hưởng chạy): docstring `patches/v1_kitchen_outcomes.py` còn nhắc needs_review; webhook trả khóa `needs_review` là cố ý.
+
+## 0m. Link DocType "MYPOS Order Cancel Log" vào workspace leescoffee_pos (2026-11-21) — ĐÃ BỎ 2026-11-23 (0n: DocType đã xóa)
 - Chỉ sửa `leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`: link ngay sau "MYPOS Review Queue", `link_count` 9 → 10,
   `modified` 11:00. Trước migrate xóa `Workspace Link` của `leescoffee_pos`; sau migrate phải còn 11 dòng (`workspace.md` §7).
 

@@ -227,21 +227,21 @@ Routes:
 4. Advance: click "Đã làm" / "Đã hoàn thành" → `setKitchenStatus(name, status)` → reload
 
 **Mẫu thẻ đơn:**
-- Chữ lớn, [#{seq}] mã / khách, loại, thẻ rung, thời gian chờ (>=5 phút vàng, >=10 phút đỏ)
+- Chữ lớn, [#{seq}] mã / khách, loại, thẻ bàn ("Bàn #"), thời gian chờ (>=5 phút vàng, >=10 phút đỏ)
 - Dòng món: tên + mỗi nhóm tùy chọn một chip `pos-chip-opt` (`optionParts`), món không có tùy chọn thì không có chip
 - Ghi chú nổi bật (`pos-kcard__note`)
 - Nút hành động lớn 56px; busy = `disabled={busy === name}`
 
 **Ẩn ô tìm header ở /kitchen (AppHeader thay đổi theo trang):** placeholder "Tìm món…" / "Tìm đơn…". Số lượng đơn hiển thị tổng `counts[tab]`.
 
-### BuzzerPicker.tsx (Chọn thẻ rung — đã triển khai, mẫu cho skill)
+### BuzzerPicker.tsx (Chọn thẻ bàn — đã triển khai, mẫu cho skill; tên kỹ thuật giữ "buzzer")
 
 **State:** `list[]` (BuzzerOption[]), `error`, tự refresh 5 giây khi mở, Esc đóng.
 
 **Luồng xử lý:**
 1. Khi mở popup → `api.getBuzzers()` → lưới thẻ, legend "Sẵn sàng" (xanh) / "Đang dùng" (xám)
 2. Thẻ `available=true` → bấm được, `available=false` → disabled, title "Đang giữ cho đơn {used_by}"
-3. Bấm thẻ → `onPick(b)` → đóng popup; chọn lại được (nút "Chọn thẻ rung" ở POS)
+3. Bấm thẻ → `onPick(b)` → đóng popup; chọn lại được (nút "Chọn thẻ bàn" ở POS)
 4. Khi chọn "Tại quán" → tự mở popup; chọn "Mang đi" → xóa thẻ đã chọn
 
 **Mẫu thẻ:**
@@ -292,7 +292,7 @@ Tất cả style trong `global.css`:
 - **Kitchen card:** nút "Đã làm" / "Đã hoàn thành": 56×56px; màu theo mức khẩn cấp (`late` >10 phút đỏ, `warn` ≥5-10 phút vàng, `ok` <5 phút bình thường); chỉ 1 nút hành động mỗi thẻ; chữ đọc từ xa
 - Khoảng cách giữa các mục chạm: 8px tối thiểu
 - Size of critical actions được khai triển: `.pos-order-detail__actions .pos-btn { min-height: 52px; font-size: 16px }`
-- **BuzzerPicker:** modal lưới thẻ tối thiểu 84×84px; `.pos-dot` (10×10px) “Sẵn sàng” (xanh), “Đang dùng” (xám); `.pos-buzzer-chosen` có viền nổi bật; nút “Chọn thẻ rung” 44px; tự refresh 5s, Esc đóng
+- **BuzzerPicker:** modal lưới thẻ tối thiểu 84×84px; `.pos-dot` (10×10px) “Sẵn sàng” (xanh), “Đang dùng” (xám); `.pos-buzzer-chosen` có viền nổi bật; nút “Chọn thẻ bàn” 44px; tự refresh 5s, Esc đóng
 
 ```css
 /* >= 640px (tablet) */

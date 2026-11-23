@@ -51,7 +51,7 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
 
 1. Thiếu JSON / thiếu `content` / `transferAmount <= 0` → ném lỗi.
 2. `transferType` có giá trị khác `"in"` → trả `{success: False}` (bỏ qua giao dịch tiền ra).
-3. Tìm đơn `docstatus` 0 **hoặc 1** (`_find_invoice_by_code`): (a) `payment_code = content` khớp chính xác
+3. Tìm đơn `docstatus` 0, 1 **hoặc 2** (`_find_invoice_by_code`, thêm 2 từ 2026-11-23): (a) `payment_code = content` khớp chính xác
    (cột có `search_index`, fixture 2026-11-14); (b) dự phòng: so mã chuẩn hóa bằng SQL (bỏ `- . / _` và
    khoảng trắng, viết hoa) chỉ trong đơn tạo 30 ngày gần nhất, `LIMIT 2`; khớp ≥ 2 đơn → log, coi như không thấy.
 4. Không khớp → `log_error` + ném lỗi. Khớp → **xác thực API key** (`_verify_sepay_key`) TRƯỚC mọi nhánh sau.
@@ -59,6 +59,10 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
    `payment_status = "Đã thanh toán"` VÀ `transaction_ref == id` (id khác rỗng) → `{success, already_processed, invoice_name}`.
    Còn lại (giao dịch thứ hai cùng mã, đơn đã thu tiền mặt) → Error Log "SePay: giao dịch cho đơn đã submit, cần đối soát",
    trả `{success: True, needs_review: True, message}` (không `already_processed`, không invoice_name/dữ liệu khách).
+4c. Đơn đã hủy (docstatus 2, 2026-11-23 — ĐÃ TEST PASS `0553fd2`): `_record_late_payment` — khóa dòng; `transaction_id` đã có trong
+   `custom_late_payment_ref` → trả cùng phản hồi, không ghi thêm (idempotent). Ngược lại: `custom_late_payment = 1`, nối mã vào `custom_late_payment_ref`
+   (≤ 140 ký tự), nối giao dịch vào `sepay_payment_log` (50 mục cuối), Comment "Tiền về sau khi hủy…", Error Log, `notify_profile_managers(...,
+   fallback_all=True)`. Trả `{success: True, needs_review: True, message}`. Không thanh toán lại / không mở lại đơn. Không có `transaction_id` → không chống trùng được.
 5. Đơn Draft: **luôn đi tiếp** (khớp số tiền → ghi payments → submit). Không có nhánh trả sớm nào cho Draft.
    `id` đã nằm ở `transaction_ref` của đơn khác chỉ ghi Error Log "SePay: transaction_id đã có trên đơn khác".
    (Lỗi 2026-11-14, LCNH-00279: nhánh cũ "id đã dùng ở đơn khác → already_processed" làm đơn Draft không được

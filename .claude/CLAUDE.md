@@ -76,14 +76,14 @@ Field riêng** (`custom_kitchen_status`) trên `POS Invoice`, không dùng chung
 không cần động vào.
 
 Khi cần dữ liệu mới không có sẵn trong ERPNext (loại đơn, kênh đặt món, trạng thái
-pha chế, thẻ rung...), thứ tự ưu tiên:
+pha chế, thẻ bàn...), thứ tự ưu tiên:
 
 1. Custom DocType **mới hoàn toàn**, đặt đúng `module = Leescoffee POS` khi tạo, để
    file JSON nằm trong app (đi theo git bình thường) — **không phải Custom DocType
    rời trong DB**.
 2. Chỉ dùng Custom Field (gắn lên DocType chuẩn như **`POS Invoice`**) khi thực sự
    cần thêm thuộc tính — ví dụ `order_type`, `order_channel`, `custom_kitchen_status`,
-   Link tới thẻ rung. Phải export qua **fixtures** trong `hooks.py` để đi theo git —
+   Link tới thẻ bàn. Phải export qua **fixtures** trong `hooks.py` để đi theo git —
    xem mục 6.
 
 ## 3. Mô hình nghiệp vụ — giai đoạn hiện tại (2 luồng)
@@ -101,18 +101,17 @@ Hai kịch bản vận hành của giai đoạn hiện tại:
 | Kịch bản         | order_type | order_channel | Ai đặt món | Thanh toán                | Gọi khách khi xong           |
 | ---------------- | ---------- | ------------- | ---------- | ------------------------- | ---------------------------- |
 | Take Away        | Take Away  | POS           | Nhân viên  | Quầy (Cash/QR thanh toán) | Gọi tên/số trên Status board |
-| Dine In tại quầy | Dine In    | POS           | Nhân viên  | Quầy (Cash/QR thanh toán) | Thẻ rung vật lý              |
+| Dine In tại quầy | Dine In    | POS           | Nhân viên  | Quầy (Cash/QR thanh toán) | Thẻ bàn — phục vụ mang ra    |
 
 **Lưu ý phân biệt quan trọng:** "QR" trong cột Thanh toán là **QR để thanh toán**
 (VietQR qua SePay, khách quét bằng app ngân hàng ngay tại quầy) — khác hoàn toàn với
 "kênh QR" (`order_channel = QR Web`) là khách **tự đặt món** qua QR, đang hoãn sang
 mục 3b. Tích hợp SePay để sinh mã thanh toán vẫn cần làm ở giai đoạn hiện tại.
 
-**Dine In tại quầy** dùng **thẻ rung vật lý** vì khách ở lại trong quán chờ.
-**Take Away không dùng thẻ rung** — gọi tên/số thứ tự trên Status board, vì khách
-take away có thể rời khỏi khu vực chờ. Field Link `buzzer` trên `POS Invoice`
-**chỉ áp dụng khi `order_type = Dine In`**. Buzzer là tài nguyên dùng lại theo pool
-(`Sẵn sàng ⇄ Đang dùng`), không có vòng đời "Occupied" cố định như bàn.
+**Dine In tại quầy** dùng **thẻ bàn** (2026-11-23, thay thẻ rung vật lý: số thẻ/bàn có sẵn; tên kỹ thuật vẫn `MYPOS Buzzer` / field `buzzer`):
+khách ngồi, đồ uống xong thì thu ngân được báo và mang ra đúng thẻ bàn. **Take Away không dùng thẻ** — gọi tên/số thứ tự.
+Field Link `buzzer` trên `POS Invoice` **chỉ áp dụng khi `order_type = Dine In`**. Thẻ là tài nguyên dùng lại theo pool
+(`Sẵn sàng ⇄ Đang dùng`), "Đang dùng" tính theo đơn còn giữ thẻ.
 
 Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 
@@ -124,14 +123,12 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - Sau khi bấm "Add Order" trên POS, hệ thống tự động điều hướng sang trang Orders
   và mở sẵn đúng đơn đó để thanh toán ngay — không bắt nhân viên tự tìm lại đơn.
 - Trang "Table" cũ được thay bằng **Status board** dùng chung cho cả Take Away và
-  Dine In: hiển thị Đang làm / Hoàn thành, kèm gọi tên/số (Take Away) hoặc thẻ rung
+  Dine In: hiển thị Đang làm / Hoàn thành, kèm gọi tên/số (Take Away) hoặc thẻ bàn
   (Dine In) khi xong.
-- **Mỗi thẻ rung chỉ giữ cho một đơn chưa hoàn thành, không dùng chung.** Thẻ được
-  gán khi tạo đơn Draft (cashier chọn thẻ), chuyển `Đang dùng` khi đơn Paid + submit.
-- Thẻ được nhả về `Sẵn sàng` **ngay** khi `custom_kitchen_status = "Đã hoàn thành"`
-  (hook `on_update_after_submit`), hoặc khi hủy đơn Draft (đơn bị xóa nên thẻ hết bị giữ).
-  Đơn đã submit bị cancel khi chưa `Đã làm` cũng nhả thẻ (hook `on_cancel`).
-  Chi tiết: `.claude/rules/leescoffee_pos/pos_invoice_hooks.md` §2.2.
+- **Mỗi thẻ bàn chỉ giữ cho một đơn chưa kết thúc, không dùng chung.** Thẻ được gán khi tạo đơn Draft (cashier chọn thẻ),
+  chuyển `Đang dùng` khi đơn Paid + submit. "Đã làm" vẫn giữ thẻ (thu ngân có role POS CASHIER nhận toast + chấm đỏ ở "Pha chế", `roles.md` §7b).
+  Thẻ về `Sẵn sàng` **ngay** khi đơn kết thúc (Đã hoàn thành / Khách không nhận / Không thực hiện được), hoặc đơn bị hủy (Draft → Cancelled,
+  đơn đã submit → `on_cancel`). Không có bước nhả thẻ thủ công. Chi tiết: `.claude/rules/leescoffee_pos/pos_invoice_hooks.md` §2.2.
 - **Phân quyền màn POS theo role** (MANAGER / CASHIER / KITCHEN: menu, tab Pha chế, bước chuyển):
   cấu hình duy nhất ở hằng `*_BY_ROLE` trong `api/pos_api.py`, chặn ở backend. Bảng quyền + tồn đọng:
   `.claude/rules/leescoffee_pos/roles.md` §7.
@@ -140,7 +137,7 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
   tạo trên Desk, không có dữ liệu mẫu trong code; lưu JSON `POS Invoice Item.options`. Quy tắc áp dụng,
   hướng dẫn admin: `.claude/rules/leescoffee_pos/options.md`.
 - **Web đặt món QR cho khách** (`/order/<token>`, `order_channel = "QR"`, mã `MYPOS Order QR` theo Branch,
-  token phiên HMAC, chỉ chuyển khoản SePay, không thẻ rung, không đổi điểm khi chưa có OTP): API riêng
+  token phiên HMAC, chỉ chuyển khoản SePay, không thẻ bàn, không đổi điểm khi chưa có OTP): API riêng
   `api/customer_order_api.py`, tách khỏi `pos_api.py`. Quy tắc + bảo mật: `.claude/rules/leescoffee_pos/order-qr.md`.
 - **CTKM (Pricing Rule) tính theo tổng qty mỗi mã trong hóa đơn** (`_apply_rules_on_total_qty`), không cộng
   chéo giữa các mã. Không dùng `is_cumulative` (cộng qty qua các hóa đơn trước) hay `mixed_conditions`
@@ -256,7 +253,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   này, chỉ cần viết code đúng chuẩn và để lại danh sách lệnh cần chạy và test case
   (mục 9).
 
-## 7. Lộ trình — Giai đoạn hiện tại (Take Away quầy + Dine In quầy/thẻ rung)
+## 7. Lộ trình — Giai đoạn hiện tại (Take Away quầy + Dine In quầy/thẻ bàn)
 
 Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 
@@ -275,7 +272,7 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       load Item/Item Price tự động, phân biệt Template/Variant, loại Stock/Service theo
       `is_stock_item`. **Đã test Pass**. (Chi tiết logic: `.claude/rules/leescoffee_pos/menu.md`)
 - [x] Status board: Đang làm / Hoàn thành cho cả Take Away và Dine In, gọi tên/số
-      hoặc thẻ rung khi xong
+      hoặc thẻ bàn khi xong
 - [ ] Frontend React/TSX cho POS: chọn món, chọn loại đơn, thanh toán — giao diện
       phong cách quán cà phê tổng quát, không hardcode branding Lee's Coffee
 - [ ] Màn hình pha chế (barista screen)
@@ -330,7 +327,7 @@ Quy ước mục **Test case** trong mỗi báo cáo:
 - Tối đa 5 test case, mỗi test 1 dòng theo mẫu:
   `[TC1] Thao tác trên Desk UI hoặc bench console -> Kết quả mong đợi`.
 - Gồm: 1–2 test đường chính, 1 test trường hợp lỗi (nhập thiếu field bắt buộc, gán
-  thẻ rung đang bận...), 1 test dữ liệu đã lưu còn nguyên sau khi reload.
+  thẻ bàn đang bận...), 1 test dữ liệu đã lưu còn nguyên sau khi reload.
 - Chỉ viết test Van tự chạy được trên bench thật; không viết test giả định Claude
   Code tự chạy được.
 - Cuối phần test ghi sẵn dòng: `Kết quả: Pass / Fail (Van điền)`.

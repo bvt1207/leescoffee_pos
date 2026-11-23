@@ -297,8 +297,8 @@ export default function Orders() {
 						</div>
 						<div className="pos-confirm">
 							<p>
-								Đơn sẽ bị xóa hẳn và không khôi phục được.
-								{detail.order_type === "Dine In" ? " Thẻ rung sẽ được trả về." : ""}
+								Đơn sẽ bị hủy và lưu lại để đối soát.
+								{detail.order_type === "Dine In" ? " Thẻ bàn sẽ được trả về." : ""}
 							</p>
 							{waitingQr ? (
 								<div className="pos-alert pos-alert--error">

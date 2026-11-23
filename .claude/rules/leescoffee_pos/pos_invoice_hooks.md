@@ -8,13 +8,16 @@
 |-------|------|---------|
 | `order_type` | Select: `Take Away` / `Dine In` | Loại đơn hàng |
 | `order_channel` | Select: `POS` | Kênh đặt (hiện tại chỉ POS) |
-| `custom_kitchen_status` | Select: `Chưa làm` / `Đã làm` / `Đã hoàn thành` | Trạng thái pha chế |
-| `buzzer` | Link → `MYPOS Buzzer` | Thẻ rung (chỉ Dine In) |
+| `custom_kitchen_status` | Select: `Chưa làm` / `Đã làm` / `Đã hoàn thành` / `Khách không nhận` / `Không thực hiện được` | Trạng thái pha chế (bộ lọc chuẩn) |
+| `buzzer` | Link → `MYPOS Buzzer` | Thẻ bàn (chỉ Dine In; label Desk "MYPOS Buzzer", POS hiện "Thẻ bàn" / "Bàn #") |
 | `payment_code` | Data | Mã thanh toán SePay |
 | `payment_status` | Select | Trạng thái thanh toán |
 | `transaction_ref` | Data | Mã tham chiếu giao dịch |
 | `sepay_payment_log` | Small Text | JSON log webhook |
 | `redeemed_points` | Int (read only) | Điểm Loyalty đã đổi; `on_submit` ghi Loyalty Point Entry âm qua `pos_api._record_redemption` |
+| `custom_cancel_reason` | Small Text (read only, hiện khi docstatus 2) | Lý do hủy Draft, tiền tố Thủ công / Tự động (2026-11-23, `roles.md` §2c) |
+| `custom_late_payment` | Check (bộ lọc chuẩn) | Có tiền chuyển khoản về sau khi đơn đã hủy (`sepay.md` §3) |
+| `custom_late_payment_ref` | Data | Mã giao dịch tiền về sau hủy (phân cách dấu phẩy, chống ghi trùng) |
 
 ## 2. Lifecycle Rules
 
@@ -22,57 +25,49 @@
 
 - **Chỉ được set khi `status == "Paid"`** (kiểm tra trong `on_submit`).
 - Vòng đời: `(trống)` → `Chưa làm` → `Đã làm` → `Đã hoàn thành`.
-- **Trạng thái kết thúc có lý do (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`2325990`)** — hằng ở MỘT nơi `doctype/pos_invoice_hooks/kitchen_status.py`:
-  `Khách không nhận`, `Không thực hiện được` (thu ngân / quản lý qua `pos_api.resolve_open_order(s)`), `Đã đóng ca chưa xử lý`
-  (đóng ca bắt buộc). Thêm vào options của Select (giá trị cũ giữ nguyên; fixture + patch `v1_kitchen_outcomes`).
+- **Trạng thái kết thúc có lý do (2026-11-20) — ĐÃ TEST PASS trên bench DEV (`2325990`; đơn giản hóa 2026-11-23, `0553fd2`)** — hằng ở MỘT nơi
+  `doctype/pos_invoice_hooks/kitchen_status.py`: `Khách không nhận`, `Không thực hiện được` (thu ngân / quản lý qua `pos_api.resolve_open_order`,
+  mỗi đơn một lý do). "Đã đóng ca chưa xử lý" và cờ `needs_review` đã bỏ (patch `v1_simplify_cancel_review` chuyển đơn cũ → "Không thực hiện được").
   - `KITCHEN_FLOW` (bước tiến của `set_kitchen_status`) không đổi; `KITCHEN_BLOCK_STATUSES` = Chưa làm, Đã làm (chặn đóng ca);
-    `KITCHEN_TERMINAL_STATUSES` = Đã hoàn thành + 3 trạng thái mới (không giữ thẻ rung, không chặn đóng ca);
-    `NEEDS_REVIEW_STATUSES` = 3 trạng thái mới → `needs_review = 1`.
+    `KITCHEN_TERMINAL_STATUSES` = Đã hoàn thành, Khách không nhận, Không thực hiện được (không giữ thẻ bàn, không chặn đóng ca).
   - Custom Field POS Invoice (read only, allow_on_submit): `kitchen_done_by/at` (Chưa làm→Đã làm), `kitchen_completed_by/at` (kết thúc),
-    `kitchen_outcome_reason`, `needs_review`. Dữ liệu cũ để trống.
-  - `resolve_open_order(invoice_name, outcome, reason, note)`: CASHIER/MANAGER; đơn Paid đang Chưa làm/Đã làm; lý do bắt buộc trừ
-    Đã làm → Đã hoàn thành; ghi người/giờ, comment trên đơn (đơn không bị xóa nên comment là log). `resolve_open_orders`: cả lô một savepoint.
+    `kitchen_outcome_reason` (label "Lý do xử lý pha chế"). Dữ liệu cũ để trống.
+  - `resolve_open_order(invoice_name, outcome, reason, note)`: CASHIER/MANAGER; đơn Paid (hoặc Consolidated — chỉ manager) đang rỗng / Chưa làm / Đã làm;
+    lý do bắt buộc trừ Đã làm → Đã hoàn thành; ghi người/giờ, comment trên đơn.
   - `set_kitchen_status` trên đơn đã kết thúc → lỗi "đã kết thúc".
   - `shift_open_orders(pos_profile, period_start)` → `{drafts, unprepared, undelivered}` (đơn Paid của ca: cùng profile + giờ ghi sổ ≥ giờ
-    mở ca, chưa gộp; trạng thái rỗng tính là Chưa làm) — dùng cho chặn đóng ca, đóng ca bắt buộc, UI sau.
-  - Khách QR: trạng thái kết thúc mới hiện như "done" (UI khách chưa phân biệt). Kitchen: trạng thái mới không vào tab nào (UI đợt sau).
+    mở ca, chưa gộp; trạng thái rỗng tính là Chưa làm) — dùng cho chặn đóng ca.
 - `on_submit` tự động set `Chưa làm` khi Paid và chưa có kitchen status.
 - **Sử dụng `doc.db_set()`** để update DB ngay trong transaction (tránh race condition).
 - Dùng để khởi tạo vòng đời pha chế sau khi thanh toán thành công.
 
-### 2.2 Buzzer Lifecycle (Dine In only)
+### 2.2 Thẻ bàn (MYPOS Buzzer) — Dine In only — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `adcb92d`, `3736f85`, `4712d68`)
 
-> 2026-11-20: mọi chỗ "khác Đã hoàn thành" (đang giữ thẻ, nhả thẻ, lọc đơn khác) đổi thành "không thuộc `KITCHEN_TERMINAL_STATUSES`" — kết thúc có lý do cũng nhả thẻ.
+> 2026-11-23: "thẻ rung" vật lý đổi thành **thẻ bàn** (số thẻ/bàn có sẵn). Tên kỹ thuật giữ nguyên: DocType `MYPOS Buzzer`, field `buzzer`,
+> `buzzer_number`, API `get_buzzers`, CSS `.pos-buzzer*`. **Desk dùng tên kỹ thuật** (link workspace "MYPOS Buzzer", label field POS Invoice
+> "MYPOS Buzzer", `buzzer_number` "Số thẻ"); **POS và hóa đơn in dùng "Thẻ bàn" / "Bàn #"**.
 
-**Quy tắc (quyết định của Van, 2026-10-27): mỗi thẻ chỉ giữ cho MỘT đơn chưa hoàn thành, không dùng chung.**
+**Quy tắc (Van, 2026-10-27, giữ nguyên): mỗi thẻ chỉ giữ cho MỘT đơn chưa kết thúc, không dùng chung.**
 
-- **Take Away không tác động đến Buzzer** — mọi logic buzzer chỉ chạy khi `order_type == "Dine In"`.
-- **Buzzer pool**: `Sẵn sàng` ⇄ `Đang dùng`, không có trạng thái Occupied cố định.
-- **"Đang giữ"** = tồn tại POS Invoice `order_type = Dine In`, `buzzer` = thẻ đó,
-  `docstatus in (0, 1)`, `custom_kitchen_status != "Đã hoàn thành"` (tính cả đơn Draft chưa thanh toán).
-  Thẻ bị giữ thì không gán được cho đơn khác, kể cả khi `status` của thẻ vẫn là `Sẵn sàng`.
+- **Take Away không dùng thẻ** — mọi logic thẻ chỉ chạy khi `order_type == "Dine In"`. Đơn QR không có thẻ.
+- **"Đang dùng" tính theo ĐƠN CÒN GIỮ** (`pos_api._held_buzzers`, nguồn duy nhất cho `get_buzzers` và `_assign_buzzer`): tồn tại POS Invoice
+  Dine In, `buzzer` = thẻ, `docstatus in (0, 1)`, `custom_kitchen_status` không thuộc `KITCHEN_TERMINAL_STATUSES`. Đơn Cancelled (docstatus 2) không giữ.
+  Field `status` lưu trên thẻ (Sẵn sàng / Đang dùng) chỉ để hiện trên Desk; `get_buzzers` trả `status` tính lại theo đơn, `_assign_buzzer` không đọc
+  field này → thẻ kẹt "Đang dùng" không bị khóa (patch `v1_table_card_cleanup` trả thẻ kẹt về Sẵn sàng).
 
-| Bước | Nơi xử lý | Thẻ rung |
+| Bước | Nơi xử lý | Thẻ bàn |
 |------|-----------|----------|
-| 1. Tạo đơn Draft | `api/pos_api.py::create_draft_order` → `_assign_buzzer(profile, buzzer)` | **Gán** vào `POS Invoice.buzzer`. `status` thẻ vẫn `Sẵn sàng`, nhưng đã "đang giữ" |
-| 2. Thanh toán (Paid + submit) | hook `on_submit` (sau `pay_cash` hoặc webhook SePay) | `Sẵn sàng` → **`Đang dùng`** |
-| 3a. Pha chế xong | hook `on_update_after_submit` khi `custom_kitchen_status = "Đã hoàn thành"` (vd. `set_kitchen_status`) | `Đang dùng` → **`Sẵn sàng`** |
-| 3b. Hủy đơn Draft | `api/pos_api.py::cancel_draft_order` (xóa hẳn đơn) | `status` chưa từng đổi; đơn bị xóa nên **hết "đang giữ"** → thẻ trống lại |
+| 1. Tạo đơn Draft | `pos_api.create_draft_order` → `_assign_buzzer(profile, buzzer)` | Gán vào `POS Invoice.buzzer`; đang giữ |
+| 2. Thanh toán (Paid + submit) | hook `on_submit` | field `status` → **Đang dùng** (đã "Đang dùng" → bỏ qua) |
+| 3. Pha chế "Đã làm" | `set_kitchen_status` | **Vẫn giữ thẻ**; thu ngân nhận thông báo (`roles.md` §7b) |
+| 4. Kết thúc (Đã hoàn thành / Khách không nhận / Không thực hiện được) | hook `on_update_after_submit` (save từ `set_kitchen_status` hoặc `kitchen_status.set_terminal`) | **Sẵn sàng ngay** |
+| 4b. Kết thúc đơn đã gộp (Consolidated) | `pos_api._resolve_consolidated` → `PosInvoiceHooks.release_buzzer` | Sẵn sàng |
+| 5. Hủy Draft | `order_cancel.cancel_draft` (Cancelled, không xóa) | field `status` chưa từng đổi; đơn docstatus 2 nên hết giữ |
+| 6. Hủy đơn đã submit | hook `on_cancel` (mọi trạng thái pha chế, 2026-11-23) | Sẵn sàng |
 
-Chi tiết từng bước:
-
-- **Bước 1 — `_assign_buzzer`**: cashier chọn thẻ qua `BuzzerPicker` (API `get_buzzers`
-  trả `available`, `used_by`). Dine In bắt buộc có `buzzer`. Ném lỗi nếu thẻ không thuộc
-  chi nhánh của POS Profile, `status != "Sẵn sàng"`, hoặc đang bị đơn khác giữ.
-- **Bước 2 — `on_submit`**: thẻ `Sẵn sàng` → `Đang dùng`. Nếu thẻ đã `Đang dùng` → hiện
-  code **bỏ qua, không ném lỗi** (chốt chặn dùng chung nằm ở bước 1). Trạng thái khác → ném lỗi.
-- **Bước 3a**: chỉ reset khi không còn đơn Paid khác cùng thẻ chưa hoàn thành (§2.3).
-- **Các đường reset khác vẫn có trong code** (cùng kiểm tra §2.3):
-  - `confirm_pickup`: nhân viên xác nhận khách lấy món (kitchen status = `Đã hoàn thành`).
-  - `on_cancel`: đơn **đã submit** bị cancel **và chưa bắt đầu làm** (`custom_kitchen_status` là None, "", hoặc `Chưa làm`).
-
-> Khớp CLAUDE.md §3 (cập nhật 2026-10-27): thẻ nhả ngay ở bước 3a/3b; `confirm_pickup`
-> chỉ còn là đường reset dự phòng.
+- **Không có bước nhả thẻ thủ công** (2026-11-23): đã bỏ API `confirm_pickup`, nút "Xác nhận khách đã lấy", nút "Đã phục vụ".
+- `_assign_buzzer` ném lỗi nếu thẻ không thuộc chi nhánh của POS Profile hoặc đang giữ cho đơn khác ("Thẻ bàn số … đang giữ cho đơn …").
+- Kiểm tra: `.claude/docs/table_card_check.py` (`check_table_card(...)`).
 
 ### 2.3 Kiểm tra đơn khác trước khi reset buzzer (phòng thủ)
 
@@ -96,7 +91,7 @@ LIMIT 1
 ## 3. Code Conventions
 
 - **Native lifecycle methods** (`on_submit`, `before_save`, `on_update_after_submit`, `on_cancel`) viết trong class `PosInvoiceHooks`, delegate từ module-level wrappers.
-- **`confirm_pickup`** là static method, không phải native lifecycle — gọi thủ công từ UI/API.
+- **`release_buzzer`** (đổi tên từ `confirm_pickup` 2026-11-23) là static method, không phải native lifecycle — chỉ `pos_api._resolve_consolidated` gọi (đơn đã gộp, không save được). `_free_buzzer_if_unheld` dùng chung cho `release_buzzer` và `on_cancel`.
 - **`db_set()`** dùng trong `on_submit` để cập nhật `custom_kitchen_status` ngay trong transaction (tránh pending commit).
 - **`frappe.get_all`** với `limit=1` và `fields=["name"]` để tối  hiệu suất khi kiểm tra đơn khác.
 - **Import trong function** (`from ... import MYPOSBuzzer`) để tránh circular import.
@@ -113,7 +108,7 @@ LIMIT 1
   - `customer_name`: tên khách hàng (lấy từ Customer.customer_name)
   - `order_type`: Take Away / Dine In
   - `kitchen_status`: trạng thái bếp (Chưa làm / Đã làm / Đã hoàn thành)
-  - `buzzer_number`: số thẻ rung (null nếu Take Away)
+  - `buzzer_number`: số thẻ bàn (null nếu Take Away)
   - `last_updated`: thời gian tạo invoice
 - Không tạo DocType/Custom Field mới — tái sử dụng các field hiện có.
 

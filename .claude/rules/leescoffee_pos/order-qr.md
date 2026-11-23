@@ -18,19 +18,19 @@
    → `sepay_webhook` (đã xác thực API key) submit đơn → hook `on_submit` đặt `Chưa làm` → Kitchen.
 4. Khách poll `get_my_orders` (5 giây, chỉ khi còn đơn đang xử lý) / `get_order` (3 giây ở màn thanh toán): `stage` = `awaiting_payment` | `expired` | `queued`
    (Chưa làm) | `ready` (Đã làm → banner "mời đến quầy nhận", CHỈ stage này) | `done` (Đã hoàn thành).
-   Từ 2026-11-20 (ĐÃ TEST PASS trên bench DEV, `bc84976`) — `customer_order_api.KITCHEN_STAGE` / `STAGE_LABELS` / `STAGE_MESSAGES`:
+   Từ 2026-11-20 (ĐÃ TEST PASS trên bench DEV, `bc84976`; đơn giản hóa 2026-11-23, `0553fd2`) — `customer_order_api.KITCHEN_STAGE` / `STAGE_LABELS` / `STAGE_MESSAGES`:
    | Trạng thái nội bộ | stage | Nhãn khách | Nhóm | Thông điệp (`stage_message`) |
    |---|---|---|---|---|
    | Khách không nhận | `closed` | Đã đóng đơn | history | — |
-   | Không thực hiện được | `failed` | Không thực hiện được | active tới khi quầy bỏ `needs_review` | "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: …" |
-   | Đã đóng ca chưa xử lý | `review` | Đang chờ quầy xác nhận | active tới khi quầy bỏ `needs_review` | "Đơn đang được quầy xác nhận, vui lòng liên hệ nhân viên. Mã đơn: …" |
+   | Không thực hiện được | `failed` | Không thực hiện được | active trong `ACTIVE_PAID_HOURS` (24 giờ), sau đó history | "Quán không thể thực hiện đơn này, vui lòng liên hệ quầy để được hỗ trợ/hoàn tiền. Mã đơn: …" |
    | Giá trị lạ | `processing` | Đang xử lý | active trong 24 giờ | — |
-   Khách không nhận `needs_review`, lý do nội bộ, tên nhân viên; `kitchen_status` luôn rỗng. Poll chỉ khi còn đơn active
-   (đơn `failed`/`review` chưa giải quyết vẫn poll 5 giây). `MyOrdersPanel` hiện `stage_message` (`.qo-order__notice--failed|review`).
-   Kiểm tra: `run_order_history_selftest` mục H11.
-   Từ 2026-11-21 (ĐÃ TEST PASS trên bench DEV (`660693e` + `b918bb7`)): Branch có `brand_phone` → thông điệp `failed`/`review` thành "… Vui lòng liên hệ {brand_name hoặc 'quán'} qua
-   {số} …" (`STAGE_MESSAGES_WITH_PHONE`, `get_brand_info` một lần mỗi request); thiếu số → câu cũ. Quản lý xử lý trên Desk (needs_review = 0)
-   → khách thấy trạng thái mới ở nhóm history, ngừng poll (`roles.md` §2e).
+   | Đơn Draft đã hủy (docstatus 2) | `expired` | Đã hủy / hết hạn | không liệt kê ở "Đơn của tôi"; chỉ `get_order` | — |
+   Stage `review` và cờ `needs_review` đã bỏ (2026-11-23). Khách không nhận lý do nội bộ, tên nhân viên, `custom_cancel_reason`, `custom_late_payment*`;
+   `kitchen_status` luôn rỗng. `MyOrdersPanel` hiện `stage_message` (`.qo-order__notice--failed`). Kiểm tra: `run_order_history_selftest` H11, H8c.
+   Từ 2026-11-21 (ĐÃ TEST PASS trên bench DEV (`660693e` + `b918bb7`)): Branch có `brand_phone` → thông điệp `failed` thành "… Vui lòng liên hệ {brand_name hoặc 'quán'} qua
+   {số} …" (`STAGE_MESSAGES_WITH_PHONE`, `get_brand_info` một lần mỗi request); thiếu số → câu cũ.
+5. Đơn đã hủy / hết hạn (2026-11-23): `_own_invoice` nhận docstatus 0/1/2 → `get_order` không lỗi "Không tìm thấy đơn", trả stage `expired`, nhãn
+   "Đã hủy / hết hạn" (PaymentView / MyOrdersPanel: "Đơn đã hủy hoặc hết hạn thanh toán"); `create_payment_qr` → "Đơn đã hủy hoặc hết hạn. Vui lòng đặt lại."
 
 ## 2. Quyết định đã chốt (Van, 2026-11-14)
 
@@ -43,7 +43,7 @@
 | Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (`pos_closing_entry.get_invoices` lọc `owner == user` — đã đọc mã ERPNext 17-dev; chỉ gom POS Invoice khi `POS Settings.invoice_type = "POS Invoice"`; self-test 9a/9b) |
 | Thẻ rung | Đơn QR Dine In **không** có buzzer. Hook/`confirm_pickup` đã bỏ qua khi `buzzer` rỗng |
 | Thanh toán | Chỉ chuyển khoản: Mode of Payment `type = Bank` có tài khoản (ưu tiên mode trong POS Profile). Branch phải bật SePay + VA + mã NH + **API key** |
-| Hết hạn | Sau `QR_PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Webhook còn khớp thêm `QR_CLEANUP_GRACE_MINUTES = 5`; sau đó job **hủy + ghi log** "QR hết hạn không thanh toán" (2026-11-20, bỏ mốc xóa 60 phút). Mốc ở `doctype/mypos_order_cancel_log/order_cancel.py` |
+| Hết hạn | Sau `QR_PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Webhook còn khớp thêm `QR_CLEANUP_GRACE_MINUTES = 5`; sau đó job **hủy** (đơn chuyển Cancelled, `custom_cancel_reason` = "Tự động (QR hết hạn): QR hết hạn không thanh toán"; 2026-11-23 không xóa, không log riêng). Mốc ở `doctype/pos_invoice_hooks/order_cancel.py` |
 | Loyalty | **Không đổi điểm** (`redeem_points > 0` → lỗi). Chỉ hiện điểm + hạng của chính khách. Tích điểm do ERPNext như đơn thường |
 | Giá/CTKM/tùy chọn | Server tính lại bằng `_normalize_items`, `_build_invoice`, `_pricing_preview` (dùng chung với POS). Client chỉ gửi `item_code`, `qty`, `options` |
 
@@ -94,29 +94,30 @@ Giảm thiểu: dữ liệu trả tối thiểu (không SĐT, mã Customer, `pay
 **Khi có OTP (SMS/Zalo)**: bắt OTP khi đăng nhập từ thiết bị mới → mới cho xem lịch sử + bật đổi điểm; có thể nới
 lịch sử (> 30 ngày, nhiều chi nhánh). Trước đó: **chỉ bật đổi điểm khi có OTP.**
 
-## 5. Job dọn đơn
+## 5. Job hủy đơn quá hạn
 
-Từ 2026-11-20: job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, thay job cũ) gồm 2 phần, dùng chung hàm hủy +
-log `cancel_draft_with_log` (MYPOS Order Cancel Log):
+Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_invoice_hooks/order_cancel.py`) gồm 2 phần, dùng chung hàm hủy
+`cancel_draft` (đơn chuyển **Cancelled** + `custom_cancel_reason`, không xóa — 2026-11-23, `roles.md` §2c):
 - QR: `docstatus = 0`, `order_channel = QR`, không phải trả hàng, `creation` < now − (15 + 5) phút, `payment_status != "Đã thanh toán"`
-  → lý do "QR hết hạn không thanh toán", nguồn "Tự động". `customer_order_api.cleanup_expired_qr_orders` giữ tên, gọi phần này.
-- Draft kênh khác QR quá `POS_DRAFT_AUTO_CANCEL_MINUTES = 120` → "Tự hủy quá 2 giờ".
+  → "Tự động (QR hết hạn): QR hết hạn không thanh toán". `customer_order_api.cleanup_expired_qr_orders` giữ tên, gọi phần này.
+- Draft kênh khác QR quá `POS_DRAFT_AUTO_CANCEL_MINUTES = 120` → "Tự động (quá 2 giờ): Tự hủy quá 2 giờ".
 Đọc lại docstatus ngay trước khi hủy; commit từng đơn; lỗi → rollback + Error Log. Idempotent. Không đụng đơn đã submit.
 
-**Tiền đến sau khi đơn đã hủy** (`sepay_webhook` không thấy đơn): `order_cancel.record_orphan_payment` tìm log theo `payment_code`
-(khớp đúng, rồi chuẩn hóa trong 30 ngày), xác thực API key theo Branch của log, ghi `needs_review`, mã giao dịch, số tiền, payload;
-Error Log + Notification Log cho user POS MANAGER; trả `{success: true, needs_review: true}`; gọi lại cùng giao dịch không nhân đôi.
+**Tiền đến sau khi đơn đã hủy**: `sepay_webhook` tìm cả đơn docstatus 2 → ghi trên chính đơn (`custom_late_payment`, `custom_late_payment_ref`,
+`sepay_payment_log`), Comment, Error Log, Notification Log cho quản lý chi nhánh; gọi lại cùng giao dịch không ghi thêm. Chi tiết `sepay.md` §3.
 
 ## 6. Màn nhân viên
 
 - `get_orders`, `get_kitchen_orders` trả thêm `order_channel` (`get_order_detail` đã có) → giai đoạn 2 hiện chip "QR".
 - Không đổi phân quyền. Thu ngân vẫn hủy được đơn QR Draft / thu tiền mặt ở Orders (nếu khách ra quầy).
+- Thông báo thu ngân khi đơn "Đã làm" (`pos_api.get_serve_queue`, `roles.md` §7b) **loại đơn QR** — khách QR vẫn tự nhận banner "mời đến quầy nhận"
+  trên điện thoại (luồng QR không đổi, 2026-11-23). Màn Pha chế bấm "Đã làm" đơn QR: toast "Đã báo khách … (đặt QR) tới quầy nhận món".
 
 ## 7. Tồn đọng
 
 - OTP (SMS/Zalo) → mở đổi điểm cho kênh QR.
 - Web Push khi khách đóng tab (giai đoạn này chỉ poll khi tab mở).
-- Khách chuyển khoản sau khi đơn đã bị hủy (> 20 phút) → giao dịch mồ côi trong MYPOS Order Cancel Log (`needs_review`), quản lý xử lý tay.
+- Khách chuyển khoản sau khi đơn đã bị hủy (> 20 phút) → cờ `custom_late_payment` trên chính đơn + thông báo quản lý; hoàn tiền / đối soát làm tay.
 - Ca đóng giữa lúc đơn QR đang chờ: đơn Draft thuộc owner ca cũ; webhook vẫn submit được ([Unverified] ERPNext
   có chặn submit khi ca của owner đã đóng hay không — cần test trên bench).
 - Index: `get_my_orders` lọc `customer` + `order_channel` + `qr_source` + `creation`; [Unverified] cột `customer` của
@@ -169,6 +170,6 @@ Error Log + Notification Log cho user POS MANAGER; trả `{success: true, needs_
   thuộc đồng hồ máy khách.
 - **Màn nhân viên**: `ChannelChip` (`components/OrderTypeChip.tsx`, `.pos-tag--qr`, token `--pos-qr-*`) ở Orders
   (thẻ + chi tiết) và Kitchen; đơn QR không hiện "Thẻ #—" ở chi tiết Orders; hóa đơn / phiếu pha chế in
-  "Kênh: QR · tên khách" thay dòng thẻ rung.
+  "Kênh: QR · tên khách" thay dòng thẻ bàn.
 - **Tồn đọng**: chưa build/chạy thử trên máy dev (thư mục `pos/` chưa `npm install`, chỉ chạy `tsc` sạch);
   ảnh món là file private thì khách (Guest) không xem được — dùng ảnh public; Web Push khi đóng tab.

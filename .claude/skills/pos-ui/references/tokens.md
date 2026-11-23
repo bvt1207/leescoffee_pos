@@ -44,7 +44,7 @@ Chuyển từ màu viết cứng sang token ở bước refactor d1, giữ nguy�
 --pos-error-border: #f0c4be;    /* viền lỗi/hủy: alert lỗi, nút danger */
 --pos-warning-soft: #f3e6cf;    /* nền nhạt trạng thái chờ: .pos-status__badge, .pos-tag--warn */
 --pos-note-bg: #fff4d6;         /* nền ghi chú đơn ở màn Pha chế (.pos-kcard__note) */
---pos-success-soft: #e8f4ec;    /* nền thẻ rung sẵn sàng (.pos-buzzer) */
+--pos-success-soft: #e8f4ec;    /* nền thẻ bàn sẵn sàng (.pos-buzzer) */
 --pos-on-solid: #fff;           /* chữ/nền trắng trên nền đậm (nút success/danger-solid, toast, ảnh QR) */
 --pos-overlay: rgba(35, 27, 20, 0.55);          /* lớp phủ sau modal */
 --pos-chip-on-media: rgba(255,255,255,.92);     /* chip nằm trên ảnh món */

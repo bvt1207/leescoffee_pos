@@ -127,7 +127,7 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 
 #### Kitchen.tsx (Quầy pha chế — mẫu cho skill, đã triển khai)
 - Layout: tab 3 — Chưa làm / Đã làm / Đã hoàn thành → danh sách đơn lưới → số lượng hiển thị trong tab.
-- Thẻ đơn: [#{seq}] mã, khách, loại, thẻ rung, thời gian chờ (>=5 phút vàng / >=10 phút đỏ).
+- Thẻ đơn: [#{seq}] mã, khách, loại, thẻ bàn ("Bàn #"), thời gian chờ (>=5 phút vàng / >=10 phút đỏ).
 - Dòng món: tên lớn + chip "Đường x%·Đá y%", ghi chú nổi bật.
 - Nút hành động 56px: "Đã làm" (đỏ) / "Đã hoàn thành" (xanh); busy = `disabled={busy === name}`.
 - Tự refresh 5 giây; update `now` every 30s; tab "Đã hoàn thành" lọc đơn ngày (`creation`).
@@ -279,5 +279,5 @@ export const api = {
 - [ ] Màu từ CSS biến, không litteral
 - [ ] Tất cả văn bản động từ phản hồi API
 - [ ] Màu thương hiệu áp dụng qua biến `--pos-primary` (một chỗ duy nhất trong `references/tokens.md`)
-- [ ] Trạng thái thẻ rung lấy từ API `available` (Sẵn sàng / Đang dùng), không suy suy đoán tự build
+- [ ] Trạng thái thẻ bàn lấy từ API `available` (Sẵn sàng / Đang dùng), không suy suy đoán tự build
 - [ ] Toast thông báo ở màn Pha chế tự động đóng sau 5 giây, click để tắt sớm
