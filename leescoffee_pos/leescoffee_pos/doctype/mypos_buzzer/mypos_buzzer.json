@@ -4,13 +4,13 @@
   "name": "MYPOS Buzzer",
   "autoname": "field:buzzer_number",
   "module": "Leescoffee POS",
-  "modified": "2026-11-23 14:00:00.000000",
+  "modified": "2026-11-23 16:00:00.000000",
   "istable": 0,
   "issingle": 0,
   "fields": [
     {
       "fieldname": "buzzer_number",
-      "label": "Số thẻ bàn",
+      "label": "Số thẻ",
       "fieldtype": "Data",
       "reqd": 1,
       "unique": 1
