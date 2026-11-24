@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-24 (tên khách + toast "Đã làm" ở màn Pha chế). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0q. Màn Pha chế: tên khách trên thẻ + toast "Đã làm" (2026-11-24) — CHƯA TEST trên bench
+## 0q. Màn Pha chế: tên khách trên thẻ + toast "Đã làm" (2026-11-24) — ĐÃ TEST PASS trên bench DEV (`76ab2c2`)
 - Chỉ frontend (`pages/Kitchen.tsx`, `styles/global.css`); `get_kitchen_orders` đã có `customer_name` + `is_walk_in` (task 0p), không đổi Python, không thêm request.
 - Thẻ đơn (3 tab): dòng tên khách dưới mã đơn (`customerLabel` → "Khách lẻ"). Toast: Mang đi "Đã báo quầy gọi khách {tên | khách lẻ} ({mã})",
   Tại quán "Đã báo quầy phục vụ bàn {số} ({mã})", QR giữ câu cũ. Toast thu ngân, tem ly (khách lẻ in mã ngắn), phiếu pha chế: không đổi.
