@@ -2709,3 +2709,396 @@ button.pos-cart-line__main:hover {
 	cursor: default;
 	pointer-events: none;
 }
+
+/* ===== Màn hình khách /pos/customer (2026-11-24): chỉ hiển thị, đọc được từ 1–2 m ===== */
+.pos-cd {
+	position: fixed;
+	inset: 0;
+	overflow: hidden;
+	background: var(--pos-surface);
+	color: var(--pos-text);
+	cursor: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.pos-cd-message {
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 32px;
+	text-align: center;
+	font-size: clamp(18px, 2.2vw, 28px);
+	color: var(--pos-text-muted);
+}
+
+.pos-cd-offline {
+	position: absolute;
+	left: 50%;
+	bottom: 16px;
+	transform: translateX(-50%);
+	padding: 8px 16px;
+	border-radius: 999px;
+	background: var(--pos-overlay);
+	color: var(--pos-on-solid);
+	font-size: 14px;
+}
+
+/* Banner: ảnh xếp chồng, ảnh đang hiện mờ dần vào (đổi mỗi BannerCarousel.BANNER_SECONDS giây) */
+.pos-cd-banner {
+	position: relative;
+	overflow: hidden;
+	background: var(--pos-text);
+}
+.pos-cd-banner--full {
+	width: 100%;
+	height: 100%;
+}
+.pos-cd-banner--side {
+	height: 100%;
+	min-height: 0;
+}
+.pos-cd-banner__img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	transition: opacity 0.9s ease;
+}
+.pos-cd-banner__img.is-active {
+	opacity: 1;
+}
+.pos-cd-banner__dots {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 20px;
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+}
+.pos-cd-banner__dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 999px;
+	background: var(--pos-chip-on-media);
+	opacity: 0.45;
+	transition: opacity 0.3s ease, width 0.3s ease;
+}
+.pos-cd-banner__dot.is-active {
+	width: 28px;
+	opacity: 1;
+}
+.pos-cd-banner--brand {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 24px;
+	background: var(--pos-bg);
+}
+.pos-cd-banner__logo {
+	max-width: min(40%, 320px);
+	max-height: 40%;
+	object-fit: contain;
+}
+.pos-cd-banner__brand {
+	font-size: clamp(28px, 4vw, 56px);
+	font-weight: 800;
+	color: var(--pos-text);
+	text-align: center;
+	padding: 0 24px;
+}
+
+/* Trang 1: banner ~2/3 trái, khung đơn bên phải */
+.pos-cd-split {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+	height: 100%;
+}
+
+.pos-cd-panel {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	background: var(--pos-bg);
+	box-shadow: var(--pos-shadow-modal);
+}
+.pos-cd-panel__head {
+	padding: 20px 24px 16px;
+	border-bottom: 1px solid var(--pos-border);
+}
+.pos-cd-panel__title {
+	font-size: clamp(22px, 2vw, 30px);
+	font-weight: 800;
+}
+.pos-cd-customer {
+	margin-top: 6px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	font-size: clamp(16px, 1.4vw, 22px);
+	color: var(--pos-text-muted);
+}
+.pos-cd-customer__name {
+	font-weight: 600;
+	color: var(--pos-text);
+}
+.pos-cd-customer__tier {
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: var(--pos-warning-soft);
+	color: var(--pos-text);
+	font-size: 0.85em;
+	font-weight: 600;
+}
+
+.pos-cd-lines {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden auto;
+	padding: 8px 24px;
+	scroll-behavior: smooth;
+	scrollbar-width: none;
+}
+.pos-cd-lines::-webkit-scrollbar {
+	display: none;
+}
+.pos-cd-line {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 12px;
+	align-items: start;
+	padding: 14px 0;
+	border-bottom: 1px dashed var(--pos-border);
+	animation: pos-cd-line-in 0.35s ease;
+}
+@keyframes pos-cd-line-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+.pos-cd-line__qty {
+	min-width: 2.4em;
+	font-size: clamp(20px, 1.7vw, 26px);
+	font-weight: 800;
+	color: var(--pos-primary);
+}
+.pos-cd-line__name {
+	font-size: clamp(20px, 1.7vw, 26px);
+	font-weight: 700;
+	line-height: 1.25;
+}
+.pos-cd-line__size {
+	margin-left: 8px;
+	padding: 1px 8px;
+	border-radius: 6px;
+	background: var(--pos-surface-alt);
+	font-size: 0.75em;
+	font-weight: 700;
+	vertical-align: middle;
+}
+.pos-cd-line__opts {
+	margin-top: 4px;
+	font-size: clamp(15px, 1.2vw, 19px);
+	color: var(--pos-text-muted);
+}
+.pos-cd-line__gift {
+	margin-top: 4px;
+	font-size: clamp(14px, 1.1vw, 17px);
+	font-weight: 700;
+	color: var(--pos-success);
+}
+.pos-cd-line__amount {
+	text-align: right;
+	font-size: clamp(20px, 1.7vw, 26px);
+	font-weight: 700;
+	white-space: nowrap;
+}
+.pos-cd-line__was {
+	font-size: 0.7em;
+	font-weight: 500;
+	color: var(--pos-text-muted);
+	text-decoration: line-through;
+}
+
+.pos-cd-totals {
+	padding: 16px 24px 24px;
+	border-top: 2px solid var(--pos-border);
+	background: var(--pos-surface);
+}
+.pos-cd-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 4px 0;
+	font-size: clamp(18px, 1.5vw, 24px);
+}
+.pos-cd-row--saving {
+	color: var(--pos-success);
+	font-weight: 600;
+}
+.pos-cd-row--strong {
+	font-weight: 800;
+}
+.pos-cd-totals__note {
+	font-size: clamp(14px, 1.1vw, 17px);
+	color: var(--pos-text-muted);
+	text-align: right;
+}
+.pos-cd-due {
+	margin-top: 12px;
+	padding: 16px 20px;
+	border-radius: var(--pos-radius);
+	background: var(--pos-primary);
+	color: var(--pos-primary-contrast);
+	transition: background 0.4s ease;
+}
+.pos-cd-due.is-paid {
+	background: var(--pos-success);
+}
+.pos-cd-due__label {
+	font-size: clamp(16px, 1.3vw, 20px);
+	font-weight: 600;
+	opacity: 0.9;
+}
+.pos-cd-due__value {
+	font-size: clamp(40px, 4vw, 64px);
+	font-weight: 800;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+}
+.pos-cd-paid {
+	margin-top: 12px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: clamp(20px, 1.8vw, 28px);
+	font-weight: 700;
+	color: var(--pos-success);
+	animation: pos-cd-line-in 0.4s ease;
+}
+.pos-cd-paid__icon {
+	width: 1.6em;
+	height: 1.6em;
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	background: var(--pos-success);
+	color: var(--pos-on-solid);
+}
+
+/* Trang 2: mã QR thanh toán */
+.pos-cd-qr {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 24px;
+	padding: 24px;
+	background: var(--pos-surface);
+}
+.pos-cd-qr__brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: clamp(20px, 2vw, 30px);
+	font-weight: 800;
+}
+.pos-cd-qr__brand img {
+	height: 48px;
+	width: auto;
+	object-fit: contain;
+}
+.pos-cd-qr__card {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+	padding: 32px 40px;
+	border-radius: calc(var(--pos-radius) * 2);
+	background: var(--pos-bg);
+	box-shadow: var(--pos-shadow-modal);
+	max-width: 100%;
+}
+.pos-cd-qr__img {
+	width: min(58vh, 44vw, 520px);
+	height: auto;
+	aspect-ratio: 1;
+	object-fit: contain;
+	background: var(--pos-on-solid);
+}
+.pos-cd-qr__info {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+.pos-cd-qr__hint {
+	font-size: clamp(18px, 1.6vw, 24px);
+	color: var(--pos-text-muted);
+}
+.pos-cd-qr__label {
+	margin-top: 12px;
+	font-size: clamp(18px, 1.5vw, 22px);
+	font-weight: 600;
+}
+.pos-cd-qr__amount {
+	font-size: clamp(44px, 4.5vw, 72px);
+	font-weight: 800;
+	line-height: 1.05;
+	color: var(--pos-primary);
+}
+.pos-cd-qr__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	font-size: clamp(16px, 1.4vw, 22px);
+	color: var(--pos-text-muted);
+}
+.pos-cd-qr__code {
+	margin-top: 12px;
+	padding: 12px 16px;
+	border-radius: var(--pos-radius);
+	background: var(--pos-surface);
+	font-size: clamp(14px, 1.1vw, 17px);
+	color: var(--pos-text-muted);
+}
+.pos-cd-qr__code strong {
+	display: block;
+	margin-top: 4px;
+	font-size: clamp(16px, 1.4vw, 22px);
+	color: var(--pos-text);
+	word-break: break-all;
+}
+
+/* Tablet dọc / màn hẹp: xếp dọc (banner trên, đơn dưới) */
+@media (max-width: 900px), (orientation: portrait) {
+	.pos-cd-split {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 35%) minmax(0, 1fr);
+	}
+	.pos-cd-qr__card {
+		flex-direction: column;
+		gap: 20px;
+		padding: 24px 16px;
+		text-align: center;
+	}
+	.pos-cd-qr__img {
+		width: min(70vw, 46vh);
+	}
+	.pos-cd-qr__meta {
+		justify-content: center;
+	}
+}

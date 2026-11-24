@@ -58,6 +58,7 @@ PERMS = {
 		"Contact": ["read"],
 		"MYPOS Option Group": ["read"],
 		"MYPOS Order QR": ["read"],
+		"MYPOS Banner": ["read"],
 	},
 	KITCHEN: {
 		"MYPOS Menu": ["read"],
@@ -81,6 +82,7 @@ PERMS = {
 		"Branch": _MASTER_RW,
 		"MYPOS Option Group": ["read", "write", "create"],
 		"MYPOS Order QR": _MASTER_RW,
+		"MYPOS Banner": _MASTER_RW,
 		# "MYPOS Order Cancel Log" đã bỏ 2026-11-23 (đơn hủy giữ lại dạng Cancelled; patch v1_simplify_cancel_review xóa DocType).
 	},
 }

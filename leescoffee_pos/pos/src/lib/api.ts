@@ -12,6 +12,8 @@ import type {
 	KitchenOrder,
 	KitchenStep,
 	BuzzerOption,
+	CustomerDisplayConfig,
+	CustomerDisplayState,
 	LoyaltyInfo,
 	PricingPreview,
 	ServeQueueItem,
@@ -20,6 +22,9 @@ import type {
 const API_BASE =
 	(window as unknown as { POS_CONFIG?: { apiBase?: string; csrfToken?: string } }).POS_CONFIG?.apiBase ||
 	"/api/method/leescoffee_pos.leescoffee_pos.api.pos_api";
+
+// Màn khách (/pos/customer): module API riêng cùng package (customer_display_api.py).
+const DISPLAY_API_BASE = API_BASE.replace(/\.pos_api$/, ".customer_display_api");
 
 function csrfToken(): string {
 	const meta = document.querySelector('meta[name="csrf-token"]');
@@ -63,10 +68,15 @@ export function extractError(data: unknown, status: number): string {
 	return `Lỗi ${status}`;
 }
 
-export async function call<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
+export async function call<T>(
+	method: string,
+	args: Record<string, unknown> = {},
+	{ base = API_BASE, signal }: { base?: string; signal?: AbortSignal } = {}
+): Promise<T> {
 	let response: Response;
 	try {
-		response = await fetch(`${API_BASE}.${method}`, {
+		response = await fetch(`${base}.${method}`, {
+			signal,
 			method: "POST",
 			credentials: "same-origin",
 			headers: {
@@ -76,7 +86,8 @@ export async function call<T>(method: string, args: Record<string, unknown> = {}
 			},
 			body: JSON.stringify(args),
 		});
-	} catch {
+	} catch (err) {
+		if (signal?.aborted) throw err;
 		throw new Error("Không kết nối được tới máy chủ POS.");
 	}
 
@@ -130,6 +141,8 @@ export const api = {
 		customer?: string;
 		price_list: string;
 		redeem_points?: number;
+		/** 1 = lưu kết quả cho màn khách (/pos/customer), không thêm request. */
+		display?: number;
 	}) => call<PricingPreview>("preview_pricing", p),
 	getCustomerLoyalty: (customer: string, order_total = 0) =>
 		call<LoyaltyInfo>("get_customer_loyalty", { customer, order_total }),
@@ -154,4 +167,12 @@ export const api = {
 	getServeQueue: () => call<ServeQueueItem[]>("get_serve_queue"),
 	setKitchenStatus: (invoice_name: string, status: KitchenStep) =>
 		call<{ invoice_name: string; kitchen_status: string }>("set_kitchen_status", { invoice_name, status }),
+	// Màn khách (/pos/customer) — chỉ hiển thị, server lọc theo user + POS Profile của người gọi.
+	getCustomerDisplayConfig: () =>
+		call<CustomerDisplayConfig>("get_customer_display_config", {}, { base: DISPLAY_API_BASE }),
+	getCustomerDisplayState: (since: number, signal?: AbortSignal) =>
+		call<CustomerDisplayState>("get_customer_display_state", { since }, { base: DISPLAY_API_BASE, signal }),
+	/** "idle": giỏ về rỗng (server chỉ áp khi đang hiện giỏ); "order": chọn đơn Draft ở Orders. */
+	setCustomerDisplay: (phase: "idle" | "order", invoice?: string) =>
+		call<{ v: number; phase: string }>("set_customer_display", { phase, invoice }, { base: DISPLAY_API_BASE }),
 };

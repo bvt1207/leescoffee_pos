@@ -18,6 +18,11 @@
 			window.POS_CONFIG = {
 				csrfToken: "{{ csrf_token }}",
 				apiBase: "/api/method/leescoffee_pos.leescoffee_pos.api.pos_api",
+				realtime: {
+					site: "{{ realtime_site }}",
+					port: {{ realtime_port or 9000 }},
+					devServer: {{ realtime_dev or 0 }},
+				},
 			};
 		</script>
 		<script type="module" src="/assets/leescoffee_pos/pos/pos.js"></script>

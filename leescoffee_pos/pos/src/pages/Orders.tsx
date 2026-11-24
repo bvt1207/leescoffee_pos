@@ -376,7 +376,13 @@ export default function Orders() {
 									type="button"
 									key={o.name}
 									className={`pos-order-card ${selected === o.name ? "is-active" : ""}`}
-									onClick={() => setSelected(o.name)}
+									onClick={() => {
+										// Chọn đơn Draft tại quầy -> màn khách (/pos/customer) hiện đơn đó. Chỉ gọi khi đổi đơn.
+										if (selected !== o.name && o.docstatus === 0 && o.order_channel !== "QR") {
+											void api.setCustomerDisplay("order", o.name).catch(() => undefined);
+										}
+										setSelected(o.name);
+									}}
 								>
 									<div className="pos-order-card__top">
 										<strong>{customerLabel(o)}</strong>

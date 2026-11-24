@@ -25,3 +25,8 @@ def get_context(context):
 	# Tiêu đề trang: tên thương hiệu lấy từ API, ở đây chỉ dùng nhãn chung.
 	context.title = "POS"
 	context.csrf_token = get_csrf_token()
+	# Realtime (socket.io của Frappe) cho màn khách /pos/customer: namespace = tên site.
+	# dev_server (bench start) -> socket ở cổng riêng socketio_port; production (nginx) -> cùng origin.
+	context.realtime_site = frappe.local.site
+	context.realtime_port = frappe.conf.get("socketio_port") or 9000
+	context.realtime_dev = 1 if getattr(frappe, "_dev_server", False) else 0

@@ -68,6 +68,11 @@ class PosInvoiceHooks:
 
             _record_redemption(doc)
 
+        # Màn khách (/pos/customer) đang hiện đơn này -> "Thanh toán thành công" (sau commit, lỗi không chặn submit).
+        from leescoffee_pos.leescoffee_pos.api.customer_display_api import touch_paid
+
+        touch_paid(doc)
+
     @staticmethod
     def before_save(doc, method=None):
         """

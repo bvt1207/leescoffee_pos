@@ -765,6 +765,10 @@ def create_draft_order(
 		frappe.throw(_("Không tạo được đơn: {0}").format(str(exc)))
 
 	invoice.reload()
+	# Màn khách (/pos/customer) chuyển sang hiện đơn vừa tạo (sau commit; lỗi không chặn tạo đơn).
+	from .customer_display_api import touch_order
+
+	touch_order(invoice.name, profile.name)
 
 	return {
 		"invoice_name": invoice.name,
@@ -778,11 +782,12 @@ def create_draft_order(
 
 
 @frappe.whitelist()
-def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
+def preview_pricing(items, customer=None, price_list=None, redeem_points=0, display=0):
 	"""Xem trước giá sau CTKM (Pricing Rule) và đổi điểm — dựng hóa đơn trong bộ nhớ, không ghi DB.
 
 	Trả về từng dòng (giá gốc, giá sau luật, % giảm, số tiền tiết kiệm, luật áp dụng,
 	cờ quà tặng) cùng các tổng và mức đổi điểm tối đa theo tổng sau luật.
+	display=1 (màn POS): lưu kết quả đã tính cho màn khách (customer_display_api.touch_cart), không thêm request.
 	"""
 	rows = _normalize_items(items)
 	if not rows:
@@ -793,11 +798,20 @@ def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
 	effective_price_list = _require_price_list(price_list)
 	cust = _resolve_customer(profile, customer)
 
-	return _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points)
+	capture = {} if cint(display) else None
+	result = _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points, capture=capture)
+	if capture:
+		from .customer_display_api import touch_cart
+
+		touch_cart(profile, capture["invoice"], cust, capture.get("loyalty"))
+	return result
 
 
-def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points=0):
-	"""Lõi của preview_pricing (dùng chung cho POS và web đặt món QR). Không ghi DB."""
+def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points=0, capture=None):
+	"""Lõi của preview_pricing (dùng chung cho POS và web đặt món QR). Không ghi DB.
+
+	capture (dict, tùy chọn): nhận lại hóa đơn tạm + thông tin điểm để dựng màn khách mà không tính lại.
+	"""
 	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 	walk_in = get_walk_in_customer(profile)
@@ -805,6 +819,9 @@ def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_poi
 	after_rules = flt(invoice.grand_total)
 	info = _loyalty_info(cust, profile.company, after_rules, walk_in)
 	_apply_redemption(invoice, cust, profile.company, redeem_points, walk_in)
+	if capture is not None:
+		capture["invoice"] = invoice
+		capture["loyalty"] = info
 
 	rules_by_row = [get_applied_pricing_rules(row.get("pricing_rules")) for row in invoice.items]
 	names = sorted({n for rules in rules_by_row for n in rules})
@@ -1464,7 +1481,13 @@ def generate_qr(invoice_name):
 	"""Sinh mã VietQR cho đơn (idempotent — gọi lại trả về mã cũ)."""
 	from ..doctype.sepay.sepay import generate_qr_for_invoice
 
-	return generate_qr_for_invoice(invoice_name)
+	from .customer_display_api import touch_order
+
+	result = generate_qr_for_invoice(invoice_name)
+	# Màn khách hiện mã QR của đơn (sau commit; lỗi không chặn sinh QR).
+	if result and result.get("qr_url"):
+		touch_order(invoice_name, frappe.db.get_value("POS Invoice", invoice_name, "pos_profile"), qr=result)
+	return result
 
 
 # 2026-11-23: bỏ API confirm_pickup (nhả thẻ thủ công). Thẻ tự nhả khi đơn kết thúc / bị hủy (pos_invoice_hooks).

@@ -366,3 +366,55 @@ export interface BuzzerOption {
 	available: boolean;
 	used_by: string | null;
 }
+// ---------------------------------------------------------------------------
+// Màn khách (/pos/customer) — customer_display_api.py
+// ---------------------------------------------------------------------------
+
+export interface CustomerDisplayConfig {
+	brand: Partial<BrandInfo>;
+	currency: string;
+	pos_profile: string;
+	banners: { title: string; image: string }[];
+}
+
+export type CustomerDisplayPhase = "idle" | "cart" | "order" | "qr" | "paid";
+
+export interface CustomerDisplayLine {
+	item_name: string;
+	size: string;
+	qty: number;
+	options: LineOption[];
+	price_list_rate: number;
+	rate: number;
+	/** Thành tiền dòng đã gồm phụ thu tùy chọn (server tính). */
+	amount: number;
+	is_free_item: number;
+}
+
+export interface CustomerDisplayOrder {
+	invoice?: string;
+	order_type?: string;
+	currency: string;
+	lines: CustomerDisplayLine[];
+	totals: {
+		total_before: number;
+		total_discount_rules: number;
+		total_surcharge: number;
+		loyalty_discount: number;
+		redeemed_points: number;
+		grand_total: number;
+		amount_due: number;
+		amount_total: number;
+	};
+	customer: { name: string; is_walk_in: boolean; tier_name: string; loyalty_points: number | null };
+	paid?: boolean;
+}
+
+export interface CustomerDisplayState {
+	v: number;
+	unchanged?: boolean;
+	phase?: CustomerDisplayPhase;
+	order?: CustomerDisplayOrder;
+	qr?: { qr_url: string; amount: number; payment_code: string };
+	paid_at?: string;
+}

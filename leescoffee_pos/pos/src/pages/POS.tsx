@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuGrid from "../components/MenuGrid";
 import CartPanel from "../components/CartPanel";
@@ -93,7 +93,8 @@ export default function POS() {
 		setPreviewLoading(true);
 		const timer = window.setTimeout(async () => {
 			try {
-				const res = await api.previewPricing({ ...base, redeem_points: redeemPoints || undefined });
+				// display: 1 -> server lưu kết quả cho màn khách (/pos/customer), không thêm request.
+				const res = await api.previewPricing({ ...base, redeem_points: redeemPoints || undefined, display: 1 });
 				if (cancelled) return;
 				setPreview(res);
 				setPreviewError("");
@@ -127,6 +128,19 @@ export default function POS() {
 			window.clearTimeout(timer);
 		};
 	}, [pricingKey, customer?.name, redeemPoints, priceList, setRedeemPoints]);
+
+	// Giỏ về rỗng (xóa hết món) -> màn khách về màn chờ. Server chỉ áp khi màn khách đang hiện giỏ,
+	// nên ngay sau "Tạo đơn" (giỏ bị xóa) đơn vừa tạo vẫn hiện cho khách.
+	const hadLines = useRef(false);
+	useEffect(() => {
+		if (pricingKey) {
+			hadLines.current = true;
+			return;
+		}
+		if (!hadLines.current) return;
+		hadLines.current = false;
+		void api.setCustomerDisplay("idle").catch(() => undefined);
+	}, [pricingKey]);
 
 	const usableModes = useMemo(
 		() => (config?.payment_modes || []).filter((mode) => mode.has_account),

@@ -125,6 +125,19 @@ export default function AppHeader() {
 									) : null}
 								</div>
 								<a className="pos-user__item" role="menuitem" href="/desk">Chuyển sang Desk</a>
+								{nav.includes("sell") ? (
+									// Màn khách: mở cửa sổ riêng (kéo sang màn hình phụ) hoặc mở cùng tài khoản trên thiết bị khác.
+									<a
+										className="pos-user__item"
+										role="menuitem"
+										href="/pos/customer"
+										target="mypos_customer_display"
+										rel="noopener"
+										onClick={() => setMenuOpen(false)}
+									>
+										Mở màn hình khách
+									</a>
+								) : null}
 								<button type="button" className="pos-user__item" role="menuitem" onClick={clearCache}>
 									Xóa bộ nhớ đệm
 								</button>

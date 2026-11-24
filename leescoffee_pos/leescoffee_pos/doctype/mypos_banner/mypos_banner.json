@@ -1,0 +1,94 @@
+{
+  "doctype": "DocType",
+  "name": "MYPOS Banner",
+  "module": "Leescoffee POS",
+  "modified": "2026-11-24 10:00:00.000000",
+  "istable": 0,
+  "issingle": 0,
+  "autoname": "MYPOS-BNR-.####",
+  "title_field": "title",
+  "show_title_field_in_link": 1,
+  "image_field": "image",
+  "search_fields": "title,pos_profile",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "title",
+      "label": "Chủ đề",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Đang dùng",
+      "fieldtype": "Check",
+      "default": "1",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "sort_order",
+      "label": "Thứ tự",
+      "fieldtype": "Int",
+      "default": "0",
+      "in_list_view": 1,
+      "description": "Số nhỏ hiển thị trước."
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "pos_profile",
+      "label": "POS Profile",
+      "fieldtype": "Link",
+      "options": "POS Profile",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "description": "Để trống: hiển thị ở mọi POS Profile."
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Hiệu lực từ",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "valid_upto",
+      "label": "Hiệu lực đến",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "section_image",
+      "label": "Ảnh banner",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "image",
+      "label": "Ảnh",
+      "fieldtype": "Attach Image",
+      "reqd": 1,
+      "description": "Ảnh ngang 16:9 (khuyến nghị 1920×1080, ≤ 500 KB, JPG/WebP). Bỏ chọn \"Is Private\" khi tải lên."
+    },
+    {
+      "fieldname": "description",
+      "label": "Ghi chú nội bộ",
+      "fieldtype": "Small Text",
+      "description": "Không hiển thị cho khách."
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "select": 1,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0
+    }
+  ]
+}

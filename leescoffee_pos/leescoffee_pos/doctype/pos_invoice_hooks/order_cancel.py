@@ -65,7 +65,7 @@ def cancel_draft(invoice_name, reason, source, note=None):
 	Trả {invoice_name, buzzer, cancel_reason}.
 	"""
 	row = frappe.db.sql(
-		"SELECT `name`, `docstatus`, `is_return`, `buzzer` FROM `tabPOS Invoice` WHERE `name` = %s FOR UPDATE",
+		"SELECT `name`, `docstatus`, `is_return`, `buzzer`, `owner` FROM `tabPOS Invoice` WHERE `name` = %s FOR UPDATE",
 		(invoice_name,),
 		as_dict=True,
 	)
@@ -99,6 +99,10 @@ def cancel_draft(invoice_name, reason, source, note=None):
 			"content": _("Hủy đơn: {0}. Bởi {1}.").format(text, frappe.session.user),
 		}
 	).insert(ignore_permissions=True)
+	# Màn khách đang hiện đơn này -> về màn chờ (sau commit, lỗi không chặn hủy).
+	from leescoffee_pos.leescoffee_pos.api.customer_display_api import touch_cancelled
+
+	touch_cancelled(invoice_name, row.owner)
 	return {"invoice_name": invoice_name, "buzzer": row.buzzer, "cancel_reason": text}
 
 
