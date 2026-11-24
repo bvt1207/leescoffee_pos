@@ -15,6 +15,8 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	(User.on_update -> create_contact, enqueue_after_commit) nên lần chạy bình thường (rollback) không sinh Contact.
 	Lỗi khi dọn chỉ in WARN + lệnh xóa tay; dòng KẾT QUẢ luôn được in.
 	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest().
+	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
+	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
 	import time
 	import traceback
@@ -27,6 +29,7 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 
 	PREFIX = "zz.test.shift"
 	PROFILE_PREFIX = "ZZTEST Shift "
+	WALK_IN_PREFIX = "ZZTEST WI Shift "  # Customer khách vãng lai tạm (2026-11-24)
 	# Frappe v16: frappe.QueryDeadlockError (MariaDB 1213 / 1020). Không có thì không bắt riêng.
 	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	ROLE_OF = {"A": "POS CASHIER", "B": "POS CASHIER", "OUT": "POS CASHIER", "K": "POS KITCHEN", "M": "POS MANAGER"}
@@ -118,6 +121,10 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 					for n in frappe.get_all(dt, filters={"pos_profile": prof_name}, pluck="name"):
 						delete_fresh(dt, n, removed, failed, cancel=True)
 				delete_fresh("POS Profile", prof_name, removed, failed)
+			for c in frappe.get_all("Customer", filters={"customer_name": ["like", WALK_IN_PREFIX + "%"]}, pluck="name"):
+				for n in frappe.get_all("POS Invoice", filters={"customer": c}, pluck="name"):
+					delete_fresh("POS Invoice", n, removed, failed, cancel=True)
+				delete_fresh("Customer", c, removed, failed)
 			contacts = set(frappe.get_all("Contact", filters={"user": ["like", PREFIX + ".%"]}, pluck="name"))
 			contacts |= set(frappe.get_all("Contact", filters={"email_id": ["like", PREFIX + ".%"]}, pluck="name"))
 			for c in sorted(contacts):
@@ -146,6 +153,13 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 	frappe.set_user("Administrator")
 	try:
 		src = frappe.get_doc("POS Profile", pos_profile)
+		# Khách vãng lai TẠM (2026-11-24): profile tạm dùng Customer ZZTEST, không dựa vào cấu hình của profile thật.
+		wi = frappe.new_doc("Customer")
+		wi.customer_name = f"{WALK_IN_PREFIX}{frappe.generate_hash(length=6)}"
+		wi.customer_type = "Individual"
+		wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+		wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+		wi.insert(ignore_permissions=True)
 		company = src.company
 		price_list = price_list or src.get("selling_price_list")
 		balance_modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
@@ -167,6 +181,7 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 			users[key] = email
 		prof = frappe.copy_doc(src)
 		prof.set("__newname", f"{PROFILE_PREFIX}{frappe.generate_hash(length=6)}")
+		prof.set("custom_walk_in_customer", wi.name)
 		prof.disabled = 0
 		# copy_doc kéo theo dòng Applicable for Users của profile thật -> xóa hết rồi thêm user tạm.
 		# default = 0: validate_default_profile của ERPNext chặn khi user đã là default ở profile khác.
@@ -258,8 +273,10 @@ def check_shift_owner(pos_profile, item_code, mode_of_payment, price_list=None):
 			frappe.db.commit()
 			left_profiles = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name")
 			left_users = frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name")
-			ok("9 Dọn dữ liệu: không còn POS Profile ZZTEST Shift / user tạm trong DB", not left_profiles and not left_users,
-				f"(profile {left_profiles}, user {left_users})")
+			left_customers = frappe.get_all("Customer", filters={"customer_name": ["like", WALK_IN_PREFIX + "%"]}, pluck="name")
+			ok("9 Dọn dữ liệu: không còn POS Profile ZZTEST Shift / user / khách vãng lai tạm trong DB",
+				not left_profiles and not left_users and not left_customers,
+				f"(profile {left_profiles}, user {left_users}, customer {left_customers})")
 		except Exception:  # noqa: BLE001
 			ok("9 Dọn dữ liệu (lỗi khi dọn — xem WARN / traceback)", False)
 			traceback.print_exc()

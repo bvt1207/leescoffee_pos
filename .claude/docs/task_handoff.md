@@ -8,10 +8,11 @@
   Chưa cấu hình → `create_draft_order` / `preview_pricing` không chọn khách báo lỗi tiếng Việt; mở ca chỉ cảnh báo.
 - Cờ `is_walk_in` (server, theo POS Profile của đơn) ở get_orders / get_order_detail / get_kitchen_orders / get_serve_queue / status board;
   frontend `customerLabel` → "Khách lẻ". `search_customers` + web QR (`_find_customer`) bỏ qua khách vãng lai.
-- Patch `v1_walk_in_customer`: tự tạo field nếu chưa có, gán "Walk-in Customer" cho profile trống nếu hợp lệ, không thì Error Log.
+- Không patch tự gán (2026-11-24: đã xóa `v1_walk_in_customer` + dòng `patches.txt`). Field chỉ từ fixture, để trống; **cấu hình tay** trên mỗi
+  POS Profile (tạo Customer: Individual, không SĐT, không Loyalty Program → chọn ở "Khách vãng lai") trước khi bán. DEV đã chạy patch cũ: không chạy lại.
 - Chi tiết: `rules/leescoffee_pos/pos_profile.md`. Kiểm tra: `.claude/docs/walk_in_customer_check.py` + `table_card_check` (2f đổi sang `is_walk_in`).
-- Self-test cũ tạo đơn không chọn khách (draft_cancel, open_orders, orders_shift, shift_owner, surcharge, legacy_options, kitchen_desk,
-  order_qr phần POS) cần POS Profile nguồn đã cấu hình Khách vãng lai, nếu không sẽ dừng với đúng thông báo trên.
+- Self-test (draft_cancel, open_orders, shift_owner, table_card: profile tạm + Customer tạm; legacy_options, orders_shift, surcharge,
+  mypos_rename R9: truyền Customer tạm khi tạo đơn) tự tạo / tự xóa Customer `ZZTEST WI ...` — không cần profile thật đã cấu hình.
 
 ## 0o. Thẻ rung → thẻ bàn + thông báo thu ngân khi đơn "Đã làm" (2026-11-23) — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `adcb92d`, `3736f85`, `4712d68`)
 - Tên kỹ thuật giữ (`MYPOS Buzzer`, field `buzzer`); Desk dùng "MYPOS Buzzer" (`adcb92d` đặt lại label), POS / hóa đơn in dùng "Thẻ bàn" / "Bàn #".

@@ -11,6 +11,8 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 	và 3 user tạm (mỗi người 1 role POS). Không commit: cuối hàm ROLLBACK; nếu có commit ngầm thì tự
 	trả status, hủy + xóa đơn, Loyalty Point Entry, user tạm và in WARN.
 	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest() (file riêng trong .claude/docs/).
+	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
+	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
 	import traceback
 
@@ -22,7 +24,7 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 
 	ROLES = ("POS CASHIER", "POS KITCHEN", "POS MANAGER")
 	results, made_inv, users = [], [], {}
-	ctx = {"price_list": price_list}
+	ctx = {"price_list": price_list, "walk_in": None}
 
 	def ok(case, cond, extra=""):
 		results.append((case, bool(cond)))
@@ -44,7 +46,7 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 		res = P.create_draft_order(
 			items=[{"item_code": item_code, "qty": 1, "options": []}],
 			order_type="Take Away",
-			customer_name=customer,
+			customer_name=customer or ctx["walk_in"],
 			mode_of_payment=mode_of_payment,
 			branch_name=branch_name,
 			price_list=ctx["price_list"],
@@ -64,6 +66,15 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 	admin = frappe.session.user
 	frappe.set_user("Administrator")
 	try:
+		if not customer:
+			# Khách TẠM (2026-11-24): đơn thử chọn khách rõ, không phụ thuộc Khách vãng lai của POS Profile thật.
+			_wi = frappe.new_doc("Customer")
+			_wi.customer_name = f"ZZTEST WI Orders {frappe.generate_hash(length=6)}"
+			_wi.customer_type = "Individual"
+			_wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+			_wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+			_wi.insert(ignore_permissions=True)
+			ctx["walk_in"] = _wi.name
 		profile = P._get_pos_profile(branch_name)
 		resolved = resolve_pos_profile_name()
 		if resolved != profile.name:
@@ -197,6 +208,14 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 				print(f"WARN có commit ngầm, đã dọn đơn {left_inv} và user {left_users}")
 			else:
 				print("Đã rollback: không còn đơn / user thử")
+			_tmp = ctx.get("walk_in")
+			if _tmp and frappe.db.exists("Customer", _tmp):
+				try:
+					frappe.delete_doc("Customer", _tmp, force=1, ignore_permissions=True)
+					frappe.db.commit()
+					print(f"WARN có commit ngầm, đã xóa khách tạm {_tmp}")
+				except Exception as ex:  # noqa: BLE001
+					print(f"WARN không xóa được khách tạm {_tmp}: {ex} (xóa tay trên Desk)")
 		frappe.set_user(admin)
 
 	failed = [c for c, passed in results if not passed]

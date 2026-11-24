@@ -2,14 +2,15 @@
 
 > Paths: `leescoffee_pos/leescoffee_pos/doctype/pos_profile_hooks/pos_profile_hooks.py` (nguồn DUY NHẤT đọc field),
 > `fixtures/custom_field.json` (`POS Profile-custom_walk_in_customer`), `public/js/pos_profile.js`,
-> `patches/v1_walk_in_customer.py`, `api/pos_api.py`, `api/customer_order_api.py` (`_find_customer`).
+> `api/pos_api.py`, `api/customer_order_api.py` (`_find_customer`). **Không có patch** (2026-11-24: đã xóa `v1_walk_in_customer`).
 > Làm 2026-11-24 — **chưa test trên bench**. Kiểm tra: `.claude/docs/walk_in_customer_check.py` (`check_walk_in_customer(...)`).
 
 ## 1. Quy tắc
 
 - Custom Field `POS Profile.custom_walk_in_customer` ("Khách vãng lai", Link → Customer, sau `branch`, không bắt buộc ở DocType).
-- Người cấu hình **tự tạo Customer** rồi chọn vào field. Code **không tự tạo** Customer, **không có tên Customer cố định** nào
-  (chuỗi "Walk-in Customer" chỉ còn trong patch di trú `v1_walk_in_customer`). Nhiều profile được dùng chung một Customer.
+- Người cấu hình **tự tạo Customer** rồi chọn vào field. **Không patch / hook / seed / fixture nào tự điền giá trị** cho field
+  (fixture `default: ""`), code không tự tạo Customer, không có tên Customer cố định nào. Nhiều profile được dùng chung một Customer.
+- Self-test (`.claude/docs/*_check.py`) tự tạo Customer tạm `ZZTEST WI ...` (gán cho profile tạm hoặc truyền rõ khi tạo đơn) và tự xóa.
 - Field chuẩn `POS Profile.customer` của ERPNext (khách mặc định của màn POS gốc) **không được đọc**; `get_pos_config` vẫn trả khóa `customer` cũ.
 - Đơn tại quầy không chọn khách (`create_draft_order`, `preview_pricing` qua `_resolve_customer(profile, customer)`) → khách vãng lai của
   POS Profile; chưa cấu hình → lỗi "POS Profile chưa cấu hình Khách vãng lai. Vui lòng nhờ quản lý cấu hình." (`WALK_IN_MISSING_MSG`).
@@ -48,8 +49,12 @@
 2. POS Profile của chi nhánh → "Khách vãng lai" → chọn Customer vừa tạo → Save.
 3. Kiểm: /pos không còn banner "chưa cấu hình Khách vãng lai"; tạo đơn không chọn khách được.
 
-## 6. Patch `v1_walk_in_customer` (post_model_sync)
+## 6. Migrate / bench mới
 
-- Tự tạo Custom Field nếu cột chưa có (fixture nạp SAU patch post_model_sync; cùng định nghĩa, fixture ghi đè y nguyên).
-- Profile đang trống: gán Customer "Walk-in Customer" nếu tồn tại, không disabled, không Loyalty Program; ngược lại để trống + in + Error Log
-  "Leescoffee POS: POS Profile thiếu Khách vãng lai" liệt kê profile. Không tạo Customer, không sửa hóa đơn. Idempotent.
+- Field chỉ đến từ fixture `custom_field.json` (nạp cuối migrate / khi install-app). Không có patch: không code nào chạy trong migrate
+  đọc field (hook `validate` dùng `doc.get`, chỉ chạy khi lưu POS Profile; API chỉ chạy lúc dùng).
+- Bench mới / UAT: sau migrate mọi POS Profile để trống → /pos chặn đơn không chọn khách cho tới khi cấu hình tay (§5).
+- Patch cũ `v1_walk_in_customer` (đã xóa 2026-11-24) từng tự gán "Walk-in Customer" trên DEV: dòng Patch Log còn lại vô hại; giá trị đã gán
+  giữ nguyên cho tới khi quản lý tự đổi trên Desk.
+- Liệt kê POS Profile chưa cấu hình (bench console, chỉ đọc):
+  `frappe.get_all("POS Profile", filters=[["custom_walk_in_customer", "is", "not set"]], fields=["name", "branch", "disabled"])`

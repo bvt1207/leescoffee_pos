@@ -9,6 +9,8 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 	của POS Profile. Tạo vài đơn Take Away thử, cuối hàm ROLLBACK; nếu có commit ngầm thì hủy + xóa đơn và in WARN.
 	Mục G chỉ ĐỌC (không sửa đơn cũ). Sau khi PASS: chạy lại run_order_qr_selftest(), run_order_history_selftest(),
 	check_option_surcharge(...).
+	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
+	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
 	import json
 	import traceback
@@ -23,7 +25,7 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 	)
 
 	results, made_inv = [], []
-	ctx = {"price_list": price_list}
+	ctx = {"price_list": price_list, "walk_in": None}
 
 	def ok(case, cond, extra=""):
 		results.append((case, bool(cond)))
@@ -38,8 +40,8 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 			line.update({"sugar": 70, "ice": 50})  # frontend cũ: không có khóa options
 		else:
 			line["options"] = options if options is not None else []
-		res = P.create_draft_order(items=[line], order_type="Take Away", mode_of_payment=mode_of_payment,
-			branch_name=branch_name, price_list=ctx["price_list"])
+		res = P.create_draft_order(items=[line], order_type="Take Away", customer_name=ctx["walk_in"],
+			mode_of_payment=mode_of_payment, branch_name=branch_name, price_list=ctx["price_list"])
 		name = res["invoice_name"]
 		made_inv.append(name)
 		if pay:
@@ -71,6 +73,14 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 	admin = frappe.session.user
 	frappe.set_user("Administrator")
 	try:
+		# Khách TẠM (2026-11-24): đơn thử chọn khách rõ, không phụ thuộc Khách vãng lai của POS Profile thật.
+		_wi = frappe.new_doc("Customer")
+		_wi.customer_name = f"ZZTEST WI Legacy {frappe.generate_hash(length=6)}"
+		_wi.customer_type = "Individual"
+		_wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+		_wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+		_wi.insert(ignore_permissions=True)
+		ctx["walk_in"] = _wi.name
 		print("== A. read_line_options ==")
 		ok("A1 '[]' + 100/100 -> []", read_line_options("[]", "100", "100") == [])
 		ok("A2 NULL + 70/50 -> Đường 70% · Đá 50%", labels(read_line_options(None, "70", "50")) == "Đường 70% · Đá 50%")
@@ -177,6 +187,14 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 			print(f"WARN có commit ngầm, đã dọn {left}")
 		else:
 			print("Đã rollback: không còn đơn thử")
+		_tmp = ctx.get("walk_in")
+		if _tmp and frappe.db.exists("Customer", _tmp):
+			try:
+				frappe.delete_doc("Customer", _tmp, force=1, ignore_permissions=True)
+				frappe.db.commit()
+				print(f"WARN có commit ngầm, đã xóa khách tạm {_tmp}")
+			except Exception as ex:  # noqa: BLE001
+				print(f"WARN không xóa được khách tạm {_tmp}: {ex} (xóa tay trên Desk)")
 		frappe.set_user(admin)
 
 	failed = [c for c, passed in results if not passed]

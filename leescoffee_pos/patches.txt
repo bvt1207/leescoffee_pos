@@ -12,4 +12,3 @@ leescoffee_pos.patches.v1_clear_legacy_option_default #2026-11-20 blank-first-op
 leescoffee_pos.patches.v1_kitchen_outcomes
 leescoffee_pos.patches.v1_simplify_cancel_review
 leescoffee_pos.patches.v1_table_card_cleanup
-leescoffee_pos.patches.v1_walk_in_customer

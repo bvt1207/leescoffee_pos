@@ -10,6 +10,8 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 	ZZTEST), mọi thứ ROLLBACK cuối hàm; nếu có commit ngầm (webhook) thì tự hủy + xóa và in WARN.
 	KHÔNG chạy đóng ca (sẽ gộp đơn thật) — xem checklist tay.
 	free_item_code: mã món (khác CF-ESP1, không có CTKM khác) để dựng luật "mua 2 tặng 1" thử; bỏ trống = SKIP.
+	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
+	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
 	import json
 	import traceback
@@ -28,6 +30,7 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 	TOPPING_TITLE = "ZZTEST Topping phụ thu"
 	T10, T5, TOFF = "ZZ Trân châu", "ZZ Thạch", "ZZ Tắt"
 	results, made_inv, made_docs = [], [], []
+	wi_box = {"c": None}  # Customer tạm khi đơn thử không chọn khách (2026-11-24)
 
 	def money(v):
 		return f"{flt(v):,.0f}".replace(",", ".")
@@ -49,9 +52,13 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 	def top(*labels):
 		return [{"group": grp.name, "value": list(labels)}] if labels else []
 
+	def preview(rows, customer=None, **kw):
+		"""preview_pricing với khách tạm khi không chọn khách (không phụ thuộc Khách vãng lai của POS Profile thật)."""
+		return P.preview_pricing(rows, customer=customer or wi_box["c"], **kw)
+
 	def run(case, rows, expected, pay=False, customer_=None, redeem=0):
-		p = P.preview_pricing(rows, customer=customer_, price_list=price_list, redeem_points=redeem)
-		res = P.create_draft_order(items=rows, order_type="Take Away", customer_name=customer_,
+		p = preview(rows, customer=customer_, price_list=price_list, redeem_points=redeem)
+		res = P.create_draft_order(items=rows, order_type="Take Away", customer_name=customer_ or wi_box["c"],
 			mode_of_payment=mode_of_payment, branch_name=branch_name, price_list=price_list, redeem_points=redeem)
 		made_inv.append(res["invoice_name"])
 		inv = frappe.get_doc("POS Invoice", res["invoice_name"])
@@ -98,6 +105,15 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 			"targets": [{"target_type": "Item", "item": match}],
 		}).insert(ignore_permissions=True)
 		made_docs.append(("MYPOS Option Group", grp.name))
+		# Khách TẠM (2026-11-24): đơn thử chọn khách rõ, không phụ thuộc Khách vãng lai của POS Profile thật.
+		_wi = frappe.new_doc("Customer")
+		_wi.customer_name = f"ZZTEST WI Surcharge {frappe.generate_hash(length=6)}"
+		_wi.customer_type = "Individual"
+		_wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+		_wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+		_wi.insert(ignore_permissions=True)
+		wi_box["c"] = _wi.name
+		made_docs.append(("Customer", wi_box["c"]))
 		clear_option_cache()
 
 		print("== A. Không topping: giữ số cũ ==")
@@ -117,8 +133,8 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 			for g in it.get("option_groups", []) if g["name"] == grp.name for v in g["values"]))
 
 		print("== C. Từ chối ==")
-		expect_err("C1 giá trị đã tắt", lambda: P.preview_pricing([L(1, top(TOFF))], price_list=price_list), "không thuộc nhóm")
-		expect_err("C2 nhóm không áp dụng", lambda: P.preview_pricing(
+		expect_err("C1 giá trị đã tắt", lambda: preview([L(1, top(TOFF))], price_list=price_list), "không thuộc nhóm")
+		expect_err("C2 nhóm không áp dụng", lambda: preview(
 			[L(1, [{"group": "MYPOS-OPT-ZZKHONGCO", "value": T10}])], price_list=price_list), "không áp dụng")
 
 		print("== D. Idempotent ==")
@@ -195,7 +211,7 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 			and all(o["price"] == 10000 for it in detail["items"] for o in it["options"] if o["value"] == T10),
 			f"trước {money(before)}, sau {money(after)}")
 		ok("G2 đơn mới dùng giá mới: x1 + Trân châu = 59.000",
-			total(P.preview_pricing([L(1, top(T10))], price_list=price_list)) == 59000)
+			total(preview([L(1, top(T10))], price_list=price_list)) == 59000)
 		k = [o for o in P.get_kitchen_orders() if o["name"] == b2.name]
 		ok("G3 get_kitchen_orders có price trong options", bool(k) and k[0]["items"][0]["options"][0]["price"] == 10000)
 
@@ -223,8 +239,8 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 			print("SKIP I: công ty chưa có Sales Taxes and Charges Template")
 		else:
 			frappe.db.set_value("POS Profile", profile.name, "taxes_and_charges", tpl)
-			g0 = P.preview_pricing([L(1)], price_list=price_list)
-			g1 = P.preview_pricing([L(1, top(T10))], price_list=price_list)
+			g0 = preview([L(1)], price_list=price_list)
+			g1 = preview([L(1, top(T10))], price_list=price_list)
 			ok(f"I1 mẫu thuế {tpl}: phụ thu cộng nguyên, không chịu thuế %",
 				round(total(g1) - total(g0)) == 20000, f"không topping {money(total(g0))}, có topping {money(total(g1))}")
 			frappe.db.set_value("POS Profile", profile.name, "taxes_and_charges", orig_profile.taxes_and_charges)
@@ -233,8 +249,8 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 		frappe.db.set_value("POS Profile", profile.name, "income_account", None)
 		frappe.db.set_value("Company", profile.company, "default_income_account", None)
 		expect_err("J1 có topping mà thiếu income_account -> báo lỗi rõ",
-			lambda: P.preview_pricing([L(1, top(T10))], price_list=price_list), "tài khoản doanh thu")
-		ok("J2 không topping vẫn tính bình thường", total(P.preview_pricing([L(1)], price_list=price_list)) == 39000)
+			lambda: preview([L(1, top(T10))], price_list=price_list), "tài khoản doanh thu")
+		ok("J2 không topping vẫn tính bình thường", total(preview([L(1)], price_list=price_list)) == 39000)
 		frappe.db.set_value("POS Profile", profile.name, "income_account", orig_profile.income_account)
 		frappe.db.set_value("Company", profile.company, "default_income_account", orig_company_income)
 
@@ -251,7 +267,7 @@ def check_option_surcharge(mode_of_payment, price_list="Menu chi nhánh Nguyễn
 				"min_qty": 2, "same_item": 1, "free_qty": 1, "company": profile.company, "priority": 20,
 				"applicable_for": ""}).insert(ignore_permissions=True)
 			made_docs.append(("Pricing Rule", pr.name))
-			pk = P.preview_pricing([L(2, top(T10), free_item_code)], price_list=price_list)
+			pk = preview([L(2, top(T10), free_item_code)], price_list=price_list)
 			free_rows = [i for i in pk["items"] if i["is_free_item"]]
 			ok("K1 có dòng tặng; phụ thu chỉ cho 2 ly trả tiền (2 × 20.000)", bool(free_rows) and round(pk["total_surcharge"]) == 40000,
 				f"dòng tặng {len(free_rows)}, phụ thu {money(pk['total_surcharge'])}")

@@ -248,9 +248,17 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 						dv = next((v["label"] for v in g["values"] if v.get("is_default")), g["values"][0]["label"])
 						opts.append({"group": g["name"], "value": dv})
 				cart = [{"item_code": it["sizes"][0]["item_code"], "qty": 1, "options": opts}]
+				# Khách TẠM (2026-11-24): đơn thử chọn khách rõ, không phụ thuộc Khách vãng lai của POS Profile thật.
+				_wi = frappe.new_doc("Customer")
+				_wi.customer_name = f"ZZTEST WI Rename {frappe.generate_hash(length=6)}"
+				_wi.customer_type = "Individual"
+				_wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+				_wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+				_wi.insert(ignore_permissions=True)
+				frappe.db.commit()
 				inv_name = None
 				try:
-					r = as_user(cashier, P.create_draft_order, json.dumps(cart), "Dine In", branch_name=branch, price_list=menu_price_list, buzzer=free["name"])
+					r = as_user(cashier, P.create_draft_order, json.dumps(cart), "Dine In", customer_name=_wi.name, branch_name=branch, price_list=menu_price_list, buzzer=free["name"])
 					inv_name = r["invoice_name"]
 					check("R9a create_draft_order Dine In gán thẻ rung", r.get("buzzer_number") == free["buzzer_number"], f"{inv_name} thẻ {r.get('buzzer_number')}")
 					o = next((x for x in as_user(cashier, P.get_orders, "draft") if x["name"] == inv_name), None)
@@ -268,6 +276,12 @@ def run_mypos_rename_check(before=None, branch=None, cashier_user=None, manager_
 							as_user(cashier, P.cancel_draft_order, inv_name, 1)
 						except Exception:
 							frappe.delete_doc("POS Invoice", inv_name, force=True, ignore_permissions=True)
+					frappe.db.commit()
+					# Dọn khách tạm: đơn thử đã hủy (Cancelled, không xóa từ 2026-11-23) còn tham chiếu khách -> xóa đơn thử trước.
+					if inv_name and frappe.db.get_value("POS Invoice", inv_name, "docstatus") == 2:
+						frappe.delete_doc("POS Invoice", inv_name, force=True, ignore_permissions=True)
+					if frappe.db.exists("Customer", _wi.name):
+						frappe.delete_doc("Customer", _wi.name, force=True, ignore_permissions=True)
 					frappe.db.commit()
 				check("R9e Đã hủy đơn thử, thẻ trống lại", not frappe.db.exists("POS Invoice", inv_name or "-") and
 					next((b for b in P.get_buzzers(branch) if b["name"] == free["name"]), {}).get("available"))

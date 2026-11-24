@@ -12,6 +12,8 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 	Có commit (job hủy commit từng đơn) -> cuối hàm dọn mọi dữ liệu thử: commit trước mỗi lần xóa, thử lại 3 lần khi
 	QueryDeadlockError, Contact trước User; lỗi dọn chỉ in WARN + lệnh xóa tay; dòng KẾT QUẢ luôn được in.
 	Sau khi PASS: chạy lại check_shift_owner(...), run_order_qr_selftest(), run_order_history_selftest().
+	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
+	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
 	import time
 	import traceback
@@ -29,6 +31,7 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 
 	PREFIX = "zz.test.draft"
 	PROFILE_PREFIX = "ZZTEST Draft "
+	WALK_IN_PREFIX = "ZZTEST WI Draft "  # Customer khách vãng lai tạm (2026-11-24)
 	ROLE_OF = {"A": "POS CASHIER", "M": "POS MANAGER"}
 	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	results, users, ctx = [], {}, {"profile": None}
@@ -93,6 +96,10 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 					for n in frappe.get_all(dt, filters={"pos_profile": prof}, pluck="name"):
 						delete_fresh(dt, n, removed, failed, cancel=True)
 				delete_fresh("POS Profile", prof, removed, failed)
+			for c in frappe.get_all("Customer", filters={"customer_name": ["like", WALK_IN_PREFIX + "%"]}, pluck="name"):
+				for n in frappe.get_all("POS Invoice", filters={"customer": c}, pluck="name"):
+					delete_fresh("POS Invoice", n, removed, failed, cancel=True)
+				delete_fresh("Customer", c, removed, failed)
 			contacts = set(frappe.get_all("Contact", filters={"user": ["like", PREFIX + ".%"]}, pluck="name"))
 			contacts |= set(frappe.get_all("Contact", filters={"email_id": ["like", PREFIX + ".%"]}, pluck="name"))
 			for c in sorted(contacts):
@@ -192,6 +199,13 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 
 		print("== 1. Dữ liệu tạm ==")
 		src = frappe.get_doc("POS Profile", pos_profile)
+		# Khách vãng lai TẠM (2026-11-24): profile tạm dùng Customer ZZTEST, không dựa vào cấu hình của profile thật.
+		wi = frappe.new_doc("Customer")
+		wi.customer_name = f"{WALK_IN_PREFIX}{frappe.generate_hash(length=6)}"
+		wi.customer_type = "Individual"
+		wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
+		wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
+		wi.insert(ignore_permissions=True)
 		ctx["price_list"] = price_list or src.get("selling_price_list")
 		modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
 		for key, role in ROLE_OF.items():
@@ -202,6 +216,7 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			users[key] = email
 		prof = frappe.copy_doc(src)
 		prof.set("__newname", f"{PROFILE_PREFIX}{frappe.generate_hash(length=6)}")
+		prof.set("custom_walk_in_customer", wi.name)
 		prof.disabled = 0
 		prof.set("applicable_for_users", [])
 		for key in ("A", "M"):
@@ -361,6 +376,7 @@ def check_draft_cancel(pos_profile, item_code, mode_of_payment, price_list=None)
 			frappe.db.commit()
 			left = frappe.get_all("POS Profile", filters={"name": ["like", PROFILE_PREFIX + "%"]}, pluck="name") \
 				+ frappe.get_all("User", filters={"name": ["like", PREFIX + ".%"]}, pluck="name") \
+				+ frappe.get_all("Customer", filters={"customer_name": ["like", WALK_IN_PREFIX + "%"]}, pluck="name") \
 				+ (frappe.get_all("POS Invoice", filters={"pos_profile": ctx["profile"]}, pluck="name") if ctx["profile"] else [])
 			ok("10 Dọn dữ liệu: không còn profile / user / đơn thử trong DB", not left, f"({left})")
 		except Exception:  # noqa: BLE001
