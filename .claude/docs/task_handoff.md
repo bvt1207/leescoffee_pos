@@ -1,7 +1,13 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-24 (khách vãng lai theo POS Profile). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-24 (tên khách + toast "Đã làm" ở màn Pha chế). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0q. Màn Pha chế: tên khách trên thẻ + toast "Đã làm" (2026-11-24) — CHƯA TEST trên bench
+- Chỉ frontend (`pages/Kitchen.tsx`, `styles/global.css`); `get_kitchen_orders` đã có `customer_name` + `is_walk_in` (task 0p), không đổi Python, không thêm request.
+- Thẻ đơn (3 tab): dòng tên khách dưới mã đơn (`customerLabel` → "Khách lẻ"). Toast: Mang đi "Đã báo quầy gọi khách {tên | khách lẻ} ({mã})",
+  Tại quán "Đã báo quầy phục vụ bàn {số} ({mã})", QR giữ câu cũ. Toast thu ngân, tem ly (khách lẻ in mã ngắn), phiếu pha chế: không đổi.
+- Kiểm tra: `walk_in_customer_check` 4c2 (customer_name), 4g (KITCHEN không nhận SĐT / điểm / tiền). Chi tiết: `skills/pos-ui/states.md` (Kitchen.tsx).
 
 ## 0p. Khách vãng lai theo POS Profile (2026-11-24) — ĐÃ TEST PASS trên bench DEV (`2d400c7`, `4c2f7cf`)
 - Bỏ hằng `WALK_IN`; Custom Field `POS Profile.custom_walk_in_customer` ("Khách vãng lai"), helper + validate ở `doctype/pos_profile_hooks/`.

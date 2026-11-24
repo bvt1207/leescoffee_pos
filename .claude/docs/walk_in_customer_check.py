@@ -242,6 +242,19 @@ def check_walk_in_customer(pos_profile, item_code, mode_of_payment, price_list=N
 		ok("4c get_kitchen_orders (nhiều profile): P1 True, P2 True (theo profile của đơn), khách thật False",
 			kby.get(a1, {}).get("is_walk_in") is True and kby.get(b1, {}).get("is_walk_in") is True
 			and kby.get(r1, {}).get("is_walk_in") is False, f"({err})")
+		real_name = frappe.db.get_value("Customer", real, "customer_name")
+		ok("4c2 get_kitchen_orders: customer_name có cho khách vãng lai và khách thật (đúng tên khách thật)",
+			bool(kby.get(a1, {}).get("customer_name")) and kby.get(r1, {}).get("customer_name") == real_name,
+			f"({kby.get(a1, {}).get('customer_name')} / {kby.get(r1, {}).get('customer_name')})")
+		# KITCHEN chỉ nhận thêm tên khách + is_walk_in: không SĐT, điểm, tiền, thanh toán (2026-11-24, màn Pha chế).
+		SENSITIVE = {"mobile_number", "mobile_no", "contact_mobile", "phone", "loyalty_points", "loyalty_program",
+			"redeemed_points", "payment_code", "payment_status", "transaction_ref", "sepay_payment_log",
+			"grand_total", "rounded_total", "amount", "rate", "price_list_rate", "customer_mobile"}
+		leaked = sorted({k for o in kit or [] for k in o if k in SENSITIVE}
+			| {k for o in kit or [] for it in o.get("items", []) for k in it if k in SENSITIVE})
+		phone_hit = [o["name"] for o in kit or [] if real_mobile in str(o)]
+		ok("4g get_kitchen_orders (KITCHEN): không có khóa nhạy cảm, không chứa SĐT khách thật",
+			not leaked and not phone_hit, f"(khóa {leaked}, đơn chứa SĐT {phone_hit})")
 		board = {o["invoice_name"]: o for o in get_status_board_orders()}
 		ok("4d get_status_board_orders: True / False",
 			board.get(a1, {}).get("is_walk_in") is True and board.get(r1, {}).get("is_walk_in") is False)

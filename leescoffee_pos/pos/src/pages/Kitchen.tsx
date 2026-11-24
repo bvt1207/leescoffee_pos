@@ -10,7 +10,7 @@ import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context"
 import { cssVar, printWithPage } from "../lib/print";
 import { refreshServeQueue } from "../lib/serve";
 import { useServeQueue } from "../store/serveQueue";
-import { shortOrderNo } from "../lib/format";
+import { customerLabel } from "../lib/format";
 import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
 type Step = KitchenStep;
@@ -123,8 +123,9 @@ export default function Kitchen() {
 					o.order_channel === "QR"
 						? `Đã báo khách ${o.customer_name} (đặt QR) tới quầy nhận món`
 						: o.order_type === "Dine In" && o.buzzer_number
-							? `Đã báo quầy phục vụ: Bàn ${o.buzzer_number}`
-							: `Đã báo quầy gọi khách ${shortOrderNo(o.name)}`
+							? `Đã báo quầy phục vụ bàn ${o.buzzer_number} (${o.name})`
+							: // Mang đi (và Tại quán thiếu thẻ — dữ liệu cũ): khách vãng lai theo cờ is_walk_in của server.
+								`Đã báo quầy gọi khách ${o.is_walk_in ? "khách lẻ" : o.customer_name} (${o.name})`
 				);
 				// Máy có role CASHIER -> cập nhật chấm đỏ ngay, KHÔNG bật toast thứ hai cho chính đơn này (đã có toast ở trên).
 				// KITCHEN-only: store tắt, không gọi API.
@@ -230,6 +231,8 @@ export default function Kitchen() {
 								<header className="pos-kcard__head">
 									<div className="pos-kcard__id">
 										<strong>{o.name}</strong>
+										{/* Tên khách: khách vãng lai -> "Khách lẻ" (cờ is_walk_in, không so tên Customer). */}
+										<span className="pos-kcard__customer">{customerLabel(o)}</span>
 									</div>
 									<div className="pos-kcard__tags">
 										<OrderTypeChip type={o.order_type} />

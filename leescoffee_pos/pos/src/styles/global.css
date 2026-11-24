@@ -1818,6 +1818,16 @@ button.pos-cart-line__main:hover {
 	color: var(--pos-text);
 }
 
+/* Tên khách trên thẻ Pha chế: rõ nhưng nhỏ hơn tên món (20px / 700). */
+.pos-kcard__customer {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--pos-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .pos-kcard__tags {
 	display: flex;
 	flex-direction: column;

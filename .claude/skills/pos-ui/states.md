@@ -128,6 +128,11 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 #### Kitchen.tsx (Quầy pha chế — mẫu cho skill, đã triển khai)
 - Layout: tab 3 — Chưa làm / Đã làm / Đã hoàn thành → danh sách đơn lưới → số lượng hiển thị trong tab.
 - Thẻ đơn: [#{seq}] mã, khách, loại, thẻ bàn ("Bàn #"), thời gian chờ (>=5 phút vàng / >=10 phút đỏ).
+  - Tên khách (2026-11-24): `.pos-kcard__customer` dưới mã đơn, cả 3 tab, 14px/600 (nhỏ hơn tên món 20px/700), một dòng "…".
+    `customerLabel(o)`: cờ `is_walk_in` của `get_kitchen_orders` → "Khách lẻ"; đơn QR hiện tên khách thật. Không so tên Customer.
+- Toast sau "Đã làm" (5 giây, bấm để tắt sớm, không nút; một toast — `refreshServeQueue([tên đơn])` chặn toast thu ngân trùng):
+  Mang đi "Đã báo quầy gọi khách {tên | khách lẻ} ({mã đầy đủ})"; Tại quán có thẻ "Đã báo quầy phục vụ bàn {số} ({mã đầy đủ})";
+  QR giữ "Đã báo khách {tên} (đặt QR) tới quầy nhận món" (khách tự nhận thông báo). Tại quán thiếu thẻ (dữ liệu cũ) → câu Mang đi.
 - Dòng món: tên lớn + chip "Đường x%·Đá y%", ghi chú nổi bật.
 - Nút hành động 56px: "Đã làm" (đỏ) / "Đã hoàn thành" (xanh); busy = `disabled={busy === name}`.
 - Tự refresh 5 giây; update `now` every 30s; tab "Đã hoàn thành" lọc đơn ngày (`creation`).
