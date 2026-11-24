@@ -400,16 +400,28 @@ def _normalize_mobile(raw):
 
 
 def _find_customer(mobile):
-	"""Customer đang bật có mobile_number khớp (gồm cả dạng +84/84 lưu từ trước)."""
+	"""Customer đang bật có mobile_number khớp (gồm cả dạng +84/84 lưu từ trước).
+
+	Bỏ qua Customer là khách vãng lai của POS Profile (2026-11-24): khách QR không bao giờ đăng nhập vào khách vãng lai.
+	SĐT chỉ khớp khách vãng lai -> lỗi (không tạo khách trùng SĐT).
+	"""
+	from ..doctype.pos_profile_hooks.pos_profile_hooks import all_walk_in_customers
+
 	variants = [mobile, "+84" + mobile[1:], "84" + mobile[1:]]
 	rows = frappe.get_all(
 		"Customer",
 		filters={"mobile_number": ["in", variants], "disabled": 0},
 		pluck="name",
 		order_by="creation asc",
-		limit=1,
+		limit=5,
 	)
-	return rows[0] if rows else None
+	if not rows:
+		return None
+	walk_ins = all_walk_in_customers()
+	real = [r for r in rows if r not in walk_ins]
+	if not real:
+		frappe.throw(_("Số điện thoại này không dùng được để đặt món qua QR. Vui lòng liên hệ quầy."))
+	return real[0]
 
 
 # ---------------------------------------------------------------------------

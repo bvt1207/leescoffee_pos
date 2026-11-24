@@ -106,6 +106,7 @@ LIMIT 1
 - Fields trả về:
   - `invoice_name`: tên POS Invoice
   - `customer_name`: tên khách hàng (lấy từ Customer.customer_name)
+  - `is_walk_in`: khách vãng lai của POS Profile của đơn (2026-11-24, `pos_profile.md`)
   - `order_type`: Take Away / Dine In
   - `kitchen_status`: trạng thái bếp (Chưa làm / Đã làm / Đã hoàn thành)
   - `buzzer_number`: số thẻ bàn (null nếu Take Away)

@@ -98,13 +98,24 @@ export function shortOrderNo(name: string): string {
 	return match ? `#${match[1]}` : String(name || "");
 }
 
+/** Nhãn hiển thị cho khách vãng lai (chữ giao diện, KHÔNG phải tên Customer). */
+export const WALK_IN_LABEL = "Khách lẻ";
+
+/** Tên khách để hiển thị: khách vãng lai (cờ `is_walk_in` do server tính theo POS Profile) -> "Khách lẻ". */
+export function customerLabel(order: { customer_name?: string | null; is_walk_in?: boolean }): string {
+	return order.is_walk_in ? WALK_IN_LABEL : order.customer_name || "";
+}
+
 /** Tìm đơn theo mã đầy đủ, mã ngắn ("#00016", "00016", "16") hoặc tên khách. `query` đã trim + lowercase. */
-export function orderMatches(order: { name: string; customer_name?: string | null }, query: string): boolean {
+export function orderMatches(
+	order: { name: string; customer_name?: string | null; is_walk_in?: boolean },
+	query: string,
+): boolean {
 	const q = query.replace(/^#/, "");
 	if (!q) return true;
 	return (
 		order.name.toLowerCase().includes(q) ||
 		shortOrderNo(order.name).toLowerCase().includes(q) ||
-		(order.customer_name || "").toLowerCase().includes(q)
+		customerLabel(order).toLowerCase().includes(q)
 	);
 }

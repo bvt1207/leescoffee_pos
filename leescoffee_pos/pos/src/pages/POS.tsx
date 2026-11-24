@@ -11,6 +11,9 @@ import { useCart, cartCount } from "../store/cart";
 import { useSearch } from "../store/search";
 import type { BuzzerOption, CustomerOption, LoyaltyInfo, OrderType, PricingPreview } from "../types";
 
+// Khớp pos_profile_hooks.WALK_IN_MISSING_MSG (server vẫn là chốt chặn thật).
+const WALK_IN_MISSING_TEXT = "POS Profile chưa cấu hình Khách vãng lai. Vui lòng nhờ quản lý cấu hình.";
+
 export default function POS() {
 	const navigate = useNavigate();
 	const { config, loading, error, menus } = usePos();
@@ -28,6 +31,8 @@ export default function POS() {
 	const [modeOfPayment] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [formError, setFormError] = useState("");
+	// POS Profile chưa cấu hình Khách vãng lai -> đơn không chọn khách bị server chặn (pos_profile_hooks).
+	const walkInMissing = config?.profile.walk_in_configured === false;
 	const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
 	const [preview, setPreview] = useState<PricingPreview | null>(null);
 	const [previewError, setPreviewError] = useState("");
@@ -160,6 +165,10 @@ export default function POS() {
 			setFormError(`Chọn đủ tùy chọn bắt buộc cho món ${missingLine.item_name}.`);
 			return;
 		}
+		if (walkInMissing && !customer) {
+			setFormError(WALK_IN_MISSING_TEXT);
+			return;
+		}
 
 		setSubmitting(true);
 		setFormError("");
@@ -227,6 +236,11 @@ export default function POS() {
 					) : null}
 
 					<CustomerPicker value={customer} onChange={setCustomer} />
+					{walkInMissing && !customer ? (
+						<div className="pos-alert pos-alert--warn">
+							{WALK_IN_MISSING_TEXT} Có thể chọn khách có sẵn để tạo đơn.
+						</div>
+					) : null}
 					{loyalty ? (
 						<div className="pos-loyalty-chip">
 							{loyalty.tier_name ? `Hạng ${loyalty.tier_name} · ` : ""}

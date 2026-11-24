@@ -151,6 +151,8 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 
 		print("== 1. Dữ liệu tạm ==")
 		src = frappe.get_doc("POS Profile", pos_profile)
+		if not src.get("custom_walk_in_customer"):
+			raise RuntimeError(f"POS Profile {pos_profile} chưa cấu hình Khách vãng lai (custom_walk_in_customer).")
 		if not src.get("branch"):
 			raise RuntimeError(f"POS Profile {pos_profile} chưa có Branch — thẻ bàn gắn theo Branch.")
 		ctx["price_list"] = price_list or src.get("selling_price_list")
@@ -212,9 +214,10 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 		rows, err = queue("A")
 		row = next((o for o in rows if o["name"] == d1), None)
 		number = frappe.db.get_value("MYPOS Buzzer", c1, "buzzer_number")
-		ok("2f Cashier A (profile 1) thấy đơn: đúng số bàn, Dine In, Walk-in ẩn tên, 2 món, preview 'x2'",
+		ok("2f Cashier A (profile 1) thấy đơn: đúng số bàn, Dine In, khách vãng lai (is_walk_in) ẩn tên, 2 món, preview 'x2'",
 			err is None and row and row["buzzer_number"] == number and row["order_type"] == "Dine In"
-			and row["customer_name"] == "" and row["item_count"] == 2 and row["items_preview"]
+			and row["customer_name"] == "" and row.get("is_walk_in") is True
+			and row["item_count"] == 2 and row["items_preview"]
 			and row["items_preview"][0].endswith("x2") and row["waiting_seconds"] >= 0, f"({err or row})")
 		ok("2g MANAGER M (cùng profile) cũng thấy", in_queue("M", d1))
 		ok("2h Cashier B (profile 2) KHÔNG thấy đơn của profile 1", queue("B")[1] is None and not in_queue("B", d1),

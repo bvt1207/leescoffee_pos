@@ -49,6 +49,8 @@ app_license = "mit"
 doctype_js = {
 	"POS Opening Entry": "public/js/pos_opening_entry.js",
 	"POS Invoice": "public/js/pos_invoice.js",
+	# Khách vãng lai: chỉ cho chọn Customer đang bật (2026-11-24).
+	"POS Profile": "public/js/pos_profile.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # Danh sách POS Invoice: 3 nút lọc nhanh cho quản lý (Nháp cần hủy / Chưa pha chế / Đơn còn dở) — 2026-11-23.
@@ -164,6 +166,10 @@ doc_events = {
 		"before_validate": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_validate",
 		"before_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_submit",
 		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_on_submit",
+	},
+	# Khách vãng lai theo POS Profile: Customer phải tồn tại, đang bật, không gắn Loyalty Program (pos_profile_hooks.py).
+	"POS Profile": {
+		"validate": "leescoffee_pos.leescoffee_pos.doctype.pos_profile_hooks.pos_profile_hooks.validate",
 	},
 	# MYPOS Buzzer: validate là native lifecycle method của Document →
 	# Frappe tự gọi, không cần đăng ký lại trong doc_events.

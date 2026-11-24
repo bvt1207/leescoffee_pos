@@ -4,7 +4,7 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
-import { addDaysIso, autoCancelInfo, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
+import { addDaysIso, autoCancelInfo, customerLabel, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
 import { formatMoney } from "../store/cart";
@@ -379,7 +379,7 @@ export default function Orders() {
 									onClick={() => setSelected(o.name)}
 								>
 									<div className="pos-order-card__top">
-										<strong>{o.customer_name}</strong>
+										<strong>{customerLabel(o)}</strong>
 										<span className="pos-order-card__price">{formatMoney(o.amount, o.currency)}</span>
 									</div>
 									<div className="pos-order-card__meta">
@@ -436,7 +436,7 @@ export default function Orders() {
 						<>
 							<div className="pos-order-detail__head">
 								<div>
-									<div className="pos-order-detail__name">{detail.customer_name}</div>
+									<div className="pos-order-detail__name">{customerLabel(detail)}</div>
 									<div className="pos-order-detail__sub">
 										{detail.name} · {formatOrderTime(detail.creation, tz)} · <OrderTypeChip type={detail.order_type} /> <ChannelChip channel={detail.order_channel} />
 										{detail.order_type === "Dine In" && !isQrOrder(detail.order_channel)

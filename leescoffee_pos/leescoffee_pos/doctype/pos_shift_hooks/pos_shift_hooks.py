@@ -93,8 +93,20 @@ def _check_opening(doc):
 		)
 
 
+def _warn_walk_in(doc):
+	"""Cảnh báo (KHÔNG chặn) khi POS Profile chưa cấu hình Khách vãng lai — đơn không chọn khách sẽ bị chặn ở /pos."""
+	from leescoffee_pos.leescoffee_pos.doctype.pos_profile_hooks.pos_profile_hooks import (
+		WALK_IN_MISSING_MSG,
+		get_walk_in_customer,
+	)
+
+	if doc.pos_profile and not get_walk_in_customer(doc.pos_profile):
+		frappe.msgprint(_(WALK_IN_MISSING_MSG), indicator="orange", title=_("Thiếu cấu hình"))
+
+
 def opening_before_validate(doc, method=None):
 	_check_opening(doc)
+	_warn_walk_in(doc)
 
 
 def opening_before_submit(doc, method=None):

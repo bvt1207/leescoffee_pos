@@ -22,6 +22,10 @@ export interface PosProfile {
 	warehouse: string;
 	currency: string;
 	customer: string;
+	/** Khách vãng lai của POS Profile (custom_walk_in_customer); "" = chưa cấu hình. */
+	walk_in_customer?: string;
+	/** false -> đơn không chọn khách bị server chặn; hiện banner. */
+	walk_in_configured?: boolean;
 	selling_price_list: string;
 }
 
@@ -125,6 +129,8 @@ export interface OrderSummary {
 	name: string;
 	customer: string;
 	customer_name: string;
+	/** true = khách vãng lai của POS Profile của đơn (server tính; giao diện không so tên Customer). */
+	is_walk_in?: boolean;
 	order_type: OrderType;
 	/** "POS" (tại quầy) | "QR" (khách tự đặt qua web) */
 	order_channel?: string;
@@ -185,6 +191,8 @@ export interface OrderDetail {
 	name: string;
 	customer: string;
 	customer_name: string;
+	/** true = khách vãng lai của POS Profile của đơn (server tính; giao diện không so tên Customer). */
+	is_walk_in?: boolean;
 	order_type: OrderType;
 	order_channel: string;
 	status: string;
@@ -240,6 +248,8 @@ export interface QrInfo {
 export interface StatusBoardRow {
 	invoice_name: string;
 	customer_name: string;
+	/** true = khách vãng lai của POS Profile của đơn (server tính; giao diện không so tên Customer). */
+	is_walk_in?: boolean;
 	order_type: OrderType;
 	kitchen_status: string;
 	buzzer_number: string | null;
@@ -318,6 +328,8 @@ export interface KitchenItem {
 export interface KitchenOrder {
 	name: string;
 	customer_name: string;
+	/** true = khách vãng lai của POS Profile của đơn (server tính; giao diện không so tên Customer). */
+	is_walk_in?: boolean;
 	order_type: OrderType;
 	order_channel?: string;
 	kitchen_status: KitchenStep;
@@ -332,8 +344,10 @@ export interface ServeQueueItem {
 	order_type: OrderType;
 	/** Số thẻ bàn (Dine In); Take Away = null. */
 	buzzer_number: string | null;
-	/** "" khi khách lẻ (Walk-in) — hiện mã ngắn của đơn. */
+	/** "" khi khách vãng lai của POS Profile — hiện mã ngắn của đơn. */
 	customer_name: string;
+	/** true = khách vãng lai của POS Profile của đơn (server tính; giao diện không so tên Customer). */
+	is_walk_in?: boolean;
 	item_count: number;
 	/** 2 món đầu, dạng "Tên xN". */
 	items_preview: string[];

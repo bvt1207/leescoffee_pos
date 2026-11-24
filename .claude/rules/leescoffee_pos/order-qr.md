@@ -42,6 +42,7 @@
 | Ca POS | Cần POS Opening Entry `Open` của POS Profile (bất kỳ thu ngân). Không có → "Quán chưa mở bán". Không tự mở ca |
 | Owner đơn | Tạo đơn/sinh QR chạy dưới user của ca đang mở (`_as_user`), để POS Closing Entry gom được đơn (`pos_closing_entry.get_invoices` lọc `owner == user` — đã đọc mã ERPNext 17-dev; chỉ gom POS Invoice khi `POS Settings.invoice_type = "POS Invoice"`; self-test 9a/9b) |
 | Thẻ rung | Đơn QR Dine In **không** có buzzer. Hook/`confirm_pickup` đã bỏ qua khi `buzzer` rỗng |
+| Khách vãng lai (2026-11-24) | Đơn QR **luôn** là Customer thật theo SĐT, không bao giờ dùng khách vãng lai của POS Profile. `_find_customer` bỏ qua Customer đang là khách vãng lai; SĐT chỉ khớp khách vãng lai → "Số điện thoại này không dùng được để đặt món qua QR…" (`pos_profile.md`) |
 | Thanh toán | Chỉ chuyển khoản: Mode of Payment `type = Bank` có tài khoản (ưu tiên mode trong POS Profile). Branch phải bật SePay + VA + mã NH + **API key** |
 | Hết hạn | Sau `QR_PAY_WINDOW_MINUTES = 15`: khách không thấy/không sinh QR. Webhook còn khớp thêm `QR_CLEANUP_GRACE_MINUTES = 5`; sau đó job **hủy** (đơn chuyển Cancelled, `custom_cancel_reason` = "Tự động (QR hết hạn): QR hết hạn không thanh toán"; 2026-11-23 không xóa, không log riêng). Mốc ở `doctype/pos_invoice_hooks/order_cancel.py` |
 | Loyalty | **Không đổi điểm** (`redeem_points > 0` → lỗi). Chỉ hiện điểm + hạng của chính khách. Tích điểm do ERPNext như đơn thường |

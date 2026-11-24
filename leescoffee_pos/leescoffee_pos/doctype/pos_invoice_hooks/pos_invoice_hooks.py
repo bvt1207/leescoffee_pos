@@ -199,6 +199,7 @@ def get_status_board_orders():
         fields=[
             "name",
             "customer",
+            "pos_profile",
             "order_type",
             "custom_kitchen_status",
             "buzzer",
@@ -207,6 +208,9 @@ def get_status_board_orders():
         order_by="creation asc",
     )
 
+    from leescoffee_pos.leescoffee_pos.doctype.pos_profile_hooks.pos_profile_hooks import walk_in_by_profile
+
+    walk_ins = walk_in_by_profile([inv.pos_profile for inv in invoices])
     result = []
 
     for inv in invoices:
@@ -234,6 +238,8 @@ def get_status_board_orders():
         result.append({
             "invoice_name": inv.name,
             "customer_name": customer_name,
+            # Khách vãng lai theo POS Profile của đơn (2026-11-24) — giao diện không so tên Customer.
+            "is_walk_in": bool(walk_ins.get(inv.pos_profile)) and inv.customer == walk_ins.get(inv.pos_profile),
             "order_type": inv.order_type,
             "kitchen_status": inv.custom_kitchen_status,
             "buzzer_number": buzzer_number,

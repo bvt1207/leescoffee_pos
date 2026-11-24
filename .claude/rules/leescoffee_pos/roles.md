@@ -167,7 +167,7 @@ dễ chặn nhầm user ERPNext khác.
 ### 7b. Thông báo thu ngân khi đơn "Đã làm" (thẻ bàn, 2026-11-23) — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `3736f85`, `4712d68`)
 
 - API `pos_api.get_serve_queue()`: `_require_sale_role` (KITCHEN bị chặn); đơn của `resolve_pos_profile_name()` của người gọi (không gửi chéo chi nhánh),
-  docstatus 1, Paid, không trả hàng, `custom_kitchen_status = "Đã làm"`, `order_channel != "QR"`; trả số thẻ bàn, tên khách ("" nếu Walk-in),
+  docstatus 1, Paid, không trả hàng, `custom_kitchen_status = "Đã làm"`, `order_channel != "QR"`; trả số thẻ bàn, tên khách ("" nếu khách vãng lai của POS Profile) + `is_walk_in`,
   số món, 2 món đầu, `waiting_seconds`.
 - Frontend: `lib/serve.ts::useServeQueuePoller` gắn một lần ở `App.tsx`, **chỉ khi user có role POS CASHIER** (`config.roles.cashier`); poll 15 giây,
   dừng khi tab ẩn; store `store/serveQueue.ts`.

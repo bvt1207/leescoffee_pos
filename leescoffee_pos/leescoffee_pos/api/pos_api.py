@@ -19,10 +19,17 @@ from ..doctype.branch_config.branch_config import (
     get_brand_info,
     resolve_pos_profile_name,
 )
+# Khách vãng lai: đọc từ POS Profile.custom_walk_in_customer (2026-11-24), không có tên Customer cố định.
+from ..doctype.pos_profile_hooks.pos_profile_hooks import (
+    all_walk_in_customers,
+    get_walk_in_customer,
+    is_walk_in,
+    mark_walk_in,
+    require_walk_in_customer,
+)
 
 ORDER_TYPES = ("Take Away", "Dine In")
 ORDER_CHANNEL = "POS"
-WALK_IN = "Walk-in Customer"
 LEVELS = (50, 70, 100)
 # Trạng thái pha chế: MỘT nơi ở doctype/pos_invoice_hooks/kitchen_status.py (bước tiến + trạng thái kết thúc).
 from ..doctype.pos_invoice_hooks.kitchen_status import KITCHEN_FLOW, KITCHEN_TERMINAL_STATUSES  # noqa: E402
@@ -302,11 +309,11 @@ def _normalize_items(items):
 	return normalized
 
 
-def _resolve_customer(customer=None):
-	"""Nhận MÃ Customer đã tồn tại; trống thì dùng khách vãng lai."""
+def _resolve_customer(profile, customer=None):
+	"""Nhận MÃ Customer đã tồn tại; trống thì dùng khách vãng lai của POS Profile (chưa cấu hình -> lỗi)."""
 	customer = str(customer or "").strip()
 	if not customer:
-		customer = WALK_IN
+		customer = require_walk_in_customer(profile)
 	if not frappe.db.exists("Customer", customer):
 		frappe.throw(
 			_("Khách hàng {0} không tồn tại. Hãy chọn khách có sẵn hoặc tạo mới.").format(customer)
@@ -477,12 +484,12 @@ def _record_redemption(invoice, points=None):
 	entry.insert(ignore_permissions=True)
 
 
-def _loyalty_info(customer, company, order_total=0):
-	"""Thông tin tích điểm của khách; None nếu Walk-in hoặc chưa có chương trình.
+def _loyalty_info(customer, company, order_total=0, walk_in=None):
+	"""Thông tin tích điểm của khách; None nếu là khách vãng lai (`walk_in` của POS Profile) hoặc chưa có chương trình.
 
 	max_redeem_points = min(điểm hiện có, floor(order_total / conversion_factor)).
 	"""
-	if not customer or customer == WALK_IN:
+	if not customer or (walk_in and customer == walk_in):
 		return None
 
 	lp = frappe.db.get_value("Customer", customer, "loyalty_program")
@@ -509,7 +516,7 @@ def _loyalty_info(customer, company, order_total=0):
 	}
 
 
-def _apply_redemption(invoice, customer, company, redeem_points):
+def _apply_redemption(invoice, customer, company, redeem_points, walk_in=None):
 	"""Đổi điểm = giảm thẳng trên Grand Total (gọi sau _build_invoice, trước insert).
 
 	Tổng làm gốc là grand_total SAU Pricing Rule. Không dùng redeem_loyalty_points gốc
@@ -520,7 +527,7 @@ def _apply_redemption(invoice, customer, company, redeem_points):
 		return
 
 	pre_total = flt(invoice.grand_total)
-	info = _loyalty_info(customer, company, pre_total)
+	info = _loyalty_info(customer, company, pre_total, walk_in)
 	if not info:
 		frappe.throw(
 			_("Khách {0} chưa tham gia chương trình tích điểm, không đổi điểm được.").format(customer)
@@ -558,6 +565,12 @@ def get_pos_config(branch_name=None):
 	"""Thông tin cấu hình cho giao diện: thương hiệu, POS Profile, phương thức thanh toán, quyền."""
 	profile = _get_pos_profile(branch_name)
 	roles = _pos_roles()
+	walk_in = get_walk_in_customer(profile)
+	warnings = _company_warnings(profile)
+	if not walk_in:
+		from ..doctype.pos_profile_hooks.pos_profile_hooks import WALK_IN_MISSING_MSG
+
+		warnings.append(_(WALK_IN_MISSING_MSG))
 
 	return {
 		"brand": get_brand_info(getattr(profile, "branch", None) or branch_name),
@@ -568,11 +581,15 @@ def get_pos_config(branch_name=None):
 			"warehouse": profile.warehouse or "",
 			"currency": profile.currency
 			or frappe.db.get_value("Company", profile.company, "default_currency"),
+			# Field chuẩn ERPNext (màn POS gốc) — app KHÔNG dùng làm khách vãng lai, giữ khóa để tương thích.
 			"customer": profile.customer or "",
+			# Khách vãng lai của profile (custom_walk_in_customer); "" -> chưa cấu hình, tạo đơn không chọn khách bị chặn.
+			"walk_in_customer": walk_in,
+			"walk_in_configured": bool(walk_in),
 			"selling_price_list": profile.get("selling_price_list") or "",
 		},
 		"payment_modes": _get_payment_modes(profile.company),
-		"warnings": _company_warnings(profile),
+		"warnings": warnings,
 		# Phân quyền màn POS (rỗng hết nếu user không có role POS -> frontend chặn).
 		"roles": roles,
 		"nav": _union_by_role(NAV_BY_ROLE, roles, NAV_ORDER),
@@ -640,9 +657,15 @@ def search_customers(query=None, limit=8):
 			["mobile_number", "like", f"%{query}%"],
 		]
 
+	filters = {"disabled": 0}
+	# Khách vãng lai (của mọi POS Profile) không phải khách thật -> không hiện ở tìm khách.
+	walk_ins = all_walk_in_customers()
+	if walk_ins:
+		filters["name"] = ["not in", sorted(walk_ins)]
+
 	rows = frappe.get_all(
 		"Customer",
-		filters={"disabled": 0},
+		filters=filters,
 		or_filters=or_filters,
 		fields=["name", "customer_name", "mobile_number"],
 		order_by="modified desc",
@@ -658,10 +681,10 @@ def search_customers(query=None, limit=8):
 def get_customer_loyalty(customer, order_total=0):
 	"""Điểm tích lũy của khách cho màn POS.
 
-	Walk-in hoặc chưa có chương trình -> {"enrolled": False}.
+	Khách vãng lai của POS Profile hoặc chưa có chương trình -> {"enrolled": False}.
 	"""
 	profile = _get_pos_profile()
-	info = _loyalty_info(customer, profile.company, order_total)
+	info = _loyalty_info(customer, profile.company, order_total, get_walk_in_customer(profile))
 	if not info:
 		return {"enrolled": False}
 	return {"enrolled": True, **info}
@@ -726,12 +749,12 @@ def create_draft_order(
 	profile = _get_pos_profile(branch_name)
 	mode = _resolve_mode_of_payment(profile.company, mode_of_payment)
 	effective_price_list = _require_price_list(price_list)
-	customer = _resolve_customer(customer_name)
+	customer = _resolve_customer(profile, customer_name)
 
 	_ensure_opening_entry(profile)
 
 	invoice = _build_invoice(profile, rows, order_type, customer, effective_price_list, mode, order_note)
-	_apply_redemption(invoice, customer, profile.company, redeem_points)
+	_apply_redemption(invoice, customer, profile.company, redeem_points, get_walk_in_customer(profile))
 
 	if order_type == "Dine In":
 		invoice.buzzer = _assign_buzzer(profile, buzzer)
@@ -768,7 +791,7 @@ def preview_pricing(items, customer=None, price_list=None, redeem_points=0):
 	profile = _get_pos_profile()
 	mode = _resolve_mode_of_payment(profile.company, None)
 	effective_price_list = _require_price_list(price_list)
-	cust = _resolve_customer(customer)
+	cust = _resolve_customer(profile, customer)
 
 	return _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_points)
 
@@ -777,10 +800,11 @@ def _pricing_preview(profile, rows, cust, effective_price_list, mode, redeem_poi
 	"""Lõi của preview_pricing (dùng chung cho POS và web đặt món QR). Không ghi DB."""
 	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
+	walk_in = get_walk_in_customer(profile)
 	invoice = _build_invoice(profile, rows, "Take Away", cust, effective_price_list, mode)
 	after_rules = flt(invoice.grand_total)
-	info = _loyalty_info(cust, profile.company, after_rules)
-	_apply_redemption(invoice, cust, profile.company, redeem_points)
+	info = _loyalty_info(cust, profile.company, after_rules, walk_in)
+	_apply_redemption(invoice, cust, profile.company, redeem_points, walk_in)
 
 	rules_by_row = [get_applied_pricing_rules(row.get("pricing_rules")) for row in invoice.items]
 	names = sorted({n for rules in rules_by_row for n in rules})
@@ -1107,6 +1131,7 @@ ORDER_LIST_FIELDS = (
 	"custom_kitchen_status",
 	"buzzer",
 	"creation",
+	"pos_profile",
 )
 
 
@@ -1232,6 +1257,8 @@ def get_orders(status="all", limit=50, scope="shift", from_date=None, to_date=No
 	for order in orders:
 		order["amount"] = flt(order.get("rounded_total") or order.get("grand_total"))
 		order["buzzer_number"] = _buzzer_number(order.get("buzzer"))
+	# is_walk_in: khách vãng lai theo POS Profile của chính đơn (frontend không so tên Customer).
+	mark_walk_in(orders)
 
 	return orders
 
@@ -1325,6 +1352,7 @@ def get_order_detail(invoice_name):
 		"name": invoice.name,
 		"customer": invoice.customer,
 		"customer_name": invoice.customer_name or invoice.customer,
+		"is_walk_in": is_walk_in(invoice.pos_profile, invoice.customer),
 		"order_type": invoice.order_type,
 		"order_channel": invoice.order_channel,
 		"status": invoice.status,
@@ -1453,7 +1481,8 @@ def get_serve_queue():
 
 	Dine In: phục vụ mang tới thẻ bàn; Take Away: gọi khách lấy. Đơn QR không vào (khách tự tới quầy, luồng QR không đổi).
 	Chặn KITCHEN (_require_sale_role). Không gửi chéo chi nhánh: lọc theo resolve_pos_profile_name() của người gọi.
-	Mỗi đơn: name, order_type, buzzer_number, customer_name ("" nếu Walk-in), item_count, items_preview,
+	Mỗi đơn: name, order_type, buzzer_number, customer_name ("" nếu khách vãng lai của POS Profile), is_walk_in,
+	item_count, items_preview,
 	done_at, waiting_seconds (tính ở server, không phụ thuộc đồng hồ máy quầy).
 	"""
 	from frappe.utils import get_datetime, time_diff_in_seconds
@@ -1494,15 +1523,18 @@ def get_serve_queue():
 		fields=["name", "buzzer_number"], as_list=True)) if buzzers else {}
 
 	now = now_datetime()
+	walk_in = get_walk_in_customer(profile_name)
 	result = []
 	for r in rows:
 		lines = items.get(r.name, [])
 		done_at = r.kitchen_done_at or r.creation
+		walk = bool(walk_in) and r.customer == walk_in
 		result.append({
 			"name": r.name,
 			"order_type": r.order_type,
 			"buzzer_number": numbers.get(r.buzzer) if r.buzzer else None,
-			"customer_name": "" if r.customer == WALK_IN else (r.customer_name or r.customer or ""),
+			"customer_name": "" if walk else (r.customer_name or r.customer or ""),
+			"is_walk_in": walk,
 			"item_count": int(sum(flt(x.qty) for x in lines)),
 			"items_preview": [f"{x.item_name} x{int(flt(x.qty))}" for x in lines[:SERVE_PREVIEW_ITEMS]],
 			"more_lines": max(len(lines) - SERVE_PREVIEW_ITEMS, 0),
@@ -1548,7 +1580,7 @@ def get_kitchen_orders(status=None, limit=100):
 		return []
 
 	fields = ["name", "customer", "customer_name", "order_type", "order_channel",
-		"custom_kitchen_status", "buzzer", "order_note", "creation", "modified"]
+		"custom_kitchen_status", "buzzer", "order_note", "creation", "modified", "pos_profile"]
 	base = {"docstatus": 1, "status": "Paid"}
 	cap = min(int(limit), 200)
 
@@ -1600,6 +1632,8 @@ def get_kitchen_orders(status=None, limit=100):
 		o["items"] = by_parent.get(o.name, [])
 		o["buzzer_number"] = _buzzer_number(o.get("buzzer"))
 		o["customer_name"] = o.get("customer_name") or o.get("customer")
+	# Màn Pha chế lấy đơn mọi POS Profile -> cờ tính theo profile của từng đơn.
+	mark_walk_in(orders)
 	return orders
 
 

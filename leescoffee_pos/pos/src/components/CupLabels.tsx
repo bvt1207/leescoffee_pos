@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { shortOrderNo } from "../lib/format";
 import { formatOptions } from "../lib/options";
 import type { KitchenOrder, OrderDetail } from "../types";
 
@@ -58,7 +59,12 @@ export function buildCups(order: KitchenOrder, detail: OrderDetail | null): Cup[
 export default function CupLabels({ job }: { job: LabelJob | null }) {
 	if (!job) return null;
 	const { order, cups } = job;
-	const who = order.buzzer_number ? `Bàn #${order.buzzer_number}` : order.customer_name;
+	// Khách vãng lai (cờ server theo POS Profile): in mã ngắn của đơn thay vì tên Customer kỹ thuật.
+	const who = order.buzzer_number
+		? `Bàn #${order.buzzer_number}`
+		: order.is_walk_in
+			? shortOrderNo(order.name)
+			: order.customer_name;
 
 	return createPortal(
 		<div className="pos-print-only">

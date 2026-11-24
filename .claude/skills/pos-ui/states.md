@@ -17,7 +17,7 @@
 - **Không hardcode thương hiệu**: tên/logo/banner lấy từ `usePos().config.brand`.
 - **Tùy chọn món động (MYPOS Option)**: nhóm/giá trị lấy từ `option_groups` của món (`get_menu_items`), không hardcode tên nhóm. Gửi `options: [{group, value}]` mỗi dòng; server lưu `POS Invoice Item.options` (JSON). Hiển thị đơn dùng `options` server trả (đơn cũ dựng từ `sugar_level`/`ice_level`). Ghi chú đơn: `POS Invoice.order_note`.
 - **`lib/api.ts` và `lib/pos-context.tsx`**: chỉ được đổi kiểu/khóa dữ liệu — giữ nguyên cách gọi API, CSRF.
-- **Quy tắc khách hàng**: Always read from API (`search_customers`, `create_customer`), không hardcode tên khách; frontend `CustomerPicker` thay ô input cũ; checkout gửi `customer_name: customer?.name`; khi bấm tạo đơn → gửi `customer_name` là mã Customer hoặc để trống (backend tự dùng Walk-in Customer).
+- **Quy tắc khách hàng**: Always read from API (`search_customers`, `create_customer`), không hardcode tên khách; frontend `CustomerPicker` thay ô input cũ; checkout gửi `customer_name: customer?.name`; khi bấm tạo đơn → gửi `customer_name` là mã Customer hoặc để trống (backend dùng khách vãng lai của POS Profile — `custom_walk_in_customer`; chưa cấu hình → lỗi). Hiển thị tên khách qua `customerLabel(o)` (`lib/format.ts`, cờ `is_walk_in` do server trả → "Khách lẻ"), không so sánh tên Customer.
 
 - **Màu loại đơn ≠ màu trạng thái**: Mang đi / Tại quán luôn hiển thị qua `OrderTypeChip`
   (`typeLabel`, `typeModifier` dùng chung, không viết lại); màu lấy từ `--pos-takeaway-*` / `--pos-dinein-*`
@@ -107,7 +107,7 @@ Trả về: `{ brand: { name, logo, banner, phone, address }, ... }`
 - Box lỗi: chỉ hiện khi `!loading && !priceList` (Thiếu Price List của menu).
 - Lỗi tạo đơn: hiện cạnh nút Tạo đơn (qua `formError`).
 - Nút Tạo đơn: `disabled={!canSubmit}`.
-- Tạo đơn gửi `customer_name: customer?.name` (mã Customer); để trống → backend dùng Walk-in Customer.
+- Tạo đơn gửi `customer_name: customer?.name` (mã Customer); để trống → backend dùng khách vãng lai của POS Profile (`config.profile.walk_in_configured = false` → banner cảnh báo + chặn tạo đơn không chọn khách).
 
 #### Orders.tsx (Management — mẫu cho skill; rút lại Pha chế tab)
 - Layout: tab 2 — Chờ thanh toán / Đã thanh toán → danh sách đơn lưới → panel chi tiết fixed 380px, sticky. Không Pha chế tab.

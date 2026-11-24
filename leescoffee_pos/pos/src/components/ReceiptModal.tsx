@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { isQrOrder, typeLabel } from "./OrderTypeChip";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
-import { formatStamp, nowStamp } from "../lib/format";
+import { customerLabel, formatStamp, nowStamp } from "../lib/format";
 import { printWithPage } from "../lib/print";
 import { formatMoney } from "../store/cart";
 import type { OrderDetail } from "../types";
@@ -173,7 +173,7 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 						{!isKitchen ? (
 							<div className="pos-receipt__row">
 								<span>Khách</span>
-								<span>{order.customer_name}</span>
+								<span>{customerLabel(order)}</span>
 							</div>
 						) : null}
 						<div className="pos-receipt__row">
