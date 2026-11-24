@@ -142,6 +142,14 @@ def check_customer_display(pos_profile, item_code, mode_of_payment, price_list=N
 			raise RuntimeError("Còn dữ liệu thử của lần chạy trước không xóa được — xóa tay theo WARN rồi chạy lại.")
 
 		print("== 1. Dữ liệu tạm ==")
+		item = frappe.db.get_value("Item", item_code, ["has_variants", "variant_of"], as_dict=True)
+		if not item:
+			raise RuntimeError(f"Không có Item {item_code}.")
+		if item.has_variants and not item.variant_of:
+			variants = frappe.get_all("Item", filters={"variant_of": item_code, "disabled": 0}, pluck="name", limit=10)
+			raise RuntimeError(
+				f"{item_code} là món template (có size) — truyền mã VARIANT có giá trong Price List, vd. {variants}."
+			)
 		src = frappe.get_doc("POS Profile", pos_profile)
 		wi = frappe.new_doc("Customer")
 		wi.customer_name = f"{WALK_IN_PREFIX}{frappe.generate_hash(length=6)}"
@@ -232,8 +240,9 @@ def check_customer_display(pos_profile, item_code, mode_of_payment, price_list=N
 			and abs(t.get("total_surcharge", -1) - res["total_surcharge"]) < 0.01
 			and abs(t.get("total_discount_rules", -1) - res["total_discount_rules"]) < 0.01
 			and len(s4["order"]["lines"]) == 1 and s4["order"]["lines"][0]["qty"] == 2, f"({err or t})")
+		cust4 = (s4.get("order") or {}).get("customer") or {}
 		ok("4c Khách vãng lai -> is_walk_in, không lộ tên Customer",
-			s4["order"]["customer"]["is_walk_in"] is True and s4["order"]["customer"]["name"] == "", f"({s4['order']['customer']})")
+			cust4.get("is_walk_in") is True and cust4.get("name") == "", f"({cust4})")
 		ok("4d Gọi lại với since = v -> unchanged", state("A", s4["v"]).get("unchanged") is True)
 		_r, err = as_user("A", D.set_customer_display, "idle")
 		ok("4e Giỏ rỗng (idle) khi đang hiện giỏ -> idle", err is None and state("A").get("phase") == "idle", f"({err})")
