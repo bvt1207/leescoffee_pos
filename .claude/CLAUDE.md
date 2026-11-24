@@ -145,6 +145,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Khách vãng lai theo POS Profile** (2026-11-24, đã test Pass): field `POS Profile.custom_walk_in_customer` do người cấu hình tự chọn
   (không patch / hook / seed nào tự điền, không tên Customer cố định). Chưa cấu hình → đơn không chọn khách bị chặn (lỗi tiếng Việt).
   Server trả cờ `is_walk_in`; giao diện không so tên Customer. Chi tiết: `.claude/rules/leescoffee_pos/pos_profile.md`.
+- **Màn hình khách `/pos/customer`** (2026-11-24, đã test Pass, `d13b37c`): chỉ hiển thị, đăng nhập bằng tài khoản thu ngân (thiết bị
+  riêng). Trạng thái theo user ở Redis cache (`customer_display_api.py`), realtime + poll 3 giây; tiền luôn do server tính. Banner từ
+  DocType `MYPOS Banner` (theo POS Profile, trống = mọi profile, 5 giây đổi ảnh). Chi tiết: `.claude/rules/leescoffee_pos/customer_display.md`.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 
@@ -287,6 +290,8 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
       "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen. Đã test Pass từng phần: webhook Draft → Paid
       (`d563ed8`); "Đơn của tôi" theo khách + giỏ localStorage + Thoát/F5 (self-test `run_order_history_selftest`,
       `4e9629b`, `fbbc4ac`). Chờ test: giảm request (`a1d75c9`), chip QR màn nhân viên
+- [x] Màn hình khách `/pos/customer` + DocType `MYPOS Banner`: banner 5 giây, món + tổng tiền (CTKM, phụ thu, đổi điểm),
+      VietQR, thanh toán thành công (phải thu 0). **Đã test Pass** (`d13b37c`, `4d06ddd`). Rule: `.claude/rules/leescoffee_pos/customer_display.md`
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)

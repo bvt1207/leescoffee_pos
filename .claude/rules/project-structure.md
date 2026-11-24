@@ -29,12 +29,13 @@ PROJECTPOS/                        # git repo
 │   │   ├── draft_cancel_check.py  # chặn đóng ca khi còn Draft, hủy = Cancelled + lý do, job tự hủy, tiền về sau hủy
 │   │   ├── open_orders_check.py   # đóng ca chặn đơn đã thanh toán chưa giao, trạng thái kết thúc có lý do
 │   │   ├── table_card_check.py    # thẻ bàn: giữ / nhả theo đơn, hàng chờ thông báo thu ngân (get_serve_queue)
+│   │   ├── customer_display_check.py  # màn khách /pos/customer: banner theo POS Profile, chặn KITCHEN, giỏ/đơn/paid/hủy, cô lập user
 │   │   ├── walk_in_customer_check.py  # khách vãng lai theo POS Profile: chặn khi chưa cấu hình, is_walk_in, validate profile
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
 │   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
-│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md
+│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md, customer_display.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -66,19 +67,21 @@ PROJECTPOS/                        # git repo
     ├── pos/                       # frontend React + Vite (TSX)
     │   ├── package.json, tsconfig.json, vite.config.ts, pos.html, README.md
     │   └── src/
-    │       ├── main.tsx, App.tsx, types.ts
-    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub)
+    │       ├── main.tsx (/pos/customer render độc lập), App.tsx, types.ts
+    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub), CustomerDisplay.tsx (màn khách)
     │       ├── components/        # AppHeader, MenuGrid (tab Item Group), SizeModal + ItemModalFrame,
     │       │                      # CartPanel + OptionChips (chip tùy chọn), CustomerPicker, BuzzerPicker, QrModal,
-    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly)
+    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly), customer/BannerCarousel (màn khách)
     │       ├── store/             # cart.ts, search.ts, menuFilter.ts, orderFilter.ts, serveQueue.ts (hàng chờ thông báo thu ngân) (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm), format.ts (ngày giờ, mã đơn),
-    │       │                      # serve.ts (poll get_serve_queue 15 giây cho CASHIER, toast + bíp)
+    │       │                      # serve.ts (poll get_serve_queue 15 giây cho CASHIER, toast + bíp),
+    │       │                      # realtime.ts (socket.io-client của Frappe, dùng cho màn khách)
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
         │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
-        │   └── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
+        │   ├── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
+        │   └── customer_display_api.py  # màn hình khách /pos/customer: trạng thái theo user (Redis) + banner
         ├── workspace/leescoffee_pos/leescoffee_pos.json
         └── doctype/
             ├── mypos_buzzer/              # thẻ bàn (đổi từ thẻ rung 2026-11-23; tên cũ leescoffee_buzzer)
@@ -88,6 +91,7 @@ PROJECTPOS/                        # git repo
             ├── mypos_option_value/        # bảng con: giá trị tùy chọn
             ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
             ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
+            ├── mypos_banner/              # ảnh banner màn khách (theo POS Profile, trống = mọi profile)
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board; kitchen_status.py (trạng thái pha chế, đơn dở của ca);
             │                              # order_cancel.py (hủy Draft = Cancelled + lý do, mốc hết hạn, job tự hủy)
             ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
