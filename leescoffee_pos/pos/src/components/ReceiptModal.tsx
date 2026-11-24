@@ -170,7 +170,8 @@ export default function ReceiptModal({ order, kind = "customer", forced = false,
 							<span>Giờ</span>
 							<span>{formatStamp(order.creation)}</span>
 						</div>
-						{!isKitchen ? (
+						{/* Hóa đơn khách: luôn có. Phiếu pha chế (2026-11-24): có, trừ đơn QR (dòng "Kênh: QR · tên" đã có tên). */}
+						{!isKitchen || !isQrOrder(order.order_channel) ? (
 							<div className="pos-receipt__row">
 								<span>Khách</span>
 								<span>{customerLabel(order)}</span>

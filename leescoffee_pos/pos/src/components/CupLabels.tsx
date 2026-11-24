@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { shortOrderNo } from "../lib/format";
+import { customerLabel } from "../lib/format";
 import { formatOptions } from "../lib/options";
 import type { KitchenOrder, OrderDetail } from "../types";
 
@@ -59,12 +59,11 @@ export function buildCups(order: KitchenOrder, detail: OrderDetail | null): Cup[
 export default function CupLabels({ job }: { job: LabelJob | null }) {
 	if (!job) return null;
 	const { order, cups } = job;
-	// Khách vãng lai (cờ server theo POS Profile): in mã ngắn của đơn thay vì tên Customer kỹ thuật.
-	const who = order.buzzer_number
-		? `Bàn #${order.buzzer_number}`
-		: order.is_walk_in
-			? shortOrderNo(order.name)
-			: order.customer_name;
+	// Dòng cuối tem (2026-11-24): "Bàn #07 · {tên}" (Tại quán) hoặc "{tên}"; khách vãng lai = "Khách lẻ" (cờ is_walk_in).
+	// Một dòng, dài thì "…" (.pos-label__who); mã đơn đầy đủ vẫn ở dòng foot.
+	const who = [order.buzzer_number ? `Bàn #${order.buzzer_number}` : "", customerLabel(order)]
+		.filter(Boolean)
+		.join(" · ");
 
 	return createPortal(
 		<div className="pos-print-only">

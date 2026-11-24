@@ -8,6 +8,9 @@
 - Thẻ đơn (3 tab): dòng tên khách dưới mã đơn (`customerLabel` → "Khách lẻ"). Toast: Mang đi "Đã báo quầy gọi khách {tên | khách lẻ} ({mã})",
   Tại quán "Đã báo quầy phục vụ bàn {số} ({mã})", QR giữ câu cũ. Toast thu ngân, tem ly (khách lẻ in mã ngắn), phiếu pha chế: không đổi.
 - Kiểm tra: `walk_in_customer_check` 4c2 (customer_name), 4g (KITCHEN không nhận SĐT / điểm / tiền). Chi tiết: `skills/pos-ui/states.md` (Kitchen.tsx).
+- Bổ sung (2026-11-24, CHƯA TEST): toast dùng mã ngắn "#00080" (`shortOrderNo`); phiếu pha chế thêm dòng "Khách" (trừ QR); tem ly dòng cuối
+  "Bàn #07 · {Khách lẻ | tên}" (thay mã ngắn cho khách lẻ). Hóa đơn khách không đổi.
+- Tồn đọng: `get_order_detail` (KITCHEN gọi để in) trả cả tổng tiền + `payments` — có sẵn, chưa cắt theo role.
 
 ## 0p. Khách vãng lai theo POS Profile (2026-11-24) — ĐÃ TEST PASS trên bench DEV (`2d400c7`, `4c2f7cf`)
 - Bỏ hằng `WALK_IN`; Custom Field `POS Profile.custom_walk_in_customer` ("Khách vãng lai"), helper + validate ở `doctype/pos_profile_hooks/`.
