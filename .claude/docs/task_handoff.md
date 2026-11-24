@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-24 (khách vãng lai theo POS Profile). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0p. Khách vãng lai theo POS Profile (2026-11-24) — CHƯA TEST trên bench
+## 0p. Khách vãng lai theo POS Profile (2026-11-24) — ĐÃ TEST PASS trên bench DEV (`2d400c7`, `4c2f7cf`)
 - Bỏ hằng `WALK_IN`; Custom Field `POS Profile.custom_walk_in_customer` ("Khách vãng lai"), helper + validate ở `doctype/pos_profile_hooks/`.
   Chưa cấu hình → `create_draft_order` / `preview_pricing` không chọn khách báo lỗi tiếng Việt; mở ca chỉ cảnh báo.
 - Cờ `is_walk_in` (server, theo POS Profile của đơn) ở get_orders / get_order_detail / get_kitchen_orders / get_serve_queue / status board;

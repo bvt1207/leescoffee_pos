@@ -29,11 +29,12 @@ PROJECTPOS/                        # git repo
 │   │   ├── draft_cancel_check.py  # chặn đóng ca khi còn Draft, hủy = Cancelled + lý do, job tự hủy, tiền về sau hủy
 │   │   ├── open_orders_check.py   # đóng ca chặn đơn đã thanh toán chưa giao, trạng thái kết thúc có lý do
 │   │   ├── table_card_check.py    # thẻ bàn: giữ / nhả theo đơn, hàng chờ thông báo thu ngân (get_serve_queue)
+│   │   ├── walk_in_customer_check.py  # khách vãng lai theo POS Profile: chặn khi chưa cấu hình, is_walk_in, validate profile
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
 │   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
-│   │                              # roles.md, sepay.md, workspace.md
+│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -55,6 +56,7 @@ PROJECTPOS/                        # git repo
     ├── public/
     │   ├── images/logo.svg
     │   ├── js/pos_opening_entry.js  # doctype_js: form POS Opening Entry (Cashier tự điền + khóa)
+    │   ├── js/pos_profile.js      # doctype_js: form POS Profile (Khách vãng lai chỉ gợi ý Customer đang bật)
     │   ├── js/pos_invoice.js      # doctype_js: form POS Invoice (nút "Hủy đơn" / "Xử lý đơn" cho quản lý)
     │   ├── js/pos_invoice_list.js # doctype_list_js: 3 nút "Lọc nhanh" trên list POS Invoice (quản lý)
     │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
@@ -89,6 +91,7 @@ PROJECTPOS/                        # git repo
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board; kitchen_status.py (trạng thái pha chế, đơn dở của ca);
             │                              # order_cancel.py (hủy Draft = Cancelled + lý do, mốc hết hạn, job tự hủy)
             ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
+            ├── pos_profile_hooks/         # khách vãng lai theo POS Profile: helper đọc field + validate khi lưu profile
             ├── sepay/                     # sinh VietQR + webhook SePay
             └── branch_config/             # helper cấu hình Branch (SePay, branding, company)
 ```

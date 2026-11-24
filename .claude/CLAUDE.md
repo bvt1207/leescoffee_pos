@@ -142,6 +142,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **CTKM (Pricing Rule) tính theo tổng qty mỗi mã trong hóa đơn** (`_apply_rules_on_total_qty`), không cộng
   chéo giữa các mã. Không dùng `is_cumulative` (cộng qty qua các hóa đơn trước) hay `mixed_conditions`
   (cộng chéo các mã); không sửa Pricing Rule. Chi tiết: `options.md` §7.
+- **Khách vãng lai theo POS Profile** (2026-11-24, đã test Pass): field `POS Profile.custom_walk_in_customer` do người cấu hình tự chọn
+  (không patch / hook / seed nào tự điền, không tên Customer cố định). Chưa cấu hình → đơn không chọn khách bị chặn (lỗi tiếng Việt).
+  Server trả cờ `is_walk_in`; giao diện không so tên Customer. Chi tiết: `.claude/rules/leescoffee_pos/pos_profile.md`.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

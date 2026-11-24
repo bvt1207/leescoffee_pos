@@ -3,7 +3,7 @@
 > Paths: `leescoffee_pos/leescoffee_pos/doctype/pos_profile_hooks/pos_profile_hooks.py` (nguồn DUY NHẤT đọc field),
 > `fixtures/custom_field.json` (`POS Profile-custom_walk_in_customer`), `public/js/pos_profile.js`,
 > `api/pos_api.py`, `api/customer_order_api.py` (`_find_customer`). **Không có patch** (2026-11-24: đã xóa `v1_walk_in_customer`).
-> Làm 2026-11-24 — **chưa test trên bench**. Kiểm tra: `.claude/docs/walk_in_customer_check.py` (`check_walk_in_customer(...)`).
+> Làm 2026-11-24 — **ĐÃ TEST PASS trên bench DEV** (`2d400c7`, `4c2f7cf`: bỏ patch tự gán). Kiểm tra: `.claude/docs/walk_in_customer_check.py` (`check_walk_in_customer(...)`).
 
 ## 1. Quy tắc
 
