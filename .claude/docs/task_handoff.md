@@ -1,7 +1,17 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-26 (làm gọn workspace, list POS Invoice, sidebar tự sinh). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-25 (giảm tải poll giai đoạn 1 + 2). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0v. Giảm tải poll màn POS — giai đoạn 1 + 2 (2026-11-25) — CHỜ VAN TEST
+- Phiên bản thay đổi theo POS Profile (Redis `mypos_chg:<profile>`, tăng sau commit ở `on_change` POS Invoice / Opening / Closing + `cancel_draft`);
+  `pos_api.get_pos_changes` (chỉ đọc Redis); Pha chế / Orders / chi tiết đơn / hàng chờ thu ngân / chọn thẻ bàn chỉ tải lại khi phiên bản đổi
+  (`lib/changes.ts`, poll phiên bản 4 giây — D3) + lưới an toàn 60 / 120 giây. Orders: `get_orders_shift` (1 request thay 3). Bỏ N+1 số thẻ bàn.
+- D1: Pha chế chỉ đơn của POS Profile user thuộc về; pha chế không thuộc profile → lỗi rõ ràng. **Cấu hình: thêm tài khoản pha chế vào
+  Applicable for Users** (`branch.md` §5) TRƯỚC khi copy.
+- Kiểm: `.claude/docs/poll_load_check.py` (`check_poll_load`). Chi tiết: `rules/leescoffee_pos/realtime.md`; triển khai thật: `.claude/docs/deploy.md`.
+- **Giai đoạn 3 (chưa làm, chờ PASS):** publish_realtime phòng `all` (D2-i) + poll 30 giây khi socket kết nối (`realtime.md` §5). Phần docs đã có.
+- DEV socket.io: mở `http://localhost:8001` (không phải `127.0.0.1`), `realtime.md` §6.
 
 ## 0u. Làm gọn workspace + list POS Invoice + sidebar Manager (2026-11-26) — ĐÃ TEST PASS (`6cf87db`)
 - Bỏ shortcut Draft Orders / Unserved Orders ở MYPOS Manager / MYPOS Admin (Shortcut 2 / 1 / 1 / 3); patch `v1_mypos_workspaces`

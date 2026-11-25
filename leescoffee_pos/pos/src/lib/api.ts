@@ -148,6 +148,12 @@ export const api = {
 		call<LoyaltyInfo>("get_customer_loyalty", { customer, order_total }),
 	getOrders: (query: OrdersQuery = {}) => call<OrderSummary[]>("get_orders", { ...query }),
 	getOrdersSummary: (query: OrdersQuery = {}) => call<OrdersSummary>("get_orders_summary", { ...query }),
+	/** Orders, Ca hiện tại: Draft + Đã thanh toán + bộ đếm trong MỘT request (thay 3 request). */
+	getOrdersShift: (limit: number) =>
+		call<{ drafts: OrderSummary[]; paid: OrderSummary[]; summary: OrdersSummary }>("get_orders_shift", { limit }),
+	/** Phiên bản thay đổi của POS Profile (server chỉ đọc Redis) — lib/changes.ts. */
+	getPosChanges: (signal?: AbortSignal) =>
+		call<{ profile: string; v: string }>("get_pos_changes", {}, { signal }),
 	getOrderDetail: (invoice_name: string) => call<OrderDetail>("get_order_detail", { invoice_name }),
 	payCash: (invoice_name: string) => call<{ invoice_name: string; status: string; payment_status: string; amount: number; currency: string }>("pay_cash", { invoice_name }),
 	generateQr: (invoice_name: string) => call<QrInfo>("generate_qr", { invoice_name }),

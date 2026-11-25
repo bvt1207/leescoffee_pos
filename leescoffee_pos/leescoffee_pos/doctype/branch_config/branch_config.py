@@ -1,8 +1,15 @@
 import frappe
 from frappe import _
 
+# Màn Pha chế chỉ hiện đơn của POS Profile user thuộc về (2026-11-25, quyết định D1): user không thuộc profile đang bật nào
+# -> lỗi rõ ràng thay vì lỗi chung "Không xác định được chi nhánh".
+NO_PROFILE_MEMBERSHIP_MSG = (
+    "Tài khoản {0} chưa thuộc POS Profile đang bật nào (bảng \"Applicable for Users\"). "
+    "Màn Pha chế chỉ hiện đơn của chi nhánh mình: nhờ quản lý thêm tài khoản này vào POS Profile của chi nhánh."
+)
 
-def resolve_pos_profile_name():
+
+def resolve_pos_profile_name(require_membership=False):
     """Xác định POS Profile khi nơi gọi không truyền chi nhánh.
 
     Thứ tự (2026-11-25):
@@ -11,6 +18,8 @@ def resolve_pos_profile_name():
       2. User không thuộc profile đang bật nào (vd. Administrator / System Manager): đúng MỘT POS Profile đang bật
          có gán branch.
       3. Còn lại: frappe.throw (không đoán bừa).
+    require_membership=True (màn Pha chế của user không phải quản lý, 2026-11-25): bỏ bước 2, user không thuộc profile
+    đang bật nào -> throw NO_PROFILE_MEMBERSHIP_MSG.
 
     Returns:
         str: tên POS Profile.
@@ -45,6 +54,12 @@ def resolve_pos_profile_name():
                     title=_("Thiếu chi nhánh"),
                 )
             return chosen
+
+    if require_membership:
+        frappe.throw(
+            _(NO_PROFILE_MEMBERSHIP_MSG).format(frappe.session.user),
+            title=_("Chưa gán POS Profile"),
+        )
 
     profiles = frappe.get_all(
         "POS Profile",

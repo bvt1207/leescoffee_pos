@@ -4,6 +4,7 @@ import OrderTypeChip, { ChannelChip, isQrOrder } from "../components/OrderTypeCh
 import QrModal from "../components/QrModal";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { usePosRefresh } from "../lib/changes";
 import { addDaysIso, autoCancelInfo, customerLabel, formatOrderTime, orderMatches, shortOrderNo, SITE_TZ, todayIso } from "../lib/format";
 import { formatOptions, lineUnitSurcharge } from "../lib/options";
 import { usePos } from "../lib/pos-context";
@@ -104,14 +105,10 @@ export default function Orders() {
 		}
 	}, []);
 
-	// Ca hiện tại: 2 danh sách + bộ đếm/thông tin ca (3 request mỗi 10 giây).
+	// Ca hiện tại: 2 danh sách + bộ đếm/thông tin ca trong MỘT request (get_orders_shift, 2026-11-25; trước: 3 request mỗi 10 giây).
 	const loadData = useCallback(async () => {
 		try {
-			const [d, p, info] = await Promise.all([
-				api.getOrders({ status: "draft", limit: SHIFT_LIMIT }),
-				api.getOrders({ status: "paid", limit: SHIFT_LIMIT }),
-				api.getOrdersSummary({ scope: "shift" }),
-			]);
+			const { drafts: d, paid: p, summary: info } = await api.getOrdersShift(SHIFT_LIMIT);
 			setDrafts((d || []).filter((o) => o.docstatus === 0));
 			setPaid(p || []);
 			setShiftInfo(info);
@@ -128,12 +125,8 @@ export default function Orders() {
 		}
 	}, [openPaid]);
 
-	useEffect(() => {
-		if (mode !== "shift") return;
-		loadData();
-		const timer = window.setInterval(loadData, 10000);
-		return () => window.clearInterval(timer);
-	}, [mode, loadData]);
+	// Tải khi vào Ca hiện tại, khi phiên bản thay đổi của POS Profile đổi (hỏi mỗi 4 giây) + lưới an toàn 60 giây.
+	usePosRefresh(loadData, { enabled: mode === "shift" });
 
 	// Khoảng ngày Lịch sử theo múi giờ site.
 	const range = useMemo(() => {
@@ -186,11 +179,11 @@ export default function Orders() {
 		if (mode === "history") loadHistory(0);
 	}, [mode, loadHistory]);
 
+	// Chi tiết đơn đang chọn: tải khi chọn, khi phiên bản đổi + lưới an toàn (trước: mỗi 10 giây).
 	useEffect(() => {
-		loadDetail(selected);
-		const timer = window.setInterval(() => loadDetail(selected), 10000);
-		return () => window.clearInterval(timer);
-	}, [selected, loadDetail]);
+		if (!selected) setDetail(null);
+	}, [selected]);
+	usePosRefresh(() => loadDetail(selected), { enabled: !!selected, key: selected || "" });
 
 	useEffect(() => {
 		if (draftParam) {

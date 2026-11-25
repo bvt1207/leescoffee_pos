@@ -1,11 +1,14 @@
 import { useEffect } from "react";
+import { usePosRefresh } from "./changes";
 import { notifyReady, unlockAudio } from "../order/alert";
 import { useServeQueue } from "../store/serveQueue";
 import type { ServeQueueItem } from "../types";
 import { shortOrderNo } from "./format";
 
-/** Nhịp poll hàng chờ phục vụ (chỉ máy có quyền Orders; dừng khi tab ẩn). */
+/** Nhịp hỏi phiên bản thay đổi khi chỉ có hàng chờ phục vụ cần (máy có role CASHIER; dừng khi tab ẩn). */
 export const SERVE_POLL_MS = 15000;
+/** Lưới an toàn hàng chờ: tải lại dù phiên bản không đổi. */
+export const SERVE_SAFETY_MS = 120000;
 
 const isDineIn = (o: ServeQueueItem) => o.order_type === "Dine In";
 
@@ -36,48 +39,23 @@ export async function refreshServeQueue(quiet: string[] = []): Promise<void> {
 }
 
 /**
- * Gắn MỘT lần ở App: poll get_serve_queue mỗi SERVE_POLL_MS khi `enabled` (user có role POS CASHIER), dừng khi tab ẩn,
- * gọi ngay khi tab hiện lại. Không chồng request (setTimeout nối tiếp + store gộp lần gọi trùng).
+ * Gắn MỘT lần ở App khi `enabled` (user có role POS CASHIER). Từ 2026-11-25: không poll get_serve_queue mỗi SERVE_POLL_MS nữa —
+ * hỏi phiên bản thay đổi (lib/changes.ts, server chỉ đọc Redis) mỗi SERVE_POLL_MS (hoặc nhanh hơn nếu màn khác cần),
+ * chỉ tải hàng chờ khi phiên bản đổi + lưới an toàn SERVE_SAFETY_MS. Tab ẩn -> dừng; hiện lại -> hỏi ngay.
  */
 export function useServeQueuePoller(enabled: boolean): void {
+	// Bật store TRƯỚC usePosRefresh (effect chạy theo thứ tự khai báo): refresh() bỏ qua khi store tắt.
 	useEffect(() => {
-		const store = useServeQueue.getState();
-		store.setEnabled(enabled);
+		useServeQueue.getState().setEnabled(enabled);
 		if (!enabled) return;
-
-		let stopped = false;
-		let running = false;
-		let timer: number | undefined;
-		const tick = async () => {
-			if (stopped || running) return;
-			running = true;
-			if (!document.hidden) {
-				try {
-					await refreshServeQueue();
-				} catch {
-					/* lỗi mạng: thử lại ở nhịp sau */
-				}
-			}
-			running = false;
-			if (!stopped) timer = window.setTimeout(tick, SERVE_POLL_MS);
-		};
-		const onVisible = () => {
-			if (document.hidden || stopped || running) return;
-			window.clearTimeout(timer);
-			void tick();
-		};
 		// Trình duyệt chỉ cho phát âm thanh sau khi người dùng chạm vào trang.
 		const unlock = () => unlockAudio();
-
-		void tick();
-		document.addEventListener("visibilitychange", onVisible);
 		window.addEventListener("pointerdown", unlock);
 		return () => {
-			stopped = true;
-			window.clearTimeout(timer);
-			document.removeEventListener("visibilitychange", onVisible);
 			window.removeEventListener("pointerdown", unlock);
 			useServeQueue.getState().setEnabled(false);
 		};
 	}, [enabled]);
+
+	usePosRefresh(() => refreshServeQueue(), { enabled, intervalMs: SERVE_POLL_MS, safetyMs: SERVE_SAFETY_MS });
 }

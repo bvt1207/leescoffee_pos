@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { usePosRefresh } from "../lib/changes";
 import type { BuzzerOption } from "../types";
 
 type Props = {
@@ -13,29 +14,23 @@ export default function BuzzerPicker({ open, selected, onClose, onPick }: Props)
 	const [list, setList] = useState<BuzzerOption[]>([]);
 	const [error, setError] = useState("");
 
+	// Thẻ "Đang dùng" tính theo đơn còn giữ -> tải khi mở modal, khi phiên bản thay đổi của POS Profile đổi (hỏi mỗi 4 giây,
+	// lib/changes.ts) + lưới an toàn. Trước 2026-11-25: get_buzzers mỗi 5 giây khi modal mở.
+	const load = useCallback(async () => {
+		try {
+			setList((await api.getBuzzers()) || []);
+			setError("");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		}
+	}, []);
+	usePosRefresh(load, { enabled: open });
+
 	useEffect(() => {
 		if (!open) return;
-		let alive = true;
-		const load = async () => {
-			try {
-				const data = await api.getBuzzers();
-				if (alive) {
-					setList(data || []);
-					setError("");
-				}
-			} catch (err) {
-				if (alive) setError(err instanceof Error ? err.message : String(err));
-			}
-		};
-		load();
-		const timer = window.setInterval(load, 5000);
 		const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
 		window.addEventListener("keydown", onKey);
-		return () => {
-			alive = false;
-			window.clearInterval(timer);
-			window.removeEventListener("keydown", onKey);
-		};
+		return () => window.removeEventListener("keydown", onKey);
 	}, [open, onClose]);
 
 	if (!open) return null;

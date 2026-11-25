@@ -5,6 +5,7 @@ import OrderTypeChip, { ChannelChip, typeModifier } from "../components/OrderTyp
 import type { LabelJob } from "../components/CupLabels";
 import ReceiptModal from "../components/ReceiptModal";
 import { api } from "../lib/api";
+import { usePosRefresh } from "../lib/changes";
 import { optionParts } from "../lib/options";
 import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context";
 import { cssVar, printWithPage } from "../lib/print";
@@ -63,15 +64,14 @@ export default function Kitchen() {
 		}
 	}, []);
 
+	// Tải khi mở, khi phiên bản thay đổi của POS Profile đổi (hỏi mỗi 4 giây, server chỉ đọc Redis) + lưới an toàn 60 giây.
+	// Trước 2026-11-25: get_kitchen_orders mỗi 5 giây.
+	usePosRefresh(load);
+
 	useEffect(() => {
-		load();
-		const t = window.setInterval(load, 5000);
 		const c = window.setInterval(() => setNow(Date.now()), 30000);
-		return () => {
-			window.clearInterval(t);
-			window.clearInterval(c);
-		};
-	}, [load]);
+		return () => window.clearInterval(c);
+	}, []);
 
 	// Toast tự tắt sau 5 giây
 	useEffect(() => {

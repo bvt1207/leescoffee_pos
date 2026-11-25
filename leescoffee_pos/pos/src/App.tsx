@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import AppHeader from "./components/AppHeader";
 import { navOf, usePos } from "./lib/pos-context";
+import { useChangeFeedPoller } from "./lib/changes";
 import { useServeQueuePoller } from "./lib/serve";
 import { useServeQueue } from "./store/serveQueue";
 import type { NavKey } from "./types";
@@ -33,6 +34,8 @@ export default function App() {
 	// Thông báo đơn "Đã làm" (2026-11-23): CHỈ user có role POS CASHIER poll + nhận toast / chấm đỏ (server lọc đúng
 	// POS Profile). KITCHEN-only, MANAGER không có role CASHIER: không poll, không toast. User có cả CASHIER + role khác: vẫn nhận.
 	useServeQueuePoller(!loading && !!config?.roles?.cashier && nav.includes("orders"));
+	// Phiên bản thay đổi theo POS Profile (lib/changes.ts): chỉ poll khi có màn đăng ký (Pha chế, Orders, hàng chờ, chọn thẻ bàn).
+	useChangeFeedPoller(!loading && !!config && nav.length > 0);
 	const toast = useServeQueue((s) => s.toast);
 	const setToast = useServeQueue((s) => s.setToast);
 

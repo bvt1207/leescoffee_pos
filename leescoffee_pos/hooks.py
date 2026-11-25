@@ -155,21 +155,28 @@ doc_events = {
 		"before_save": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",
 		"on_update_after_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
 		"on_cancel": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_cancel",
+		# Phiên bản thay đổi theo POS Profile (Redis, sau commit) -> màn POS chỉ tải lại khi đổi (change_feed.py).
+		"on_change": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
 	},
 	# Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (pos_shift_hooks.py).
 	"POS Opening Entry": {
 		"before_validate": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_validate",
 		"before_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_submit",
 		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.opening_on_submit",
+		"on_change": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
 	},
 	"POS Closing Entry": {
 		"before_validate": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_validate",
 		"before_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_submit",
 		"on_submit": "leescoffee_pos.leescoffee_pos.doctype.pos_shift_hooks.pos_shift_hooks.closing_on_submit",
+		"on_change": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
 	},
 	# Khách vãng lai theo POS Profile: Customer phải tồn tại, đang bật, không gắn Loyalty Program (pos_profile_hooks.py).
 	"POS Profile": {
 		"validate": "leescoffee_pos.leescoffee_pos.doctype.pos_profile_hooks.pos_profile_hooks.validate",
+		# Cache POS Profile của user (get_pos_changes) -> xóa khi lưu / xóa profile.
+		"on_update": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.change_feed.clear_profile_cache",
+		"on_trash": "leescoffee_pos.leescoffee_pos.doctype.pos_invoice_hooks.change_feed.clear_profile_cache",
 	},
 	# MYPOS Buzzer: validate là native lifecycle method của Document →
 	# Frappe tự gọi, không cần đăng ký lại trong doc_events.

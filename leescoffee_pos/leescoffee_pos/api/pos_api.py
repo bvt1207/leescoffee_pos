@@ -129,12 +129,12 @@ def _require_sale_role():
 		)
 
 
-def _get_pos_profile(branch_name=None):
+def _get_pos_profile(branch_name=None, require_membership=False):
 	"""Trả về POS Profile đang dùng.
 
 	- Có `branch_name`: POS Profile đang bật của chi nhánh đó (`_branch_profile_name`), không có thì throw.
 	- Không có: `resolve_pos_profile_name()` (POS Profile gán cho user, hoặc
-	  POS Profile đang bật duy nhất; không xác định được thì throw).
+	  POS Profile đang bật duy nhất; không xác định được thì throw). `require_membership`: xem resolve_pos_profile_name.
 	"""
 	if branch_name:
 		profile_name = _branch_profile_name(branch_name)
@@ -145,7 +145,7 @@ def _get_pos_profile(branch_name=None):
 				)
 			)
 	else:
-		profile_name = resolve_pos_profile_name()
+		profile_name = resolve_pos_profile_name(require_membership=require_membership)
 
 	return frappe.get_doc("POS Profile", profile_name)
 
@@ -435,6 +435,19 @@ def _buzzer_number(buzzer_name):
 	return frappe.db.get_value("MYPOS Buzzer", buzzer_name, "buzzer_number")
 
 
+def _set_buzzer_numbers(rows, key="buzzer"):
+	"""Gắn `buzzer_number` cho danh sách đơn bằng MỘT truy vấn (thay _buzzer_number từng đơn, 2026-11-25)."""
+	names = list({r.get(key) for r in rows if r.get(key)})
+	numbers = (
+		dict(frappe.get_all("MYPOS Buzzer", filters={"name": ["in", names]}, fields=["name", "buzzer_number"], as_list=True))
+		if names
+		else {}
+	)
+	for r in rows:
+		r["buzzer_number"] = numbers.get(r.get(key)) if r.get(key) else None
+	return rows
+
+
 def _size_labels(item_codes):
 	"""{variant item_code: nhãn size} — một truy vấn cho cả đơn.
 
@@ -577,8 +590,10 @@ def _apply_redemption(invoice, customer, company, redeem_points, walk_in=None):
 @frappe.whitelist()
 def get_pos_config(branch_name=None):
 	"""Thông tin cấu hình cho giao diện: thương hiệu, POS Profile, phương thức thanh toán, quyền."""
-	profile = _get_pos_profile(branch_name)
 	roles = _pos_roles()
+	# User chỉ có POS KITCHEN phải thuộc Applicable for Users của POS Profile (D1, 2026-11-25): báo lỗi rõ ràng.
+	kitchen_only = roles["kitchen"] and not roles["cashier"] and not roles["manager"]
+	profile = _get_pos_profile(branch_name, require_membership=kitchen_only)
 	walk_in = get_walk_in_customer(profile)
 	warnings = _company_warnings(profile)
 	if not walk_in:
@@ -1290,11 +1305,39 @@ def get_orders(status="all", limit=50, scope="shift", from_date=None, to_date=No
 
 	for order in orders:
 		order["amount"] = flt(order.get("rounded_total") or order.get("grand_total"))
-		order["buzzer_number"] = _buzzer_number(order.get("buzzer"))
+	_set_buzzer_numbers(orders)
 	# is_walk_in: khách vãng lai theo POS Profile của chính đơn (frontend không so tên Customer).
 	mark_walk_in(orders)
 
 	return orders
+
+
+@frappe.whitelist()
+def get_orders_shift(limit=200):
+	"""Orders, Ca hiện tại: 2 danh sách + bộ đếm trong MỘT request (2026-11-25, thay 3 request song song).
+
+	Trả {drafts, paid, summary} — đúng kết quả get_orders(status="draft"/"paid") + get_orders_summary(scope="shift").
+	"""
+	_require_sale_role()
+	return {
+		"drafts": get_orders(status="draft", limit=limit),
+		"paid": get_orders(status="paid", limit=limit),
+		"summary": get_orders_summary(scope="shift"),
+	}
+
+
+@frappe.whitelist()
+def get_pos_changes():
+	"""Phiên bản thay đổi của POS Profile người gọi — CHỈ đọc Redis (+ cache POS Profile của user), không truy vấn đơn.
+
+	Màn Pha chế / Orders / hàng chờ thu ngân / chọn thẻ bàn poll hàm này và chỉ tải lại danh sách khi `v` đổi
+	(change_feed.py, `rules/leescoffee_pos/realtime.md`). Trả {profile, v}.
+	"""
+	from ..doctype.pos_invoice_hooks.change_feed import cached_profile_of_user, get_version
+
+	_require_pos_role(_pos_roles())
+	profile = cached_profile_of_user(resolve_pos_profile_name)
+	return {"profile": profile, "v": get_version(profile)}
 
 
 @frappe.whitelist()
@@ -1599,10 +1642,13 @@ def get_kitchen_orders(status=None, limit=100):
 
 	Chỉ trả trạng thái nằm trong KITCHEN_TABS_BY_ROLE của user. "Đã hoàn thành" chỉ lấy
 	đơn posting_date = hôm nay (Chưa làm / Đã làm lấy mọi ngày).
+	Chỉ đơn của POS Profile user thuộc về (2026-11-25, D1; trước đó lấy mọi chi nhánh). User không phải quản lý mà không
+	thuộc Applicable for Users của profile đang bật nào -> lỗi rõ ràng (NO_PROFILE_MEMBERSHIP_MSG).
 	"""
 	roles = _pos_roles()
 	_require_pos_role(roles)
 	allowed = _kitchen_tabs(roles)
+	profile_name = resolve_pos_profile_name(require_membership=not roles["manager"])
 
 	if status:
 		if status not in KITCHEN_FLOW:
@@ -1621,7 +1667,7 @@ def get_kitchen_orders(status=None, limit=100):
 
 	fields = ["name", "customer", "customer_name", "order_type", "order_channel",
 		"custom_kitchen_status", "buzzer", "order_note", "creation", "modified", "pos_profile"]
-	base = {"docstatus": 1, "status": "Paid"}
+	base = {"docstatus": 1, "status": "Paid", "pos_profile": profile_name}
 	cap = min(int(limit), 200)
 
 	orders = []
@@ -1670,9 +1716,8 @@ def get_kitchen_orders(status=None, limit=100):
 	for o in orders:
 		o["kitchen_status"] = o.pop("custom_kitchen_status")
 		o["items"] = by_parent.get(o.name, [])
-		o["buzzer_number"] = _buzzer_number(o.get("buzzer"))
 		o["customer_name"] = o.get("customer_name") or o.get("customer")
-	# Màn Pha chế lấy đơn mọi POS Profile -> cờ tính theo profile của từng đơn.
+	_set_buzzer_numbers(orders)
 	mark_walk_in(orders)
 	return orders
 

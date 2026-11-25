@@ -73,7 +73,9 @@
 - [ ] `custom_walk_in_customer` — Khách vãng lai (Customer không SĐT, không Loyalty Program; `pos_profile.md` §5)
 - [ ] Payments: mode tiền mặt + mode chuyển khoản (`type = Bank`, có tài khoản)
 - [ ] `income_account` (phụ thu topping; trống → `Company.default_income_account`)
-- [ ] Applicable for Users: mọi thu ngân + quản lý bán hàng; mỗi user `default` ở đúng một profile
+- [ ] Applicable for Users: mọi thu ngân + quản lý bán hàng **+ mọi tài khoản pha chế (POS KITCHEN)**; mỗi user `default` ở đúng một profile
+      (từ 2026-11-25 màn Pha chế chỉ hiện đơn của profile user thuộc về; pha chế không thuộc profile nào → lỗi "chưa thuộc POS Profile
+      đang bật nào", `realtime.md` §4)
 
 **Dữ liệu theo chi nhánh / profile**
 - [ ] `MYPOS Buzzer` (thẻ bàn) gắn Branch
