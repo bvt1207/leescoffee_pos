@@ -58,7 +58,7 @@ Số request khi KHÔNG có thay đổi: Pha chế 12 → 15/phút nhưng là re
 - Cấu hình: thêm mọi tài khoản pha chế vào Applicable for Users của profile chi nhánh (`branch.md` §5). KITCHEN vẫn không mở ca được
   (`pos_shift_hooks`), không có quyền DocType mới.
 
-## 5. Giai đoạn 3 — realtime (làm 2026-11-25, CHỜ VAN TEST)
+## 5. Giai đoạn 3 — realtime (2026-11-25, ĐÃ TEST PASS trên bench DEV `4fbb595`)
 
 - `change_feed._incr` gọi thêm `frappe.publish_realtime("mypos_pos_changed", {"p": profile, "v": <phiên bản>}, room="all")` sau commit
   (D2-i: phòng `all` = mọi System User đang kết nối; payload KHÔNG có dữ liệu đơn / khách / tiền). Lỗi socket chỉ bỏ qua.

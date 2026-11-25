@@ -41,7 +41,7 @@
 - Poll dự phòng 3 giây (`order/poll.ts::usePolling`); socket lỗi vẫn đúng, chỉ chậm tối đa 3 giây.
 - [Unverified] Phần kết nối socket chưa kiểm riêng trên v16 (test Pass có thể đến từ poll). Cần tiến trình `socketio` của bench.
 - DEV (2026-11-25, đã kiểm): socket lỗi khi mở site bằng `127.0.0.1:8001` — node socketio nghe `::9001`, WSL2 không chuyển qua `127.0.0.1`.
-  Mở bằng `http://localhost:8001` (`realtime.md` §6). Giai đoạn 3: poll 30 giây khi socket kết nối (`realtime.md` §5).
+  Mở bằng `http://localhost:8001` (`realtime.md` §6). Từ 2026-11-25 (đã test Pass `4fbb595`): poll 30 giây khi socket kết nối, 3 giây khi mất.
 - `pos/package.json` có `socket.io-client`: sau khi copy phải `npm install` trong `pos/` rồi mới `npm run build`.
 
 ## 4. MYPOS Banner

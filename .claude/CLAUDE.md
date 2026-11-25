@@ -161,7 +161,8 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Giảm tải poll màn POS** (2026-11-25, giai đoạn 1 + 2 đã test Pass, `86b6cb2`): màn Pha chế / Orders / hàng chờ thu ngân / chọn thẻ bàn hỏi
   phiên bản thay đổi theo POS Profile (`get_pos_changes`, chỉ đọc Redis, 4 giây) và chỉ tải danh sách khi đổi. Code ghi POS Invoice bằng
   `set_value` / SQL phải gọi `change_feed.bump(pos_profile)`. Pha chế chỉ hiện đơn của POS Profile user thuộc về (tài khoản pha chế phải nằm
-  trong Applicable for Users). Giai đoạn 3 (realtime phòng `all`) chưa làm. Chi tiết: `.claude/rules/leescoffee_pos/realtime.md`;
+  trong Applicable for Users). Giai đoạn 3 (đã test Pass, `4fbb595`): sự kiện realtime `mypos_pos_changed` {p, v} phòng `all`; socket kết nối
+  -> poll 30 giây, mất -> 4 giây (màn khách 3 giây). DEV mở site bằng `localhost:8001` (WSL2). Chi tiết: `.claude/rules/leescoffee_pos/realtime.md`;
   triển khai thật: `.claude/docs/deploy.md`.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
