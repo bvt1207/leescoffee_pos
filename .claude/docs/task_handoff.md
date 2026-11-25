@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-26 (làm gọn workspace, list POS Invoice, sidebar tự sinh). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0u. Làm gọn workspace + list POS Invoice + sidebar Manager (2026-11-26) — CHỜ VAN TEST
+## 0u. Làm gọn workspace + list POS Invoice + sidebar Manager (2026-11-26) — ĐÃ TEST PASS (`6cf87db`)
 - Bỏ shortcut Draft Orders / Unserved Orders ở MYPOS Manager / MYPOS Admin (Shortcut 2 / 1 / 1 / 3); patch `v1_mypos_workspaces`
   chạy lại (nhãn `#2026-11-26 rerun bo-shortcut`).
 - Bỏ `public/js/pos_invoice_list.js` (3 nút Lọc nhanh) + `doctype_list_js` trong hooks.py; giữ `pos_invoice.js` + bộ lọc chuẩn.

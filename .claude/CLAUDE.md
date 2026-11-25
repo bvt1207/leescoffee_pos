@@ -156,6 +156,8 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Workspace Desk theo vai trò** (2026-11-25, đã test Pass, `8f2e389`): MYPOS Cashier / Kitchen / Manager / Admin, giới hạn bằng
   `Workspace.roles` (+ System Manager), Desktop Icon + Sidebar "MYPOS". Workspace cũ `leescoffee_pos` đã xóa (patch `v1_mypos_workspaces`).
   Chỉ đổi giao diện: module `Leescoffee POS`, app, route `/pos` giữ nguyên. Chi tiết: `.claude/rules/leescoffee_pos/workspace.md` §7.
+  2026-11-26 (đã test Pass, `6cf87db`): bỏ shortcut Draft / Unserved Orders, bỏ nút Lọc nhanh list POS Invoice; Workspace Sidebar
+  "Leescoffee POS" **rỗng có chủ đích** chặn Frappe v16.30 tự sinh sidebar theo module — **xóa khi chuyển sang module MYPOS**.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 

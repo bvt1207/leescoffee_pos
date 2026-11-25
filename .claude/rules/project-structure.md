@@ -57,13 +57,14 @@ PROJECTPOS/                        # git repo
     ├── config/, templates/
     ├── desktop_icon/mypos_cashier.json, mypos_kitchen.json, mypos_manager.json, mypos_admin.json
     ├── workspace_sidebar/mypos.json   # Workspace Sidebar "MYPOS" (Frappe < 16.50)
+    │                              # + leescoffee_pos.json: Workspace Sidebar "Leescoffee POS" RỖNG có chủ đích
+    │                              #   (chặn sidebar tự sinh theo module, workspace.md §7)
     ├── fixtures/custom_field.json, role.json, property_setter.json  # property_setter: lọc chuẩn POS Profile trên list POS Invoice
     ├── public/
     │   ├── images/logo.svg
     │   ├── js/pos_opening_entry.js  # doctype_js: form POS Opening Entry (Cashier tự điền + khóa)
     │   ├── js/pos_profile.js      # doctype_js: form POS Profile (Khách vãng lai chỉ gợi ý Customer đang bật)
     │   ├── js/pos_invoice.js      # doctype_js: form POS Invoice (nút "Hủy đơn" / "Xử lý đơn" cho quản lý)
-    │   ├── js/pos_invoice_list.js # doctype_list_js: 3 nút "Lọc nhanh" trên list POS Invoice (quản lý)
     │   └── pos/                   # output build Vite (pos.js, pos.css) — sinh khi build
     ├── www/
     │   ├── pos.html               # trang /pos, nạp /assets/leescoffee_pos/pos/pos.js

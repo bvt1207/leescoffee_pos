@@ -121,7 +121,7 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
     Cashier / Kitchen / Manager / Admin). Sidebar item loại Workspace tự lọc theo `roles` của workspace.
   - Frappe < 16.50: `leescoffee_pos/workspace_sidebar/mypos.json` (Workspace Sidebar "MYPOS", cùng 4 item).
   - **Sidebar RỖNG có chủ đích `leescoffee_pos/workspace_sidebar/leescoffee_pos.json`** (Workspace Sidebar "Leescoffee POS",
-    `items: []`, 2026-11-26) — CHỈ để chặn sidebar tự sinh theo module (Frappe < 16.50, đã đọc mã v16.30 trên bench):
+    `items: []`, 2026-11-26, ĐÃ TEST PASS 4 vai trò `6cf87db`) — CHỈ để chặn sidebar tự sinh theo module (Frappe < 16.50, đã đọc mã v16.30 trên bench):
     - `boot.get_sidebar_items` nối thêm `workspace_sidebar.auto_generate_sidebar_from_module()` (`@site_cache`): mọi Module Def chưa có
       Workspace Sidebar tên ĐÚNG tên module (`for_user` trống) được sinh sidebar = mọi Workspace của module + 3 DocType đầu
       (`istable = 0`, `creation asc`). Sidebar "MYPOS" khác tên module → Frappe sinh thêm "Leescoffee POS" → Manager thấy "MYPOS Manager"
