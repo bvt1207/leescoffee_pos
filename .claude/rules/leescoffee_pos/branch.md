@@ -18,7 +18,7 @@
 ## 2. Xác định chi nhánh
 
 - Có POS Invoice / POS Profile → `POS Profile.branch`.
-- **Quy tắc 1 — POS Profile đang bật bắt buộc có Branch** (2026-11-25, `pos_profile_hooks._check_branch`): thiếu → chặn lưu
+- **Quy tắc 1 — POS Profile đang bật bắt buộc có Branch** (2026-11-25, ĐÃ TEST PASS `check_branch_profile` 19/19, `pos_profile_hooks._check_branch`): thiếu → chặn lưu
   ("… đang bật nhưng chưa gán Chi nhánh …"); profile đã tắt (`disabled = 1`) thì lưu được.
 - **Quy tắc 2 — mỗi Branch tối đa MỘT POS Profile đang bật** (2026-11-25, cùng hàm): profile đang bật, có Branch, mà đã có profile
   khác đang bật cùng Branch → **chặn lưu**, thông báo nêu tên profile đang chiếm Branch + cách xử lý (tắt profile kia, chọn Branch khác,

@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-25 (POS Profile bắt buộc Branch, bỏ Branch.brand_banner). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0s. POS Profile bắt buộc Branch + bỏ Branch.brand_banner (2026-11-25) — CHỜ VAN TEST
+## 0s. POS Profile bắt buộc Branch + bỏ Branch.brand_banner (2026-11-25) — ĐÃ TEST PASS (19/19, `61473b5`, `26754ee`, `740584b`)
 - Profile đang bật thiếu Branch → chặn lưu; mỗi Branch tối đa 1 profile đang bật → chặn lưu (`pos_profile_hooks._check_branch`).
   Lee's Coffee POS + POS TEST cùng Branch: Van tự tắt POS TEST trên Desk (code không sửa dữ liệu). Self-test cũ dùng cờ
   `flags.mypos_allow_shared_branch` cho profile tạm.
@@ -12,7 +12,7 @@
 - `/order` lấy ảnh đầu trang từ MYPOS Banner public (`mypos_banner.active_banners`, dùng chung màn khách); bỏ Custom Field
   `Branch-brand_banner` (fixture + patch `v1_remove_brand_banner`, có log sao lưu đường dẫn ảnh).
 - Checklist cấu hình 1 cửa hàng (UAT): `branch.md` §5. Self-test: `.claude/docs/branch_profile_check.py` (`check_branch_profile(...)`).
-- Chờ sau khi Pass: CLAUDE.md §1b (bỏ `brand_banner` khỏi danh sách field thương hiệu), `project-structure.md` (patch mới, script test).
+- Đã cập nhật CLAUDE.md §1b + `project-structure.md` (commit `docs:`).
 
 ## 0r. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — ĐÃ TEST PASS (`8f2e389`)
 - 4 workspace thay workspace `leescoffee_pos`: MYPOS Cashier / MYPOS Kitchen / MYPOS Manager / MYPOS Admin, mỗi workspace có `roles` = role chính +

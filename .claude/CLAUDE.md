@@ -28,8 +28,10 @@ này Van sẽ triển khai hệ thống này cho các doanh nghiệp F&B khác n
 - Mọi thông tin thương hiệu (tên quán, logo, banner, màu chủ đạo...) phải là **dữ
   liệu cấu hình** đọc từ **`Branch`**, không phải giá trị viết chết trong code.
   - **`Branch` là nguồn cấu hình duy nhất** (từ 2026-11-08): thương hiệu (`brand_name`,
-    `brand_logo`, `brand_banner`, `brand_phone`, `brand_address`), SePay
-    (`sepay_*`) và `company`. Chi nhánh lấy từ `POS Profile.branch`. Code
+    `brand_logo`, `brand_phone`, `brand_address`; `brand_banner` đã bỏ 2026-11-25 — ảnh banner lấy từ DocType
+    `MYPOS Banner`), SePay (`sepay_*`) và `company`. Chi nhánh lấy từ `POS Profile.branch`: POS Profile đang bật
+    **bắt buộc có Branch** và **mỗi Branch tối đa một POS Profile đang bật** (chặn khi lưu, 2026-11-25, đã test Pass
+    `61473b5`, `26754ee`, `740584b`; checklist cấu hình cửa hàng: `branch.md` §5). Code
     **không còn `Leescoffee POS Settings`** (đã xóa khỏi repo; patch
     `patches/v1_remove_pos_settings.py` xóa DocType + bản ghi Single trên DB).
     Chi tiết: `.claude/rules/leescoffee_pos/branch.md`.

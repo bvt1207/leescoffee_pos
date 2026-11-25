@@ -31,6 +31,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── table_card_check.py    # thẻ bàn: giữ / nhả theo đơn, hàng chờ thông báo thu ngân (get_serve_queue)
 │   │   ├── customer_display_check.py  # màn khách /pos/customer: banner theo POS Profile, chặn KITCHEN, giỏ/đơn/paid/hủy, cô lập user
 │   │   ├── walk_in_customer_check.py  # khách vãng lai theo POS Profile: chặn khi chưa cấu hình, is_walk_in, validate profile
+│   │   ├── branch_profile_check.py  # POS Profile bắt buộc Branch, 1 profile đang bật / Branch, chọn profile, Error Log SePay, ảnh /order
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
@@ -50,7 +51,7 @@ PROJECTPOS/                        # git repo
     │                              # v1_create_pos_roles.py, v1_kitchen_desk_access.py,
     │                              # v1_clear_legacy_option_default.py, v1_kitchen_outcomes.py,
     │                              # v1_simplify_cancel_review.py, v1_table_card_cleanup.py,
-    │                              # v1_mypos_workspaces.py (post_model_sync)
+    │                              # v1_mypos_workspaces.py, v1_remove_brand_banner.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/mypos_cashier.json, mypos_kitchen.json, mypos_manager.json, mypos_admin.json
     ├── workspace_sidebar/mypos.json   # Workspace Sidebar "MYPOS" (Frappe < 16.50)
@@ -93,7 +94,7 @@ PROJECTPOS/                        # git repo
             ├── mypos_option_value/        # bảng con: giá trị tùy chọn
             ├── mypos_option_target/       # bảng con: áp dụng cho Item / Item Group
             ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
-            ├── mypos_banner/              # ảnh banner màn khách (theo POS Profile, trống = mọi profile)
+            ├── mypos_banner/              # ảnh banner màn khách + đầu trang /order (active_banners; theo POS Profile, trống = mọi profile)
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board; kitchen_status.py (trạng thái pha chế, đơn dở của ca);
             │                              # order_cancel.py (hủy Draft = Cancelled + lý do, mốc hết hạn, job tự hủy)
             ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
