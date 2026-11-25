@@ -94,9 +94,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Không còn Report "MYPOS Review Queue", cờ `needs_review`, job nhắc mỗi giờ. Quản lý dùng **list view chuẩn của POS Invoice**:
   - Bộ lọc chuẩn: POS Profile (Property Setter fixture `POS Invoice-pos_profile-in_standard_filter`), Trạng thái pha chế
     (`custom_kitchen_status`, `in_standard_filter`), "Có tiền về sau khi hủy" (`custom_late_payment`).
-  - 3 nút nhóm "Lọc nhanh" (`public/js/pos_invoice_list.js`, `doctype_list_js`, chỉ MANAGER / System Manager / Administrator):
-    "Nháp cần hủy" (docstatus 0), "Chưa pha chế" (docstatus 1, không trả hàng, Chưa làm / Đã làm),
-    "Đơn còn dở" (docstatus 0/1, không trả hàng, trạng thái pha chế rỗng / Chưa làm / Đã làm).
+  - 3 nút "Lọc nhanh" (`pos_invoice_list.js`, `doctype_list_js`) **đã bỏ 2026-11-26** (Van quyết định): dùng bộ lọc chuẩn ở trên.
 - Form POS Invoice (`public/js/pos_invoice.js`, chỉ manager): Draft → nút **"Hủy đơn"** (lý do; "Khác" bắt buộc ghi chú; đơn "Đang chờ" QR phải tích
   xác nhận → `force=1`) → `pos_api.cancel_draft_order`. Đơn đã thu tiền đang rỗng / Chưa làm / Đã làm → nút **"Xử lý đơn"** (Đã hoàn thành /
   Không thực hiện được / Khách không nhận, lý do bắt buộc) → `pos_api.resolve_open_order`.

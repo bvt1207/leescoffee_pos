@@ -1,0 +1,15 @@
+{
+ "app": "leescoffee_pos",
+ "creation": "2026-11-26 10:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "idx": 0,
+ "items": [],
+ "modified": "2026-11-26 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Leescoffee POS",
+ "name": "Leescoffee POS",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Leescoffee POS"
+}

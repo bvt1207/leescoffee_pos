@@ -53,8 +53,7 @@ doctype_js = {
 	"POS Profile": "public/js/pos_profile.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# Danh sách POS Invoice: 3 nút lọc nhanh cho quản lý (Nháp cần hủy / Chưa pha chế / Đơn còn dở) — 2026-11-23.
-doctype_list_js = {"POS Invoice": "public/js/pos_invoice_list.js"}
+# (2026-11-26) Đã bỏ 3 nút "Lọc nhanh" trên list POS Invoice (public/js/pos_invoice_list.js): dùng bộ lọc chuẩn.
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 

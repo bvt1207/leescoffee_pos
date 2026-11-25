@@ -1,7 +1,7 @@
 {
  "app": "leescoffee_pos",
  "charts": [],
- "content": "[{\"id\":\"mypos_maS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_maS02\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Draft Orders\",\"col\":3}},{\"id\":\"mypos_maS03\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unserved Orders\",\"col\":3}},{\"id\":\"mypos_maSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_maC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift & Cash\",\"col\":4}},{\"id\":\"mypos_maC02\",\"type\":\"card\",\"data\":{\"card_name\":\"Order Handling\",\"col\":4}},{\"id\":\"mypos_maC03\",\"type\":\"card\",\"data\":{\"card_name\":\"Menu & Promotions\",\"col\":4}},{\"id\":\"mypos_maC04\",\"type\":\"card\",\"data\":{\"card_name\":\"QR & Display\",\"col\":4}}]",
+ "content": "[{\"id\":\"mypos_maS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_maSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_maC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift & Cash\",\"col\":4}},{\"id\":\"mypos_maC02\",\"type\":\"card\",\"data\":{\"card_name\":\"Order Handling\",\"col\":4}},{\"id\":\"mypos_maC03\",\"type\":\"card\",\"data\":{\"card_name\":\"Menu & Promotions\",\"col\":4}},{\"id\":\"mypos_maC04\",\"type\":\"card\",\"data\":{\"card_name\":\"QR & Display\",\"col\":4}}]",
  "creation": "2026-11-25 10:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -164,7 +164,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-11-25 10:00:00.000000",
+ "modified": "2026-11-26 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Leescoffee POS",
  "name": "MYPOS Manager",
@@ -188,24 +188,6 @@
    "label": "Open MYPOS",
    "type": "URL",
    "url": "/pos"
-  },
-  {
-   "color": "Yellow",
-   "doc_view": "List",
-   "format": "{} Draft",
-   "label": "Draft Orders",
-   "link_to": "POS Invoice",
-   "stats_filter": "[[\"POS Invoice\",\"docstatus\",\"=\",0,false]]",
-   "type": "DocType"
-  },
-  {
-   "color": "Red",
-   "doc_view": "List",
-   "format": "{} Waiting",
-   "label": "Unserved Orders",
-   "link_to": "POS Invoice",
-   "stats_filter": "[[\"POS Invoice\",\"docstatus\",\"=\",1,false],[\"POS Invoice\",\"is_return\",\"=\",0,false],[\"POS Invoice\",\"custom_kitchen_status\",\"in\",[\"Chưa làm\",\"Đã làm\"],false]]",
-   "type": "DocType"
   }
  ],
  "standard": 1,

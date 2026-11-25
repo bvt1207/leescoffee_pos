@@ -103,23 +103,40 @@ Bốn workspace, module vẫn `Leescoffee POS`, mỗi file `leescoffee_pos/leesc
 |---|---|---|---|
 | MYPOS Cashier → `/desk/mypos-cashier` | POS CASHIER, System Manager | Open MYPOS (`/pos`), MYPOS Customer Display (`/pos/customer`) | Shift: POS Opening Entry, POS Closing Entry |
 | MYPOS Kitchen → `/desk/mypos-kitchen` | POS KITCHEN, System Manager | MYPOS Kitchen Screen (`/pos/kitchen`) | — |
-| MYPOS Manager → `/desk/mypos-manager` | POS MANAGER, System Manager | Open MYPOS, Draft Orders, Unserved Orders | Shift & Cash (Opening, Closing, POS Invoice Merge Log); Order Handling (POS Invoice, MYPOS Buzzer); Menu & Promotions (MYPOS Menu, MYPOS Option Group, Pricing Rule, Promotional Scheme); QR & Display (MYPOS Order QR, MYPOS Banner) |
-| MYPOS Admin → `/desk/mypos-admin` | System Manager | Open MYPOS, Draft Orders, Unserved Orders, MYPOS Kitchen Screen, MYPOS Customer Display | Branch Setup (Branch, POS Profile, Customer, User Permission); Shift & Cash; Order Handling; Menu & Promotions (+ Loyalty Program); QR & Display; Troubleshooting (Error Log, Notification Log) |
+| MYPOS Manager → `/desk/mypos-manager` | POS MANAGER, System Manager | Open MYPOS | Shift & Cash (Opening, Closing, POS Invoice Merge Log); Order Handling (POS Invoice, MYPOS Buzzer); Menu & Promotions (MYPOS Menu, MYPOS Option Group, Pricing Rule, Promotional Scheme); QR & Display (MYPOS Order QR, MYPOS Banner) |
+| MYPOS Admin → `/desk/mypos-admin` | System Manager | Open MYPOS, MYPOS Kitchen Screen, MYPOS Customer Display | Branch Setup (Branch, POS Profile, Customer, User Permission); Shift & Cash; Order Handling; Menu & Promotions (+ Loyalty Program); QR & Display; Troubleshooting (Error Log, Notification Log) |
 
-Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admin 24; Workspace Shortcut 2 / 1 / 3 / 5; Has Role 2 / 2 / 2 / 1.
+Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admin 24; Workspace Shortcut 2 / 1 / 1 / 3 (2026-11-26: bỏ Draft Orders, Unserved Orders ở Manager / Admin); Has Role 2 / 2 / 2 / 1.
 
 - **Quy tắc hiển thị (đã đọc mã Frappe v16.49 / v16.61):** workspace hiện khi module hiển thị với user (Read ít nhất 1 DocType module,
   roles.md §4) VÀ user có một role trong `roles`. Mọi workspace giới hạn role đều kèm `System Manager` (Administrator có mọi role).
   User có role `Workspace Manager` thấy MỌI workspace (không dùng user đó để test). Link DocType trong card ẩn khi thiếu quyền Read
   (vd. Pricing Rule / Promotional Scheme chỉ hiện cho MANAGER có thêm Sales Manager; Loyalty Program chỉ ở Admin, quyết định Van D4).
 - **Shortcut URL** luôn mở tab mới (`shortcut_widget.js`). **Shortcut DocType** luôn đếm `frappe.db.count` theo `stats_filter` và
-  dùng nó làm bộ lọc danh sách (`frappe.route_options`). Draft Orders: `docstatus = 0`. Unserved Orders: `docstatus = 1`,
-  `is_return = 0`, `custom_kitchen_status in (Chưa làm, Đã làm)` ([Unverified] toán tử `in` qua route_options — test tay).
+  dùng nó làm bộ lọc danh sách (`frappe.route_options`). Hiện không còn shortcut DocType nào (Draft Orders / Unserved Orders đã bỏ
+  2026-11-26, Van quyết định; xem đơn qua card Order Handling → POS Invoice + bộ lọc chuẩn).
 - **Mô tả card**: `Workspace Link.description` (Card Break), có ở v16.49 và v16.50+.
 - **Sidebar Desk** (phụ thuộc phiên bản Frappe, ship cả hai; mỗi file trơ ở phiên bản kia):
   - Frappe ≥ 16.50: `leescoffee_pos/leescoffee_pos/sidebar/mypos/mypos.json` (DocType `Sidebar`, name/title "MYPOS", 4 item Workspace:
     Cashier / Kitchen / Manager / Admin). Sidebar item loại Workspace tự lọc theo `roles` của workspace.
   - Frappe < 16.50: `leescoffee_pos/workspace_sidebar/mypos.json` (Workspace Sidebar "MYPOS", cùng 4 item).
+  - **Sidebar RỖNG có chủ đích `leescoffee_pos/workspace_sidebar/leescoffee_pos.json`** (Workspace Sidebar "Leescoffee POS",
+    `items: []`, 2026-11-26) — CHỈ để chặn sidebar tự sinh theo module (Frappe < 16.50, đã đọc mã v16.30 trên bench):
+    - `boot.get_sidebar_items` nối thêm `workspace_sidebar.auto_generate_sidebar_from_module()` (`@site_cache`): mọi Module Def chưa có
+      Workspace Sidebar tên ĐÚNG tên module (`for_user` trống) được sinh sidebar = mọi Workspace của module + 3 DocType đầu
+      (`istable = 0`, `creation asc`). Sidebar "MYPOS" khác tên module → Frappe sinh thêm "Leescoffee POS" → Manager thấy "MYPOS Manager"
+      + MYPOS Option Group / Order QR / Menu (trước 2026-11-25 nằm dưới "leescoffee_pos" vì sidebar cũ cũng khác tên module).
+      Frontend `sidebar.js::resolve_sidebar` chọn sidebar theo mục đang mở + `localStorage.sidebar_item_map` → Administrator thấy hay
+      không tùy lịch sử điều hướng, không do quyền (`is_item_allowed` cho Administrator mọi mục).
+    - Sidebar rỗng: import được (`items` không bắt buộc, Workspace Sidebar Item không có field bắt buộc; `before_save` chỉ set module khi
+      trống, export chỉ khi developer_mode và không đang import); `get_sidebar_items` bỏ sidebar không có mục thật nào (trừ "My Workspaces")
+      cho MỌI user kể cả Administrator → không bao giờ hiện; Desktop Icon link tới nó không được phép. Không xóa khi migrate
+      (`remove_orphan_entities` giữ bản standard có file).
+    - Sau khi đổi: bắt buộc `bench restart` (cache `@site_cache`); user test xóa dữ liệu trang / dùng cửa sổ ẩn danh
+      (`localStorage.sidebar_item_map` có thể còn nhớ "Leescoffee POS").
+    - **Khi tạo module MYPOS và chuyển code sang:** xóa file + bản ghi sidebar rỗng này (module "Leescoffee POS" không còn), rồi kiểm không có
+      sidebar tự sinh mới theo module MYPOS: `get_module_info("<module mới>")` và boot của user Manager; nếu có, đặt tên Workspace
+      Sidebar chính đúng bằng tên module mới hoặc thêm sidebar rỗng cùng tên module mới. Frappe ≥ 16.50: kiểm lại cơ chế (chưa xác minh).
 - **Desktop Icon** (`leescoffee_pos/desktop_icon/mypos_*.json`, External, có `roles` = role chính + System Manager):
   MYPOS Cashier → `/desk/mypos-cashier`, MYPOS Kitchen → `/pos/kitchen`, MYPOS Manager → `/desk/mypos-manager`,
   MYPOS Admin → `/desk/mypos-admin` (chỉ System Manager).

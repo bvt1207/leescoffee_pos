@@ -1,7 +1,17 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-25 (payment_status tính ở một nơi). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-26 (làm gọn workspace, list POS Invoice, sidebar tự sinh). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0u. Làm gọn workspace + list POS Invoice + sidebar Manager (2026-11-26) — CHỜ VAN TEST
+- Bỏ shortcut Draft Orders / Unserved Orders ở MYPOS Manager / MYPOS Admin (Shortcut 2 / 1 / 1 / 3); patch `v1_mypos_workspaces`
+  chạy lại (nhãn `#2026-11-26 rerun bo-shortcut`).
+- Bỏ `public/js/pos_invoice_list.js` (3 nút Lọc nhanh) + `doctype_list_js` trong hooks.py; giữ `pos_invoice.js` + bộ lọc chuẩn.
+  Trên bench Van tự `rm` file này.
+- **Sidebar rỗng có chủ đích** `workspace_sidebar/leescoffee_pos.json` ("Leescoffee POS", `items: []`) chặn Frappe v16.30 tự sinh sidebar
+  theo module (nguồn 3 mục lẻ MYPOS Option Group / Order QR / Menu dưới "MYPOS Manager"). Chi tiết + bằng chứng mã: `workspace.md` §7.
+  **Khi chuyển sang module MYPOS:** xóa sidebar rỗng này, kiểm lại không có sidebar tự sinh theo module mới.
+- Bắt buộc `bench restart`; xóa dữ liệu trang / dùng ẩn danh cho user test (`localStorage.sidebar_item_map`).
 
 ## 0t. payment_status ("Trạng thái thanh toán") tính ở một nơi (2026-11-25) — ĐÃ TEST PASS (`1346dae`; D4 giữ: webhook không tự ghi)
 - Lỗi: đơn trả tiền mặt (vd. ACC-PSINV-2026-00088) giữ "Chưa thanh toán" vì `pay_cash` không ghi; chỉ webhook ghi.
