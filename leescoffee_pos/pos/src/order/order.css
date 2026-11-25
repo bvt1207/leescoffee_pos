@@ -9,11 +9,39 @@
 :root {
 	--qo-max: 560px;
 	--qo-gutter: 16px;
-	--qo-radius: 14px;
-	--qo-radius-sm: 10px;
 	--qo-touch: 44px;
+	--qo-touch-lg: 50px;
+	--qo-top-h: 60px;
 	--qo-dock-h: 76px;
-	--qo-shadow: 0 2px 10px rgba(42, 37, 32, 0.08);
+
+	/* Bộ token duy nhất của web đặt món (2026-11-25). Màu nhấn DUY NHẤT = --pos-primary (đổi ở tokens.css);
+	   còn lại là nền kem ấm, chữ nâu đen, đường kẻ be. Không màu tùy ý ngoài bộ này. */
+	--qo-page: #faf6f0;
+	--qo-card: #ffffff;
+	--qo-tint: #f3ece2;
+	--qo-tint-2: #ebe2d5;
+	--qo-ink: #2b1f16;
+	--qo-ink-2: #6b5d51; /* trên --qo-page ≈ 5.9:1 */
+	--qo-line: #e8dfd2;
+	--qo-line-strong: #d6c9b7;
+	--qo-accent: var(--pos-primary);
+	--qo-accent-ink: var(--pos-primary-contrast);
+	--qo-accent-soft: #fbecee;
+	--qo-accent-soft: color-mix(in srgb, var(--pos-primary) 9%, #ffffff);
+
+	/* Bo góc 3 bậc, bóng 2 bậc (nhẹ). */
+	--qo-r-sm: 8px;
+	--qo-r: 12px;
+	--qo-r-lg: 18px;
+	--qo-radius: var(--qo-r);
+	--qo-radius-sm: var(--qo-r-sm);
+	--qo-shadow-1: 0 1px 2px rgba(43, 31, 22, 0.06);
+	--qo-shadow-2: 0 8px 24px rgba(43, 31, 22, 0.12);
+	--qo-shadow: var(--qo-shadow-1);
+
+	/* Chuyển động */
+	--qo-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+	--qo-fade: 350ms;
 }
 
 * {
@@ -24,9 +52,9 @@ html,
 body {
 	margin: 0;
 	padding: 0;
-	background: var(--pos-bg);
-	color: var(--pos-text);
-	font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+	background: var(--qo-page);
+	color: var(--qo-ink);
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 	font-size: 16px;
 	line-height: 1.45;
 	-webkit-font-smoothing: antialiased;
@@ -104,6 +132,27 @@ button:disabled {
 	min-height: 36px;
 	padding: 0 14px;
 	font-size: 14px;
+}
+
+.qo-btn {
+	transition: transform 120ms var(--qo-ease), background-color 150ms;
+}
+
+.qo-btn:active:not(:disabled) {
+	transform: scale(0.98);
+}
+
+.qo-btn--lg {
+	min-height: var(--qo-touch-lg);
+	font-size: 16px;
+}
+
+.qo-spinner--on-primary {
+	width: 18px;
+	height: 18px;
+	border-width: 2px;
+	border-color: rgba(255, 255, 255, 0.35);
+	border-top-color: var(--qo-accent-ink);
 }
 
 .qo-btn--block {
@@ -319,6 +368,133 @@ button:disabled {
 	transform: translateX(-50%);
 }
 
+/* ===== Khung xương (skeleton) ===== */
+
+.qo-skel {
+	display: block;
+	border-radius: var(--qo-r-sm);
+	background: linear-gradient(90deg, var(--qo-tint) 0%, var(--qo-tint-2) 50%, var(--qo-tint) 100%);
+	background-size: 200% 100%;
+	animation: qo-shimmer 1.4s linear infinite;
+}
+
+@keyframes qo-shimmer {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
+}
+
+.qo-skel--line {
+	height: 14px;
+	width: 85%;
+}
+
+.qo-skel--short {
+	width: 45%;
+}
+
+.qo-skel--hero {
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	border-radius: 0;
+}
+
+.qo-skel--logo {
+	width: 52px;
+	height: 52px;
+	border-radius: var(--qo-r);
+}
+
+.qo-skel--title {
+	height: 26px;
+	width: 70%;
+	margin: 24px 0 20px;
+}
+
+.qo-skel--input {
+	height: var(--qo-touch-lg);
+	margin-bottom: 14px;
+	border-radius: var(--qo-r);
+}
+
+.qo-skel-brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.qo-skel-brand__text {
+	flex: 1;
+	display: grid;
+	gap: 8px;
+}
+
+/* ===== Banner carousel (MYPOS Banner) ===== */
+
+.qo-hero {
+	position: relative;
+	user-select: none;
+	-webkit-user-select: none;
+	touch-action: pan-y; /* vuốt dọc vẫn cuộn trang, vuốt ngang để đổi ảnh */
+}
+
+.qo-hero__frame {
+	position: relative;
+	width: 100%;
+	aspect-ratio: 16 / 9; /* khung cố định: trang không giật khi ảnh tải xong */
+	overflow: hidden;
+	background: var(--qo-tint);
+}
+
+.qo-hero__skel {
+	position: absolute;
+	inset: 0;
+	border-radius: 0;
+}
+
+.qo-hero__img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain; /* giữ tỉ lệ gốc, không cắt chữ trong ảnh */
+	opacity: 0;
+	transition: opacity var(--qo-fade) ease;
+	pointer-events: none;
+}
+
+.qo-hero__img.is-on {
+	opacity: 1;
+}
+
+.qo-hero__dots {
+	position: absolute;
+	left: 50%;
+	bottom: 10px;
+	display: flex;
+	gap: 6px;
+	padding: 5px 8px;
+	border-radius: 999px;
+	background: rgba(43, 31, 22, 0.35);
+	transform: translateX(-50%);
+}
+
+.qo-hero__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.6);
+	transition: width 200ms var(--qo-ease), background-color 200ms;
+}
+
+.qo-hero__dot.is-on {
+	width: 16px;
+	background: #fff;
+}
+
 /* ===== Thương hiệu ===== */
 
 .qo-brand {
@@ -331,17 +507,20 @@ button:disabled {
 .qo-brand__logo,
 .qo-brand__mark {
 	flex: none;
-	width: 48px;
-	height: 48px;
-	border-radius: 12px;
+	width: 52px;
+	height: 52px;
+	border-radius: var(--qo-r);
 	object-fit: contain;
+	background: var(--qo-card);
+	border: 1px solid var(--qo-line);
 }
 
 .qo-brand__mark {
 	display: grid;
 	place-items: center;
-	background: var(--pos-primary);
-	color: var(--pos-primary-contrast);
+	border: 0;
+	background: var(--qo-accent);
+	color: var(--qo-accent-ink);
 	font-weight: 800;
 	font-size: 22px;
 }
@@ -350,7 +529,8 @@ button:disabled {
 .qo-brand--compact .qo-brand__mark {
 	width: 36px;
 	height: 36px;
-	font-size: 17px;
+	border-radius: var(--qo-r-sm);
+	font-size: 16px;
 }
 
 .qo-brand__text {
@@ -358,59 +538,94 @@ button:disabled {
 }
 
 .qo-brand__name {
+	font-size: 18px;
 	font-weight: 800;
+	letter-spacing: -0.01em;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+.qo-brand--compact .qo-brand__name {
+	font-size: 16px;
+}
+
 .qo-brand__sub {
+	display: flex;
+	align-items: flex-start;
+	gap: 4px;
+	margin-top: 2px;
 	font-size: 13px;
-	color: var(--pos-text-muted);
+	line-height: 1.35;
+	color: var(--qo-ink-2);
+}
+
+.qo-brand__sub svg {
+	flex: none;
+	margin-top: 1px;
 }
 
 /* ===== Đăng nhập ===== */
 
 .qo-login {
 	min-height: 100vh;
-	background: var(--pos-surface);
+	background: var(--qo-page);
 }
 
-.qo-login__banner {
-	display: block;
-	width: 100%;
-	max-height: 200px;
-	object-fit: cover;
-}
-
-.qo-login__card {
-	max-width: var(--qo-max);
-	margin: 0 auto;
-	padding: 24px var(--qo-gutter) 40px;
-	background: var(--pos-bg);
-	min-height: 100vh;
+.qo-login__body {
+	padding: 20px var(--qo-gutter) 40px;
 }
 
 .qo-login__title {
-	margin: 24px 0 4px;
+	margin: 24px 0 6px;
 	font-size: 24px;
 	line-height: 1.25;
+	letter-spacing: -0.015em;
 }
 
 .qo-login__lead {
-	margin: 0 0 8px;
-	color: var(--pos-text-muted);
+	margin: 0 0 18px;
+	color: var(--qo-ink-2);
+	font-size: 15px;
 }
 
 .qo-login__fine {
-	margin-top: 16px;
+	margin-top: 18px;
 	font-size: 12px;
-	color: var(--pos-text-muted);
+	color: var(--qo-ink-2);
 	text-align: center;
 }
 
+.qo-form {
+	display: grid;
+	gap: 14px;
+}
+
+.qo-form .qo-field {
+	margin: 0;
+}
+
+.qo-form .qo-input {
+	min-height: var(--qo-touch-lg);
+	background: var(--qo-card);
+}
+
 .qo-form .qo-btn {
-	margin-top: 8px;
+	margin-top: 4px;
+}
+
+.qo-form .qo-alert {
+	margin: 0;
+}
+
+.qo-input[aria-invalid="true"] {
+	border-color: var(--pos-error);
+}
+
+.qo-field__error {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--pos-error);
 }
 
 /* ===== Khung app ===== */
@@ -420,7 +635,7 @@ button:disabled {
 	min-height: 100vh;
 	margin: 0 auto;
 	padding-bottom: calc(var(--qo-dock-h) + 16px + env(safe-area-inset-bottom));
-	background: var(--pos-bg);
+	background: var(--qo-page);
 }
 
 .qo-top {
@@ -431,31 +646,45 @@ button:disabled {
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	padding: 10px var(--qo-gutter);
-	border-bottom: 1px solid var(--pos-border);
-	background: var(--pos-bg);
+	height: var(--qo-top-h);
+	padding: 0 8px 0 var(--qo-gutter);
+	border-bottom: 1px solid var(--qo-line);
+	background: var(--qo-card);
 }
 
-.qo-top__user {
+.qo-top__actions {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	font-size: 13px;
-	white-space: nowrap;
+	gap: 2px;
 }
 
-.qo-top__name {
-	max-width: 110px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	font-weight: 700;
+.qo-top .qo-icon-btn {
+	position: relative;
+	display: grid;
+	place-items: center;
+	background: transparent;
+	color: var(--qo-ink);
 }
 
-.qo-top__points {
-	padding: 2px 8px;
+.qo-top .qo-icon-btn:active {
+	background: var(--qo-tint);
+}
+
+.qo-badge-dot {
+	position: absolute;
+	top: 5px;
+	right: 4px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border: 2px solid var(--qo-card);
 	border-radius: 999px;
-	background: var(--pos-warning-soft);
+	background: var(--qo-accent);
+	color: var(--qo-accent-ink);
+	font-size: 11px;
 	font-weight: 700;
+	line-height: 14px;
+	text-align: center;
 }
 
 .qo-banner-closed {
@@ -466,98 +695,256 @@ button:disabled {
 }
 
 .qo-main {
-	padding: 12px var(--qo-gutter);
+	padding: 0 var(--qo-gutter) 12px;
 }
 
-.qo-main__type {
+/* Dải phụ của màn menu: tên khách + điểm | công tắc Mang đi / Tại quán. */
+.qo-strip {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 8px;
-	flex-wrap: wrap;
-	margin-bottom: 12px;
-	font-size: 14px;
+	gap: 10px;
+	padding: 12px 0 4px;
+}
+
+.qo-strip__who {
+	display: grid;
+	min-width: 0;
+	line-height: 1.25;
+}
+
+.qo-strip__name {
+	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.qo-strip__points {
+	font-size: 12px;
+	color: var(--qo-ink-2);
+	white-space: nowrap;
+}
+
+.qo-segmented--compact {
+	flex: none;
+	padding: 3px;
+	background: var(--qo-tint);
+}
+
+.qo-segmented--compact .qo-segmented__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-height: 38px;
+	padding: 0 11px;
+	font-size: 13px;
 }
 
 /* ===== Chọn loại đơn ===== */
 
+.qo-start {
+	padding-bottom: 24px;
+}
+
 .qo-type {
-	padding: 24px var(--qo-gutter);
+	padding: 20px var(--qo-gutter) 8px;
+}
+
+.qo-type__hello {
+	margin: 0;
+	color: var(--qo-ink-2);
+	font-size: 15px;
 }
 
 .qo-type__title {
-	margin: 0 0 16px;
+	margin: 2px 0 16px;
 	font-size: 22px;
+	line-height: 1.25;
+	letter-spacing: -0.015em;
 }
 
 .qo-type__grid {
 	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
 }
 
 .qo-type__card {
 	display: grid;
-	gap: 4px;
-	padding: 20px;
-	border: 1.5px solid var(--pos-border);
-	border-left-width: 6px;
-	border-radius: var(--qo-radius);
-	background: var(--pos-bg);
+	align-content: start;
+	justify-items: start;
+	gap: 6px;
+	min-height: 168px;
+	padding: 16px 14px;
+	border: 1.5px solid var(--qo-line);
+	border-radius: var(--qo-r-lg);
+	background: var(--qo-card);
 	text-align: left;
+	box-shadow: var(--qo-shadow-1);
+	transition: border-color 150ms, transform 120ms var(--qo-ease);
 }
 
-.qo-type__card--takeaway {
-	border-left-color: var(--pos-takeaway-fg);
+.qo-type__card:active {
+	transform: scale(0.98);
 }
 
-.qo-type__card--dinein {
-	border-left-color: var(--pos-dinein-fg);
+.qo-type__card[aria-checked="true"],
+.qo-type__card:hover {
+	border-color: var(--qo-accent);
 }
 
-.qo-type__card[aria-checked="true"] {
-	border-color: var(--pos-primary);
+.qo-type__icon {
+	display: grid;
+	place-items: center;
+	width: 52px;
+	height: 52px;
+	margin-bottom: 6px;
+	border-radius: 999px;
+	background: var(--qo-accent-soft);
+	color: var(--qo-accent);
 }
 
 .qo-type__name {
-	font-size: 20px;
+	font-size: 18px;
 	font-weight: 800;
 }
 
 .qo-type__sub {
-	color: var(--pos-text-muted);
-	font-size: 14px;
+	color: var(--qo-ink-2);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+/* Lối vào "Đơn của tôi" nằm trong luồng trang (không nổi đè nội dung). */
+.qo-rowlink {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 56px;
+	margin-top: 16px;
+	padding: 0 14px;
+	border: 1px solid var(--qo-line);
+	border-radius: var(--qo-r);
+	background: var(--qo-card);
+	color: var(--qo-ink);
+	text-align: left;
+}
+
+.qo-rowlink__text {
+	flex: 1;
+	font-weight: 700;
+}
+
+.qo-rowlink__chev {
+	color: var(--qo-ink-2);
+}
+
+.qo-pill {
+	padding: 3px 9px;
+	border-radius: 999px;
+	background: var(--qo-accent-soft);
+	color: var(--qo-accent);
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
 }
 
 /* ===== Menu ===== */
 
-.qo-menu__search {
-	margin-bottom: 10px;
+/* Ô tìm + chip danh mục dính ngay dưới header khi cuộn. */
+.qo-menu__bar {
+	position: sticky;
+	top: var(--qo-top-h);
+	z-index: 10;
+	display: grid;
+	gap: 10px;
+	margin: 0 calc(-1 * var(--qo-gutter)) 12px;
+	padding: 8px var(--qo-gutter) 10px;
+	background: var(--qo-page);
+	border-bottom: 1px solid transparent;
+}
+
+.qo-search {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.qo-search__icon {
+	position: absolute;
+	left: 14px;
+	color: var(--qo-ink-2);
+	pointer-events: none;
+}
+
+.qo-search__input {
+	width: 100%;
+	min-height: var(--qo-touch);
+	padding: 0 44px 0 42px;
+	border: 1px solid var(--qo-line);
+	border-radius: 999px;
+	background: var(--qo-card);
+	font-size: 15px;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.qo-search__input::-webkit-search-cancel-button {
+	display: none;
+}
+
+.qo-search__input:focus {
+	outline: none;
+	border-color: var(--qo-accent);
+}
+
+.qo-search__clear {
+	position: absolute;
+	right: 0;
+	display: grid;
+	place-items: center;
+	width: var(--qo-touch);
+	height: var(--qo-touch);
+	border: 0;
+	background: none;
+	color: var(--qo-ink-2);
 }
 
 .qo-tabs {
 	display: flex;
 	gap: 8px;
-	margin: 0 calc(-1 * var(--qo-gutter)) 12px;
-	padding: 0 var(--qo-gutter) 4px;
+	margin: 0 calc(-1 * var(--qo-gutter));
+	padding: 0 var(--qo-gutter);
 	overflow-x: auto;
 	scrollbar-width: none;
+	scroll-snap-type: x proximity;
+}
+
+.qo-tabs::-webkit-scrollbar {
+	display: none;
 }
 
 .qo-tabs__btn {
 	flex: none;
 	min-height: 40px;
 	padding: 0 16px;
-	border: 1px solid var(--pos-border);
+	border: 1px solid var(--qo-line);
 	border-radius: 999px;
-	background: var(--pos-bg);
+	background: var(--qo-card);
+	color: var(--qo-ink);
+	font-size: 14px;
 	font-weight: 600;
 	white-space: nowrap;
+	scroll-snap-align: start;
+	transition: background-color 150ms, color 150ms, border-color 150ms;
 }
 
 .qo-tabs__btn.is-on {
-	border-color: var(--pos-primary);
-	background: var(--pos-primary);
-	color: var(--pos-primary-contrast);
+	border-color: var(--qo-ink);
+	background: var(--qo-ink);
+	color: var(--qo-card);
 }
 
 .qo-grid {
@@ -567,60 +954,111 @@ button:disabled {
 }
 
 .qo-card {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	border: 1px solid var(--qo-line);
+	border-radius: var(--qo-r);
+	background: var(--qo-card);
+	color: var(--qo-ink);
+	text-align: left;
+	overflow: hidden;
+	box-shadow: var(--qo-shadow-1);
+	transition: transform 120ms var(--qo-ease), border-color 150ms;
+}
+
+.qo-card:active {
+	transform: scale(0.97);
+}
+
+@media (hover: hover) {
+	.qo-card:hover {
+		border-color: var(--qo-line-strong);
+	}
+}
+
+/* Nền ảnh ĐỒNG NHẤT cho mọi món: nền trơn + contain -> ảnh nền trắng / xám / màu đều nằm trong cùng một khung. */
+.qo-card__media {
 	position: relative;
 	display: grid;
-	align-content: start;
-	gap: 4px;
-	padding: 0 0 12px;
-	border: 1px solid var(--pos-border);
-	border-radius: var(--qo-radius);
-	background: var(--pos-bg);
-	text-align: left;
+	place-items: center;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background: var(--qo-tint);
+	border-radius: 0;
 	overflow: hidden;
 }
 
 .qo-card__img {
-	display: block;
 	width: 100%;
-	aspect-ratio: 1 / 1;
-	object-fit: cover;
-	background: var(--pos-surface);
+	height: 100%;
+	padding: 10px;
+	object-fit: contain;
+	mix-blend-mode: multiply; /* nền trắng của ảnh hòa vào nền khung */
 }
 
-.qo-card__img--empty {
-	display: grid;
-	place-items: center;
-	color: var(--pos-text-muted);
-	font-size: 32px;
+.qo-card__initial {
+	color: var(--qo-ink-2);
+	font-size: 34px;
 	font-weight: 800;
+	opacity: 0.6;
+}
+
+.qo-card__body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 10px 10px 12px;
+}
+
+.qo-card--skel .qo-card__body {
+	gap: 10px;
+	padding: 12px;
 }
 
 .qo-card__name {
-	padding: 4px 12px 0;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	min-height: calc(2 * 1.3em);
+	overflow: hidden;
+	font-size: 15px;
 	font-weight: 700;
 	line-height: 1.3;
 }
 
+.qo-card__foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin-top: auto;
+}
+
 .qo-card__price {
-	padding: 0 12px;
-	color: var(--pos-primary);
-	font-weight: 700;
-	font-size: 14px;
+	font-size: 15px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	color: var(--qo-ink);
+}
+
+.qo-card__price small {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--qo-ink-2);
 }
 
 .qo-card__add {
-	position: absolute;
-	top: 8px;
-	right: 8px;
+	flex: none;
 	display: grid;
 	place-items: center;
-	width: 32px;
-	height: 32px;
+	width: 34px;
+	height: 34px;
 	border-radius: 999px;
-	background: var(--pos-primary);
-	color: var(--pos-primary-contrast);
-	font-size: 20px;
-	font-weight: 700;
+	background: var(--qo-accent);
+	color: var(--qo-accent-ink);
 }
 
 /* ===== Sheet (bottom sheet) ===== */
@@ -822,62 +1260,53 @@ button:disabled {
 	color: var(--pos-primary);
 }
 
-/* ===== Thanh dưới (dock) ===== */
+/* ===== Thanh giỏ dính đáy (chỉ khi giỏ có món) ===== */
 
 .qo-dock {
 	position: fixed;
 	left: 50%;
 	bottom: 0;
 	z-index: 30;
-	display: flex;
-	gap: 8px;
 	width: 100%;
 	max-width: var(--qo-max);
-	padding: 12px var(--qo-gutter) calc(12px + env(safe-area-inset-bottom));
-	background: linear-gradient(to top, var(--pos-bg) 70%, transparent);
+	padding: 10px var(--qo-gutter) calc(10px + env(safe-area-inset-bottom));
+	border-top: 1px solid var(--qo-line);
+	background: var(--qo-card);
 	transform: translateX(-50%);
+	animation: qo-dock-in 220ms var(--qo-ease);
 }
 
-.qo-dock__orders {
-	position: relative;
-	min-height: 52px;
-	padding: 0 16px;
-	border: 1px solid var(--pos-border);
-	border-radius: 999px;
-	background: var(--pos-bg);
-	font-weight: 700;
-	box-shadow: var(--qo-shadow);
-	white-space: nowrap;
-}
-
-.qo-dock__badge {
-	position: absolute;
-	top: -6px;
-	right: -4px;
-	min-width: 22px;
-	height: 22px;
-	padding: 0 6px;
-	border-radius: 999px;
-	background: var(--pos-primary);
-	color: var(--pos-primary-contrast);
-	font-size: 12px;
-	line-height: 22px;
+@keyframes qo-dock-in {
+	from {
+		transform: translate(-50%, 100%);
+	}
+	to {
+		transform: translate(-50%, 0);
+	}
 }
 
 .qo-dock__cart {
-	flex: 1;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
+	gap: 10px;
+	width: 100%;
 	min-height: 52px;
-	padding: 0 16px 0 8px;
+	padding: 0 18px 0 8px;
 	border: 0;
 	border-radius: 999px;
-	background: var(--pos-primary);
-	color: var(--pos-primary-contrast);
+	background: var(--qo-accent);
+	color: var(--qo-accent-ink);
 	font-weight: 700;
-	box-shadow: var(--qo-shadow);
+	transition: transform 120ms var(--qo-ease), background-color 150ms;
+}
+
+.qo-dock__cart:hover {
+	background: var(--pos-primary-hover);
+}
+
+.qo-dock__cart:active {
+	transform: scale(0.98);
+	background: var(--pos-primary-active);
 }
 
 .qo-dock__count {
@@ -885,9 +1314,34 @@ button:disabled {
 	place-items: center;
 	min-width: 36px;
 	height: 36px;
+	padding: 0 6px;
 	border-radius: 999px;
-	background: var(--pos-on-solid);
-	color: var(--pos-primary);
+	background: var(--qo-accent-ink);
+	color: var(--qo-accent);
+	font-variant-numeric: tabular-nums;
+	/* key={count} trong JSX -> phần tử mới mỗi lần đổi số -> nảy nhẹ. */
+	animation: qo-bump 320ms var(--qo-ease);
+}
+
+@keyframes qo-bump {
+	0% {
+		transform: scale(1);
+	}
+	40% {
+		transform: scale(1.22);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.qo-dock__label {
+	flex: 1;
+	text-align: left;
+}
+
+.qo-dock__total {
+	font-variant-numeric: tabular-nums;
 }
 
 /* ===== Thanh toán ===== */
@@ -1202,8 +1656,29 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
 	.qo-ready,
-	.qo-spinner {
+	.qo-spinner,
+	.qo-skel,
+	.qo-dock,
+	.qo-dock__count {
 		animation: none;
+	}
+
+	/* Banner vẫn đổi ảnh, chỉ bỏ hiệu ứng mờ dần. */
+	.qo-hero__img,
+	.qo-hero__dot,
+	.qo-btn,
+	.qo-card,
+	.qo-type__card,
+	.qo-dock__cart,
+	.qo-tabs__btn {
+		transition: none;
+	}
+
+	.qo-btn:active:not(:disabled),
+	.qo-card:active,
+	.qo-type__card:active,
+	.qo-dock__cart:active {
+		transform: none;
 	}
 }
 
@@ -1228,20 +1703,10 @@ button:disabled {
 		max-width: var(--qo-col);
 		min-height: 100vh;
 		margin: 0 auto;
-		background: var(--pos-bg);
-		box-shadow: 0 0 0 1px var(--pos-border), 0 8px 32px rgba(42, 37, 32, 0.08);
+		background: var(--qo-page);
+		box-shadow: 0 0 0 1px var(--qo-line), 0 8px 32px rgba(43, 31, 22, 0.08);
 	}
 
-	/* Đăng nhập: banner nằm trong cột, giữ nguyên tỉ lệ ảnh (không cắt chữ). */
-	.qo-login {
-		background: var(--pos-bg);
-	}
-
-	.qo-login__banner {
-		height: auto;
-		max-height: none;
-		object-fit: contain;
-	}
 
 	.qo-toast {
 		max-width: calc(var(--qo-col) - 2 * var(--qo-gutter));

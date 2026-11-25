@@ -5,13 +5,16 @@ import { attachCartStorage, cartPayload, cartStorageKey, discardCart, pruneCart,
 import BrandHeader from "./components/BrandHeader";
 import CartSheet from "./components/CartSheet";
 import ItemSheet from "./components/ItemSheet";
-import LoginView from "./components/LoginView";
+import { IconLogout, IconReceipt } from "./components/icons";
+import LoginView, { shopBanners } from "./components/LoginView";
 import MenuView from "./components/MenuView";
 import MyOrdersPanel from "./components/MyOrdersPanel";
+import OrderBanner from "./components/OrderBanner";
 import OrderTypePicker from "./components/OrderTypePicker";
 import PaymentView from "./components/PaymentView";
 import ReadyBanner from "./components/ReadyBanner";
-import { isActiveStage, money, orderTypeLabel } from "./format";
+import { PageSkeleton } from "./components/Skeleton";
+import { isActiveStage, money } from "./format";
 import { usePolling } from "./poll";
 import { clearSession, loadSession, readQrToken, saveSession, type StoredSession } from "./session";
 import type { CustomerOrder, Me, Menu, MenuItem, OrderTypeValue, Shop } from "./types";
@@ -48,6 +51,8 @@ export default function OrderApp() {
 	const [menus, setMenus] = useState<Menu[]>([]);
 	const [currency, setCurrency] = useState("VND");
 	const [menuError, setMenuError] = useState("");
+	// Chỉ để hiện skeleton thay cho "Quán chưa có món" trong lúc get_menu chưa về.
+	const [menuLoaded, setMenuLoaded] = useState(false);
 	const [orders, setOrders] = useState<CustomerOrder[]>([]);
 	const [picking, setPicking] = useState<MenuItem | null>(null);
 	const [panel, setPanel] = useState<"none" | "cart" | "orders">("none");
@@ -114,6 +119,7 @@ export default function OrderApp() {
 	useEffect(() => {
 		if (!token) return;
 		let off = false;
+		setMenuLoaded(false);
 		orderApi
 			.getMe(token)
 			.then((m) => {
@@ -137,9 +143,11 @@ export default function OrderApp() {
 				setMenus(r.menus);
 				setCurrency(r.currency || "VND");
 				setMenuError("");
+				setMenuLoaded(true);
 			})
 			.catch((err) => {
 				if (off) return;
+				setMenuLoaded(true);
 				if (err instanceof OrderApiError && err.sessionExpired) expireSession();
 				else setMenuError(errorText(err));
 			});
@@ -279,11 +287,7 @@ export default function OrderApp() {
 		);
 	}
 	if (!shop) {
-		return (
-			<main className="qo-center">
-				<span className="qo-spinner" aria-label="Đang tải" />
-			</main>
-		);
+		return <PageSkeleton />;
 	}
 	if (!session) {
 		return (
@@ -314,20 +318,26 @@ export default function OrderApp() {
 	const active = orders.filter(isActiveOrder).length;
 	const loyalty = me?.loyalty || null;
 
+	const shopNow = me?.shop || shop;
+	const openOrders = () => setPanel("orders");
+
 	return (
 		<div className="qo-app">
 			<header className="qo-top">
 				<BrandHeader brand={brand} compact />
-				<div className="qo-top__user">
-					<span className="qo-top__name">{session.name}</span>
-					{loyalty?.enrolled ? (
-						<span className="qo-top__points">
-							{loyalty.tier_name ? `${loyalty.tier_name} · ` : ""}
-							{loyalty.loyalty_points ?? 0} điểm
-						</span>
-					) : null}
-					<button type="button" className="qo-link" onClick={logout}>
-						Thoát
+				<div className="qo-top__actions">
+					<button
+						type="button"
+						className="qo-icon-btn qo-top__orders"
+						onClick={openOrders}
+						aria-label={`Đơn của tôi${active ? `, ${active} đơn đang xử lý` : ""}`}
+						title="Đơn của tôi"
+					>
+						<IconReceipt />
+						{active ? <span className="qo-badge-dot">{active}</span> : null}
+					</button>
+					<button type="button" className="qo-icon-btn" onClick={logout} aria-label="Thoát" title="Thoát">
+						<IconLogout />
 					</button>
 				</div>
 			</header>
@@ -347,43 +357,50 @@ export default function OrderApp() {
 					onSessionExpired={expireSession}
 				/>
 			) : !session.orderType ? (
-				<OrderTypePicker value={session.orderType} onChange={setOrderType} />
+				<main className="qo-start">
+					<OrderBanner banners={shopBanners(shopNow)} />
+					<OrderTypePicker
+						value={session.orderType}
+						onChange={setOrderType}
+						greetingName={session.name}
+						activeOrders={active}
+						onOpenOrders={openOrders}
+					/>
+				</main>
 			) : (
 				<main className="qo-main">
-					<div className="qo-main__type">
-						<span>
-							Đang đặt: <strong>{orderTypeLabel(session.orderType)}</strong>
-						</span>
-						<OrderTypePicker variant="segmented" value={session.orderType} onChange={setOrderType} />
+					<div className="qo-strip">
+						<div className="qo-strip__who">
+							<span className="qo-strip__name">{session.name}</span>
+							{loyalty?.enrolled ? (
+								<span className="qo-strip__points">
+									{loyalty.tier_name ? `${loyalty.tier_name} · ` : ""}
+									{loyalty.loyalty_points ?? 0} điểm
+								</span>
+							) : null}
+						</div>
+						<OrderTypePicker variant="compact" value={session.orderType} onChange={setOrderType} />
 					</div>
 					{menuError ? (
 						<div className="qo-alert qo-alert--error" role="alert">
 							{menuError}
 						</div>
 					) : (
-						<MenuView menus={menus} currency={currency} onPick={setPicking} />
+						<MenuView menus={menus} currency={currency} loading={!menuLoaded} onPick={setPicking} />
 					)}
 				</main>
 			)}
 
-			{!paying ? (
+			{/* Thanh giỏ dính đáy: chỉ khi giỏ có món và đang ở menu. "Đơn của tôi" nằm ở header (icon) + màn chọn loại đơn. */}
+			{!paying && session.orderType && count ? (
 				<div className="qo-dock">
-					<button
-						type="button"
-						className="qo-dock__orders"
-						onClick={() => setPanel("orders")}
-						aria-label={`Đơn của tôi${active ? `, ${active} đơn đang xử lý` : ""}`}
-					>
-						Đơn của tôi
-						{active ? <span className="qo-dock__badge">{active}</span> : null}
+					<button type="button" className="qo-dock__cart" onClick={() => setPanel("cart")}>
+						<span key={count} className="qo-dock__count">
+							{count}
+						</span>
+						<span className="qo-dock__label">Xem giỏ · {count} món</span>
+						<strong className="qo-dock__total">{money(subtotal, currency)}</strong>
 					</button>
-					{count ? (
-						<button type="button" className="qo-dock__cart" onClick={() => setPanel("cart")}>
-							<span className="qo-dock__count">{count}</span>
-							<span>Xem giỏ</span>
-							<strong>{money(subtotal, currency)}</strong>
-						</button>
-					) : null}
 				</div>
 			) : null}
 

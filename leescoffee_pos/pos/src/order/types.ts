@@ -11,10 +11,17 @@ export interface Brand {
 	address: string;
 }
 
+export interface BannerImage {
+	title: string;
+	image: string;
+}
+
 export interface Shop {
 	brand: Brand;
-	/** Ảnh đầu trang đăng nhập: MYPOS Banner public đầu tiên ('' = không có). */
+	/** Ảnh đầu trang đăng nhập: MYPOS Banner public đầu tiên ('' = không có). Giữ cho tương thích. */
 	banner: string;
+	/** Danh sách MYPOS Banner public của POS Profile chi nhánh (carousel). Server cũ không có khóa này. */
+	banners?: BannerImage[];
 	is_open: boolean;
 	order_types: OrderTypeValue[];
 	pay_window_minutes: number;

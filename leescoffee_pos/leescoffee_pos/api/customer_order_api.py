@@ -376,15 +376,21 @@ def _loyalty_public(customer, company, order_total=0):
 	}
 
 
+# Số ảnh banner tối đa trả cho trang /order (giới hạn lượng ảnh khách phải tải).
+BANNER_LIMIT = 8
+
+
 def _shop(branch):
 	from ..doctype.mypos_banner.mypos_banner import active_banners
 
 	profile = _profile(branch, throw=False)
-	# Ảnh đầu trang đăng nhập /order (2026-11-25, thay Branch.brand_banner): MYPOS Banner public đầu tiên của profile.
-	banners = active_banners(profile.name, public_only=True, limit=1) if profile else []
+	# Ảnh đầu trang /order (carousel, 2026-11-25): MYPOS Banner public của profile, cùng bộ lọc với màn khách.
+	# `banner` (ảnh đầu) giữ lại cho client cũ.
+	banners = active_banners(profile.name, public_only=True, limit=BANNER_LIMIT) if profile else []
 	return {
 		"brand": get_brand_info(branch),
 		"banner": banners[0]["image"] if banners else "",
+		"banners": banners,
 		"is_open": bool(profile and _open_shift(profile, throw=False)),
 		"order_types": list(P.ORDER_TYPES),
 		"pay_window_minutes": PAY_WINDOW_MINUTES,
