@@ -3,7 +3,7 @@
 > Paths: `doctype/pos_invoice_hooks/change_feed.py`, `api/pos_api.py` (`get_pos_changes`, `get_orders_shift`, `_set_buzzer_numbers`,
 > `get_kitchen_orders`), `doctype/branch_config/branch_config.py` (`resolve_pos_profile_name(require_membership)`), `hooks.py` (`on_change`),
 > `pos/src/lib/changes.ts`, `lib/serve.ts`, `pages/Kitchen.tsx`, `pages/Orders.tsx`, `components/BuzzerPicker.tsx`.
-> Giai đoạn 1 + 2 làm 2026-11-25 — **CHỜ VAN TEST**. Kiểm tra: `.claude/docs/poll_load_check.py` (`check_poll_load(...)`).
+> Giai đoạn 1 + 2 làm 2026-11-25 — **ĐÃ TEST PASS trên bench DEV (`86b6cb2`)**. Kiểm tra: `.claude/docs/poll_load_check.py` (`check_poll_load(...)`).
 > Triển khai thật (socket.io, nginx, gunicorn): `.claude/docs/deploy.md`.
 
 ## 1. Quy tắc

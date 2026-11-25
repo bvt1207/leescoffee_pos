@@ -182,7 +182,7 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
   docstatus 1, Paid, không trả hàng, `custom_kitchen_status = "Đã làm"`, `order_channel != "QR"`; trả số thẻ bàn, tên khách ("" nếu khách vãng lai của POS Profile) + `is_walk_in`,
   số món, 2 món đầu, `waiting_seconds`.
 - Frontend: `lib/serve.ts::useServeQueuePoller` gắn một lần ở `App.tsx`, **chỉ khi user có role POS CASHIER** (`config.roles.cashier`). Từ 2026-11-25
-  (CHỜ VAN TEST, `realtime.md`): hỏi phiên bản thay đổi (`get_pos_changes`, chỉ đọc Redis) mỗi 15 giây, chỉ gọi `get_serve_queue` khi phiên bản đổi
+  (ĐÃ TEST PASS `86b6cb2`, `realtime.md`): hỏi phiên bản thay đổi (`get_pos_changes`, chỉ đọc Redis) mỗi 15 giây, chỉ gọi `get_serve_queue` khi phiên bản đổi
   + lưới an toàn 120 giây (trước: `get_serve_queue` mỗi 15 giây),
   dừng khi tab ẩn; store `store/serveQueue.ts`.
   - Đơn mới vào hàng chờ → toast "Bàn 07 sẵn sàng phục vụ" / "#00066 · Gọi khách lấy món" + 2 tiếng bíp (`order/alert.ts`). Toast **chỉ hiển thị**

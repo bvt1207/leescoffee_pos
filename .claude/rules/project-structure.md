@@ -31,13 +31,15 @@ PROJECTPOS/                        # git repo
 │   │   ├── table_card_check.py    # thẻ bàn: giữ / nhả theo đơn, hàng chờ thông báo thu ngân (get_serve_queue)
 │   │   ├── customer_display_check.py  # màn khách /pos/customer: banner theo POS Profile, chặn KITCHEN, giỏ/đơn/paid/hủy, cô lập user
 │   │   ├── walk_in_customer_check.py  # khách vãng lai theo POS Profile: chặn khi chưa cấu hình, is_walk_in, validate profile
+│   │   ├── poll_load_check.py  # phiên bản thay đổi theo POS Profile, Pha chế theo profile (D1), get_orders_shift, đo SQL / ms
+│   │   ├── deploy.md          # triển khai thật: socket.io, nginx, gunicorn, Redis
 │   │   ├── payment_status_check.py  # payment_status: tiền mặt / Desk / QR Đang chờ / hủy / trả hàng / webhook / patch
 │   │   ├── branch_profile_check.py  # POS Profile bắt buộc Branch, 1 profile đang bật / Branch, chọn profile, Error Log SePay, ảnh /order
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
 │   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
-│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md, customer_display.md
+│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md, customer_display.md, realtime.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -80,7 +82,8 @@ PROJECTPOS/                        # git repo
     │       ├── store/             # cart.ts, search.ts, menuFilter.ts, orderFilter.ts, serveQueue.ts (hàng chờ thông báo thu ngân) (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm), format.ts (ngày giờ, mã đơn),
     │       │                      # serve.ts (poll get_serve_queue 15 giây cho CASHIER, toast + bíp),
-    │       │                      # realtime.ts (socket.io-client của Frappe, dùng cho màn khách)
+    │       │                      # realtime.ts (socket.io-client của Frappe, dùng cho màn khách),
+    │       │                      # changes.ts (poll phiên bản thay đổi get_pos_changes + usePosRefresh)
     │       └── styles/global.css
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
@@ -99,7 +102,8 @@ PROJECTPOS/                        # git repo
             ├── mypos_order_qr/            # mã QR đặt món theo Branch (.json, .py, .js)
             ├── mypos_banner/              # ảnh banner màn khách + đầu trang /order (active_banners; theo POS Profile, trống = mọi profile)
             ├── pos_invoice_hooks/         # doc_events cho POS Invoice + status board; kitchen_status.py (trạng thái pha chế, đơn dở của ca);
-            │                              # order_cancel.py (hủy Draft = Cancelled + lý do, mốc hết hạn, job tự hủy)
+            │                              # order_cancel.py (hủy Draft = Cancelled + lý do, mốc hết hạn, job tự hủy);
+            │                              # change_feed.py (phiên bản thay đổi theo POS Profile, Redis, sau commit)
             ├── pos_shift_hooks/           # doc_events POS Opening/Closing Entry: chỉ ca của chính mình, MANAGER thay
             ├── pos_profile_hooks/         # khách vãng lai theo POS Profile: helper đọc field + validate khi lưu profile
             ├── sepay/                     # sinh VietQR + webhook SePay

@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-25 (giảm tải poll giai đoạn 1 + 2). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0v. Giảm tải poll màn POS — giai đoạn 1 + 2 (2026-11-25) — CHỜ VAN TEST
+## 0v. Giảm tải poll màn POS — giai đoạn 1 + 2 (2026-11-25) — ĐÃ TEST PASS trên bench DEV (`86b6cb2`)
 - Phiên bản thay đổi theo POS Profile (Redis `mypos_chg:<profile>`, tăng sau commit ở `on_change` POS Invoice / Opening / Closing + `cancel_draft`);
   `pos_api.get_pos_changes` (chỉ đọc Redis); Pha chế / Orders / chi tiết đơn / hàng chờ thu ngân / chọn thẻ bàn chỉ tải lại khi phiên bản đổi
   (`lib/changes.ts`, poll phiên bản 4 giây — D3) + lưới an toàn 60 / 120 giây. Orders: `get_orders_shift` (1 request thay 3). Bỏ N+1 số thẻ bàn.
