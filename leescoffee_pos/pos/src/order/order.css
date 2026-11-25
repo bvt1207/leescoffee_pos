@@ -1207,8 +1207,49 @@ button:disabled {
 	}
 }
 
-/* ===== Màn rộng: sheet ở giữa, lưới 3 cột ===== */
+/* ===== Màn rộng (> 480px: laptop / tablet) — 2026-11-25 =====
+   Cả trang /order nằm trong MỘT cột giữa rộng tối đa --qo-col (như điện thoại), nền hai bên xám nhạt trơn.
+   Mọi bước (đăng nhập, menu, giỏ, theo dõi đơn, QR thanh toán, lỗi / đang tải) đều render trong #root -> cùng cột.
+   Thanh dưới, sheet, toast, banner "món sẵn sàng" (position: fixed) giới hạn theo --qo-max = độ rộng cột.
+   Điện thoại (≤ 480px) KHÔNG đổi: mọi quy tắc dưới đây chỉ áp dụng khi màn > 480px. */
 
+@media (min-width: 481px) {
+	:root {
+		--qo-col: 480px;
+		--qo-max: var(--qo-col);
+	}
+
+	html,
+	body {
+		background: var(--pos-surface-alt);
+	}
+
+	#root {
+		max-width: var(--qo-col);
+		min-height: 100vh;
+		margin: 0 auto;
+		background: var(--pos-bg);
+		box-shadow: 0 0 0 1px var(--pos-border), 0 8px 32px rgba(42, 37, 32, 0.08);
+	}
+
+	/* Đăng nhập: banner nằm trong cột, giữ nguyên tỉ lệ ảnh (không cắt chữ). */
+	.qo-login {
+		background: var(--pos-bg);
+	}
+
+	.qo-login__banner {
+		height: auto;
+		max-height: none;
+		object-fit: contain;
+	}
+
+	.qo-toast {
+		max-width: calc(var(--qo-col) - 2 * var(--qo-gutter));
+	}
+}
+
+/* Màn rộng: sheet (giỏ, chọn món, đơn của tôi) hiện giữa màn thay vì trượt từ đáy. Lưới món giữ 2 cột như điện thoại
+   (cột chỉ rộng 480px; trước 2026-11-25 lên 3 cột khi khung rộng 560px). */
 @media (min-width: 600px) {
 	.qo-overlay {
 		align-items: center;
@@ -1216,13 +1257,5 @@ button:disabled {
 
 	.qo-sheet {
 		border-radius: 20px;
-	}
-
-	.qo-grid {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-	}
-
-	.qo-type__grid {
-		grid-template-columns: 1fr 1fr;
 	}
 }

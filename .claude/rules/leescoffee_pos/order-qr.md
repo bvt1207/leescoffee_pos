@@ -11,7 +11,7 @@
 ## 1. Luồng
 
 1. Admin tạo `MYPOS Order QR` (Desk): chọn Branch → `token` tự sinh (`secrets.token_urlsafe(18)`, 24 ký tự,
-   không sửa được), `order_url = get_url("/order/<token>")`, nút "In mã QR" (SVG qua `pyqrcode` có sẵn của
+   không sửa được), `order_url = get_url("/order/<token>")` (theo `host_name` của site, `deploy.md` §3; in lại mã khi đổi host), nút "In mã QR" (SVG qua `pyqrcode` có sẵn của
    Frappe; không có thì chỉ hiện URL). Thu hồi: bỏ chọn `enabled` (chặn cả phiên đang mở).
 2. Khách quét → `get_shop(qr_token)` (thương hiệu từ Branch, `is_open`) → `login(qr_token, mobile, customer_name)`.
 3. `get_menu` → `preview` → `create_order(order_type)` → `create_payment_qr` → khách chuyển khoản
@@ -156,6 +156,8 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
 - **"Đơn của tôi"**: `MyOrdersPanel` 2 vùng "Đang xử lý" / "Lịch sử (30 ngày)", mỗi vùng có trạng thái rỗng. Vào lại
   (F5 / đăng nhập) mà có đơn active → tự mở panel 1 lần. Banner sẵn sàng chỉ cho đơn `ready` thuộc nhóm active.
   Poll 5 giây chỉ khi có đơn active, tab hiện, không ở PaymentView.
+- **Màn rộng > 480px** (2026-11-25, `order.css` cuối file): cả trang trong MỘT cột giữa 480px (`#root`), nền hai bên xám nhạt; banner đăng nhập
+  giữ tỉ lệ ảnh (`height: auto`, không cắt); dock / sheet / toast / banner sẵn sàng theo độ rộng cột; lưới món 2 cột. Điện thoại ≤ 480px không đổi.
 - **Ảnh đầu trang LoginView** (2026-11-25): `get_shop().banner` = MYPOS Banner public đầu tiên của POS Profile chi nhánh
   (`customer_display.md` §4); rỗng → không hiện ảnh. Không còn `brand.banner` (Branch.brand_banner đã bỏ).
 - **Luồng**: get_shop → LoginView → chọn Mang đi/Tại quán (lưu trong phiên, đổi được ở giỏ) → MenuView (tab nhóm,

@@ -64,3 +64,26 @@ location /socket.io {
 
 - socket.io nghe `::9001`; Windows chỉ tới được qua `localhost:9001` / `[::1]:9001`, **không** qua `127.0.0.1:9001` → mở site bằng
   `http://localhost:8001` (chi tiết `rules/leescoffee_pos/realtime.md` §6).
+
+## 3. Link trong mã QR đặt món (`/order/<token>`) và `host_name`
+
+- Link dựng ở MỘT nơi: `doctype/mypos_order_qr/mypos_order_qr.py::build_order_url(token)` = `frappe.utils.get_url("/order/" + token)`.
+  Không có chuỗi ghi cứng localhost / IP / cổng (đã kiểm 2026-11-25).
+- `get_url()` (Frappe v16.30, đã đọc mã): dùng `host_name` (hoặc `hostname`) trong `site_config.json` nếu có; không có thì lấy host của
+  request đang chạy (trình duyệt đang mở Desk bằng địa chỉ nào thì link theo địa chỉ đó); ngoài request thì `http://<tên site>`.
+- Hai chỗ dùng link:
+  - Field `order_url` trên form: ghi khi **lưu** bản ghi `MYPOS Order QR` (giá trị lúc lưu, có thể cũ).
+  - Nút **"In mã QR"** (`get_qr_image`): dựng lại link **lúc in** → luôn theo `host_name` / host hiện tại.
+- DEV hiện tại: chưa đặt `host_name` → link = host mở Desk, ví dụ `http://localhost:8001/order/<token>` (mở Desk bằng `localhost:8001`)
+  hoặc `http://127.0.0.1:8001/order/<token>`. Điện thoại KHÔNG mở được link localhost / 127.0.0.1.
+
+| Môi trường | Lệnh đặt `host_name` | Ghi chú |
+|---|---|---|
+| DEV, chỉ test trên máy | `bench --site lees.local set-config host_name "http://localhost:8001"` | Ghi cả cổng |
+| DEV, quét bằng điện thoại cùng wifi | `bench --site lees.local set-config host_name "http://<IP LAN của máy Windows>:8001"` | [Unverified] WSL2 chế độ NAT: điện thoại vào IP LAN của Windows cần `netsh interface portproxy` tới IP WSL + mở firewall cổng 8001 (hoặc `networkingMode=mirrored`). IP LAN đổi → đặt lại |
+| UAT | `bench --site <site> set-config host_name "https://uat.<tên miền>"` | |
+| Production | `bench --site <site> set-config host_name "https://<tên miền>"` | HTTPS + tên miền thật (nginx, `bench setup lets-encrypt`) |
+
+- Đổi `host_name` xong: `bench --site <site> clear-cache` → mở từng `MYPOS Order QR` → **Save** (cập nhật `order_url`) và **In mã QR lại**,
+  dán lại mã mới tại quán. Mã đã in theo host cũ vẫn trỏ host cũ (token không đổi, chỉ đổi phần địa chỉ).
+- Không đổi token khi chỉ đổi host; muốn thu hồi mã: bỏ chọn `enabled` và tạo mã mới.
