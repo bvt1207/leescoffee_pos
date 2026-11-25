@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-25 (payment_status tính ở một nơi). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0t. payment_status ("Trạng thái thanh toán") tính ở một nơi (2026-11-25) — CHỜ VAN TEST
+## 0t. payment_status ("Trạng thái thanh toán") tính ở một nơi (2026-11-25) — ĐÃ TEST PASS (`1346dae`; D4 giữ: webhook không tự ghi)
 - Lỗi: đơn trả tiền mặt (vd. ACC-PSINV-2026-00088) giữ "Chưa thanh toán" vì `pay_cash` không ghi; chỉ webhook ghi.
 - Sửa: hook `before_submit` → "Đã thanh toán" (không đụng đơn trả hàng); `on_cancel` + `order_cancel.cancel_draft` → "Hủy";
   `generate_qr` → "Đang chờ" (thẻ "Chờ QR" + xác nhận khi hủy bắt đầu chạy); bỏ dòng gán ở webhook (D4 — nếu test webhook

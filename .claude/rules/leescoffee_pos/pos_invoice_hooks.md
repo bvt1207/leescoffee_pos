@@ -21,7 +21,7 @@
 
 ## 2. Lifecycle Rules
 
-### 2.0 Trạng thái thanh toán (`payment_status`, 2026-11-25) — CHỜ VAN TEST
+### 2.0 Trạng thái thanh toán (`payment_status`, 2026-11-25) — ĐÃ TEST PASS trên bench DEV (`1346dae`)
 
 Trước đây chỉ webhook SePay ghi "Đã thanh toán": thu tiền mặt (`pay_cash`) / submit tay giữ default "Chưa thanh toán" (lỗi đơn
 ACC-PSINV-2026-00088). Hằng giá trị ở `pos_invoice_hooks.py` (`PAYMENT_UNPAID/WAITING/PAID/CANCELLED`).

@@ -31,6 +31,7 @@ PROJECTPOS/                        # git repo
 │   │   ├── table_card_check.py    # thẻ bàn: giữ / nhả theo đơn, hàng chờ thông báo thu ngân (get_serve_queue)
 │   │   ├── customer_display_check.py  # màn khách /pos/customer: banner theo POS Profile, chặn KITCHEN, giỏ/đơn/paid/hủy, cô lập user
 │   │   ├── walk_in_customer_check.py  # khách vãng lai theo POS Profile: chặn khi chưa cấu hình, is_walk_in, validate profile
+│   │   ├── payment_status_check.py  # payment_status: tiền mặt / Desk / QR Đang chờ / hủy / trả hàng / webhook / patch
 │   │   ├── branch_profile_check.py  # POS Profile bắt buộc Branch, 1 profile đang bật / Branch, chọn profile, Error Log SePay, ảnh /order
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
@@ -51,7 +52,8 @@ PROJECTPOS/                        # git repo
     │                              # v1_create_pos_roles.py, v1_kitchen_desk_access.py,
     │                              # v1_clear_legacy_option_default.py, v1_kitchen_outcomes.py,
     │                              # v1_simplify_cancel_review.py, v1_table_card_cleanup.py,
-    │                              # v1_mypos_workspaces.py, v1_remove_brand_banner.py (post_model_sync)
+    │                              # v1_mypos_workspaces.py, v1_remove_brand_banner.py,
+    │                              # v1_fix_payment_status.py (post_model_sync)
     ├── config/, templates/
     ├── desktop_icon/mypos_cashier.json, mypos_kitchen.json, mypos_manager.json, mypos_admin.json
     ├── workspace_sidebar/mypos.json   # Workspace Sidebar "MYPOS" (Frappe < 16.50)

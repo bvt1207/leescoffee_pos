@@ -150,6 +150,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Màn hình khách `/pos/customer`** (2026-11-24, đã test Pass, `d13b37c`): chỉ hiển thị, đăng nhập bằng tài khoản thu ngân (thiết bị
   riêng). Trạng thái theo user ở Redis cache (`customer_display_api.py`), realtime + poll 3 giây; tiền luôn do server tính. Banner từ
   DocType `MYPOS Banner` (theo POS Profile, trống = mọi profile, 5 giây đổi ảnh). Chi tiết: `.claude/rules/leescoffee_pos/customer_display.md`.
+- **Trạng thái thanh toán `POS Invoice.payment_status`** (2026-11-25, đã test Pass, `1346dae`): tính ở MỘT nơi — hook
+  `before_submit` → "Đã thanh toán" (mọi đường: tiền mặt, webhook, Desk, QR), hủy → "Hủy", sinh QR → "Đang chờ"; đơn trả hàng
+  không đụng. API / webhook không tự ghi giá trị này. Chi tiết: `.claude/rules/leescoffee_pos/pos_invoice_hooks.md` §2.0.
 - **Workspace Desk theo vai trò** (2026-11-25, đã test Pass, `8f2e389`): MYPOS Cashier / Kitchen / Manager / Admin, giới hạn bằng
   `Workspace.roles` (+ System Manager), Desktop Icon + Sidebar "MYPOS". Workspace cũ `leescoffee_pos` đã xóa (patch `v1_mypos_workspaces`).
   Chỉ đổi giao diện: module `Leescoffee POS`, app, route `/pos` giữ nguyên. Chi tiết: `.claude/rules/leescoffee_pos/workspace.md` §7.
