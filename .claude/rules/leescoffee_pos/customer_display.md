@@ -49,7 +49,7 @@
 - Field: `title`, `image` (Attach Image), `enabled`, `sort_order`, `pos_profile` (**trống = mọi POS Profile**, quyết định Van),
   `valid_from` / `valid_upto`, `description` (nội bộ). Lọc: enabled + profile + hiệu lực; sắp `sort_order`, rồi `creation`.
 - Bộ lọc ở MỘT nơi (2026-11-25): `doctype/mypos_banner/mypos_banner.py::active_banners(pos_profile, public_only, limit)`, dùng cho
-  màn khách (mọi ảnh) và ảnh đầu trang đăng nhập `/order` (`customer_order_api._shop`, `public_only=True`, ảnh đầu tiên; thay
+  màn khách (mọi ảnh) và carousel đầu trang `/order` (`customer_order_api._shop` → `banners`, `public_only=True`, tối đa 8; thay
   `Branch.brand_banner` đã bỏ). **Ảnh phải là file public**: ảnh private không hiện ở `/order` (khách là Guest).
 - `validate`: hiệu lực từ > đến → chặn; ảnh private → cảnh báo (không chặn).
 - Quyền: MANAGER S R W C, CASHIER R, KITCHEN không (patch `v1_create_pos_roles` `#2026-11-24 mypos-banner`). Không dữ liệu mẫu.

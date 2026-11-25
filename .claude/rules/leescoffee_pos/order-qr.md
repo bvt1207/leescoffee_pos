@@ -142,7 +142,7 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
   `cart.ts` (zustand, khóa dòng = item_code + options chuẩn hóa, qty ≤ 20), `alert.ts` (rung + bíp Web Audio,
   mở khóa ở lần chạm đầu), `format.ts`, `types.ts`, `order.css` (`.qo-*`, `@import ../styles/tokens.css`),
   `components/`: `LoginView`, `OrderTypePicker`, `MenuView`, `ItemSheet`, `CartSheet`, `PaymentView`,
-  `MyOrdersPanel`, `ReadyBanner`, `Sheet`, `BrandHeader`.
+  `MyOrdersPanel`, `ReadyBanner`, `Sheet`, `BrandHeader`, `OrderBanner` (carousel), `Skeleton`, `icons` (SVG inline).
 - **Dùng lại**: `lib/options.ts` (defaultOptions, toggleOption, missingRequired, normalizeOptions,
   formatOptions/formatCartOptions), `lib/api.ts::extractError`, token `--pos-*` (tách ra `styles/tokens.css`,
   `global.css` `@import` lại). Không import component nhân viên (MenuGrid/CartPanel gắn store + API nhân viên).
@@ -156,10 +156,23 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
 - **"Đơn của tôi"**: `MyOrdersPanel` 2 vùng "Đang xử lý" / "Lịch sử (30 ngày)", mỗi vùng có trạng thái rỗng. Vào lại
   (F5 / đăng nhập) mà có đơn active → tự mở panel 1 lần. Banner sẵn sàng chỉ cho đơn `ready` thuộc nhóm active.
   Poll 5 giây chỉ khi có đơn active, tab hiện, không ở PaymentView.
-- **Màn rộng > 480px** (2026-11-25, `order.css` cuối file): cả trang trong MỘT cột giữa 480px (`#root`), nền hai bên xám nhạt; banner đăng nhập
-  giữ tỉ lệ ảnh (`height: auto`, không cắt); dock / sheet / toast / banner sẵn sàng theo độ rộng cột; lưới món 2 cột. Điện thoại ≤ 480px không đổi.
-- **Ảnh đầu trang LoginView** (2026-11-25): `get_shop().banner` = MYPOS Banner public đầu tiên của POS Profile chi nhánh
-  (`customer_display.md` §4); rỗng → không hiện ảnh. Không còn `brand.banner` (Branch.brand_banner đã bỏ).
+- **Màn rộng > 480px** (2026-11-25, `order.css` cuối file): cả trang trong MỘT cột giữa 480px (`#root`), nền hai bên xám nhạt; banner
+  khung 16:9 `contain`; sheet hiện giữa màn; dock / sheet / toast / banner sẵn sàng theo độ rộng cột; lưới món 2 cột. Điện thoại ≤ 480px không đổi.
+- **Banner carousel** (2026-11-25, ĐÃ TEST PASS `ee66aa6`): `get_shop` / `get_me` → `shop.banners` = MYPOS Banner public của POS Profile
+  chi nhánh (`active_banners(public_only=True, limit=BANNER_LIMIT=8)`, `customer_display.md` §4); `shop.banner` (ảnh đầu) giữ cho client cũ.
+  `OrderBanner` ở màn đăng nhập + màn chọn loại đơn: `ORDER_BANNER_SECONDS = 5`, chấm chỉ báo, vuốt, dừng khi chạm giữ / hover / tab ẩn,
+  chỉ tải ảnh đang hiện + ảnh kế, khung 16:9 + skeleton, `contain` (không cắt chữ), reduced-motion bỏ fade. 1 ảnh: đứng yên; 0 ảnh: không
+  render, khối logo + tên + địa chỉ (`BrandHeader`) ở đầu trang. Không thêm request API. Không còn `brand.banner` (Branch.brand_banner đã bỏ).
+- **Giao diện (2026-11-25, đợt 1 + 2, ĐÃ TEST PASS `ee66aa6`, `5f1fe0d`; chỉ UI, không đổi API / poll / giỏ / tiền)**:
+  - Một bộ token `--qo-*` ở đầu `order.css` (nền kem, chữ nâu đen, bo 3 bậc, bóng 2 bậc); màu nhấn DUY NHẤT `--qo-accent = --pos-primary`.
+    Icon: SVG inline `components/icons.tsx` (không thư viện). Loading: skeleton (`Skeleton.tsx`, `.qo-skel`), không chữ "Đang tải".
+  - Header: logo + tên, icon "Đơn của tôi" (badge số đơn đang xử lý) + Thoát; không còn nút nổi. Màn chọn loại đơn: lời chào, 2 thẻ icon,
+    dòng "Đơn của tôi" trong luồng. Menu: dải phụ tên / điểm + công tắc loại đơn (`OrderTypePicker variant="compact"`), ô tìm + chip
+    (theo MYPOS Menu) dính dưới header, thẻ món ảnh 1:1 `contain` trên nền đồng nhất, "+" cạnh giá. Thanh giỏ chỉ khi có món.
+  - ItemSheet "Thêm vào giỏ · giá"; CartSheet tổng = skeleton khi đang preview; PaymentView: QR lớn + nút chép + thanh thời gian còn lại,
+    thanh toán xong hiện màn xác nhận `PAID_HOLD_MS = 2200` rồi mới gọi `onPaid` (luồng sau không đổi); MyOrdersPanel: tiến trình 3 chấm nối.
+  - Hiệu ứng ≤ 400ms, tắt hết dưới `prefers-reduced-motion`. Vùng chạm ≥ 44px.
+  - Chưa làm: nhãn món hết hàng (API không có dữ liệu); hiệu ứng khi đóng sheet.
 - **Luồng**: get_shop → LoginView → chọn Mang đi/Tại quán (lưu trong phiên, đổi được ở giỏ) → MenuView (tab nhóm,
   tìm kiếm) → ItemSheet (size, chip option, số lượng) → CartSheet (preview trễ 400ms, CTKM, điểm/hạng, ghi chú)
   → create_order → PaymentView (create_payment_qr, đếm ngược theo `expires_in` của server, poll get_order 3 giây)

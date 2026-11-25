@@ -56,7 +56,7 @@
 
 - Custom Field `Branch.brand_banner` đã bỏ (fixture + patch `v1_remove_brand_banner`: in + Error Log "MYPOS: sao lưu brand_banner trước
   khi xóa" danh sách ảnh đang dùng, không xóa File). `get_brand_info` / `get_branch_config` không còn khóa banner.
-- Ảnh đầu trang đăng nhập `/order` = **MYPOS Banner public đầu tiên** của POS Profile chi nhánh (`mypos_banner.active_banners`,
+- Banner đầu trang `/order` (carousel) = **các MYPOS Banner public** của POS Profile chi nhánh, tối đa 8 (`mypos_banner.active_banners`,
   dùng chung bộ lọc với màn khách, `customer_display.md` §4). Ảnh private bị bỏ qua ở `/order` (khách là Guest).
 
 ## 5. Checklist cấu hình 1 cửa hàng (UAT)

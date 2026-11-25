@@ -84,7 +84,11 @@ PROJECTPOS/                        # git repo
     │       │                      # serve.ts (poll get_serve_queue 15 giây cho CASHIER, toast + bíp),
     │       │                      # realtime.ts (socket.io-client của Frappe, dùng cho màn khách),
     │       │                      # changes.ts (poll phiên bản thay đổi get_pos_changes + usePosRefresh)
-    │       └── styles/global.css
+    │       ├── order/             # web khách /order (build riêng vite.order.config.ts → public/order/): OrderApp.tsx, api.ts,
+    │       │                      # cart.ts, session.ts, poll.ts, alert.ts, format.ts, types.ts, order.css (token --qo-*),
+    │       │                      # components/ (LoginView, OrderTypePicker, MenuView, ItemSheet, CartSheet, PaymentView,
+    │       │                      # MyOrdersPanel, ReadyBanner, Sheet, BrandHeader, OrderBanner (carousel), Skeleton, icons)
+    │       └── styles/global.css, tokens.css
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
         │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen

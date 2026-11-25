@@ -305,7 +305,8 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [ ] Web đặt món QR giai đoạn 2 (frontend `/order`): đăng nhập, menu + option, giỏ + preview, QR thanh toán,
       "Đơn của tôi" + banner sẵn sàng, chip "QR" ở Orders/Kitchen. Đã test Pass từng phần: webhook Draft → Paid
       (`d563ed8`); "Đơn của tôi" theo khách + giỏ localStorage + Thoát/F5 (self-test `run_order_history_selftest`,
-      `4e9629b`, `fbbc4ac`). Chờ test: giảm request (`a1d75c9`), chip QR màn nhân viên
+      `4e9629b`, `fbbc4ac`); giao diện mới + banner carousel MYPOS Banner (2026-11-25, đợt 1 + 2, `ee66aa6`, `5f1fe0d`).
+      Chờ test: giảm request (`a1d75c9`), chip QR màn nhân viên
 - [x] Màn hình khách `/pos/customer` + DocType `MYPOS Banner`: banner 5 giây, món + tổng tiền (CTKM, phụ thu, đổi điểm),
       VietQR, thanh toán thành công (phải thu 0). **Đã test Pass** (`d13b37c`, `4d06ddd`). Rule: `.claude/rules/leescoffee_pos/customer_display.md`
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
