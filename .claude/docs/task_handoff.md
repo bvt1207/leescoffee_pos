@@ -1,7 +1,16 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-25 (POS Profile bắt buộc Branch, bỏ Branch.brand_banner). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-25 (payment_status tính ở một nơi). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0t. payment_status ("Trạng thái thanh toán") tính ở một nơi (2026-11-25) — CHỜ VAN TEST
+- Lỗi: đơn trả tiền mặt (vd. ACC-PSINV-2026-00088) giữ "Chưa thanh toán" vì `pay_cash` không ghi; chỉ webhook ghi.
+- Sửa: hook `before_submit` → "Đã thanh toán" (không đụng đơn trả hàng); `on_cancel` + `order_cancel.cancel_draft` → "Hủy";
+  `generate_qr` → "Đang chờ" (thẻ "Chờ QR" + xác nhận khi hủy bắt đầu chạy); bỏ dòng gán ở webhook (D4 — nếu test webhook
+  FAIL: khôi phục dòng `invoice.payment_status = "Đã thanh toán"` ở bước 7 của `sepay_webhook`).
+- Patch `v1_fix_payment_status` sửa đơn cũ lệch (SQL, không đổi modified). Rule: `pos_invoice_hooks.md` §2.0.
+- Test: `payment_status_check.py` + chạy lại check_open_orders, check_draft_cancel, check_shift_owner, check_table_card,
+  run_order_qr_selftest, run_order_history_selftest.
 
 ## 0s. POS Profile bắt buộc Branch + bỏ Branch.brand_banner (2026-11-25) — ĐÃ TEST PASS (19/19, `61473b5`, `26754ee`, `740584b`)
 - Profile đang bật thiếu Branch → chặn lưu; mỗi Branch tối đa 1 profile đang bật → chặn lưu (`pos_profile_hooks._check_branch`).

@@ -77,11 +77,14 @@ def cancel_draft(invoice_name, reason, source, note=None):
 	if cint(row.is_return):
 		frappe.throw(_("Đơn {0} là đơn trả hàng, không hủy theo cách này.").format(invoice_name))
 
+	from .pos_invoice_hooks import PAYMENT_CANCELLED
+
 	text = cancel_text(source, reason, note)
+	# payment_status "Hủy" ghi ở đây vì đường này không chạy hook on_cancel (pos_invoice_hooks.py).
 	frappe.db.set_value(
 		"POS Invoice",
 		invoice_name,
-		{"docstatus": 2, "status": "Cancelled", "custom_cancel_reason": text},
+		{"docstatus": 2, "status": "Cancelled", "custom_cancel_reason": text, "payment_status": PAYMENT_CANCELLED},
 		update_modified=True,
 	)
 	# Bảng con theo đơn (như hủy thật): truy vấn lọc docstatus dòng con (vd. tồn giữ chỗ POS) không tính nhầm.

@@ -11,7 +11,7 @@
 | `custom_kitchen_status` | Select: `Chưa làm` / `Đã làm` / `Đã hoàn thành` / `Khách không nhận` / `Không thực hiện được` | Trạng thái pha chế (bộ lọc chuẩn) |
 | `buzzer` | Link → `MYPOS Buzzer` | Thẻ bàn (chỉ Dine In; label Desk "MYPOS Buzzer", POS hiện "Thẻ bàn" / "Bàn #") |
 | `payment_code` | Data | Mã thanh toán SePay |
-| `payment_status` | Select | Trạng thái thanh toán |
+| `payment_status` | Select: `Chưa thanh toán` / `Đang chờ` / `Đã thanh toán` / `Hủy` | Trạng thái thanh toán — tính ở MỘT nơi (§2.0) |
 | `transaction_ref` | Data | Mã tham chiếu giao dịch |
 | `sepay_payment_log` | Small Text | JSON log webhook |
 | `redeemed_points` | Int (read only) | Điểm Loyalty đã đổi; `on_submit` ghi Loyalty Point Entry âm qua `pos_api._record_redemption` |
@@ -20,6 +20,26 @@
 | `custom_late_payment_ref` | Data | Mã giao dịch tiền về sau hủy (phân cách dấu phẩy, chống ghi trùng) |
 
 ## 2. Lifecycle Rules
+
+### 2.0 Trạng thái thanh toán (`payment_status`, 2026-11-25) — CHỜ VAN TEST
+
+Trước đây chỉ webhook SePay ghi "Đã thanh toán": thu tiền mặt (`pay_cash`) / submit tay giữ default "Chưa thanh toán" (lỗi đơn
+ACC-PSINV-2026-00088). Hằng giá trị ở `pos_invoice_hooks.py` (`PAYMENT_UNPAID/WAITING/PAID/CANCELLED`).
+
+| Trạng thái đơn | Giá trị | Nơi ghi |
+|---|---|---|
+| Nháp | Chưa thanh toán | default của Custom Field |
+| Nháp đã sinh QR | Đang chờ | `sepay.generate_qr_for_invoice` (trước ghi "Chưa thanh toán" → thẻ "Chờ QR" + xác nhận khi hủy không bao giờ chạy) |
+| Submit, không phải trả hàng (Paid → Consolidated) | Đã thanh toán | hook **`before_submit`** (mọi đường: tiền mặt, webhook, Desk, QR `/order`); gán trên doc, hiện trong Version |
+| Hủy đơn đã submit | Hủy | hook `on_cancel` (`db_set`, `update_modified=False`) |
+| Hủy nháp (tay / job) | Hủy | `order_cancel.cancel_draft` (cùng `set_value` docstatus 2; đường này không chạy hook) |
+| Đơn trả hàng (`is_return`) | không đụng | quyết định Van (D2) — field không có nghĩa với đơn trả |
+
+- Webhook không còn tự gán "Đã thanh toán" (hook bao phủ). Chống lặp vẫn: docstatus 1 + "Đã thanh toán" + `transaction_ref == id`;
+  đơn trả tiền mặt (`transaction_ref` rỗng) vẫn đi `needs_review`.
+- Patch `v1_fix_payment_status` (post_model_sync, UPDATE SQL: không đổi `modified`, không hook / Version / realtime): docstatus 1 không
+  phải trả hàng → "Đã thanh toán"; docstatus 2 không phải trả hàng → "Hủy". Kiểm tra: `.claude/docs/payment_status_check.py`.
+
 
 ### 2.1 Kitchen Status (`custom_kitchen_status`)
 

@@ -319,7 +319,7 @@ def run_order_qr_selftest(branch=None):
 			check("8n Đơn quầy: SePay retry -> already_processed",
 				guest(S.sepay_webhook).get("already_processed") is True)
 
-			# 8o: đơn đã thu TIỀN MẶT (docstatus 1, payment_status khác "Đã thanh toán") rồi khách vẫn
+			# 8o: đơn đã thu TIỀN MẶT (docstatus 1, transaction_ref rỗng; từ 2026-11-25 payment_status cũng "Đã thanh toán") rồi khách vẫn
 			# chuyển khoản -> needs_review, không already_processed, không đổi đơn.
 			frappe.set_user(shift.user)
 			try:

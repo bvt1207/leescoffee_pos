@@ -42,7 +42,7 @@ POS frontend gọi qua `api/pos_api.py::generate_qr`.
 2. Lấy VA + bank code của chi nhánh qua `get_va_bank_config(invoice_name)`.
 3. Sinh `payment_code = POS-{invoice_name}-{YYYYMMDD}-{6 hex}`.
 4. Dựng VietQR URL theo `invoice.grand_total`.
-5. Lưu vào invoice: `payment_code`, `payment_status = "Chưa thanh toán"`, xóa `transaction_ref`
+5. Lưu vào invoice: `payment_code`, `payment_status = "Đang chờ"` (2026-11-25; trước `"Chưa thanh toán"`), xóa `transaction_ref`
    và `sepay_payment_log`; chỉ `save()` — invoice **vẫn Draft**.
 6. Trả `{invoice_name, payment_code, qr_url, amount, payment_status, idempotent}`.
 
@@ -73,7 +73,8 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
 6. Kiểm tra số tiền: `|transferAmount − (rounded_total or grand_total)| ≤ 0.01`, lệch → log + ném lỗi.
 7. Lấy `mode_of_payment` từ `invoice.payments` (dòng khớp số tiền, không có thì dòng đầu
    tiên có mode). Xóa hết `payments`, append 1 dòng `{mode_of_payment, amount}`.
-8. Set `payment_status = "Đã thanh toán"`, `transaction_ref = id/referenceCode`,
+8. Set `transaction_ref = id/referenceCode` (`payment_status = "Đã thanh toán"` do hook `before_submit` ghi khi submit,
+   2026-11-25 — `pos_invoice_hooks.md` §2.0),
    append log vào `sepay_payment_log` (JSON, giữ 50 entry cuối).
 9. `save()` → `submit()` **trong `_as_system_user()`** (Administrator, try/finally trả lại user cũ = Guest).
    Lý do: webhook chạy bằng Guest, `set_missing_values` → `get_party_account` → `account_perm_check`
@@ -99,9 +100,8 @@ Lỗi bất kỳ được bọc lại thành `"Lỗi xử lý webhook SePay: ...
 ## 5. Điểm code chưa khớp tài liệu / chờ quyết định (chưa sửa code)
 
 - ~~Webhook chưa xác thực API key~~ — đã sửa 2026-11-14 (§1), đã test Pass.
-- **`payment_status` lệch giá trị**: `generate_qr_for_invoice` ghi `"Chưa thanh toán"`,
-  trong khi `pos_api.cancel_draft_order` và `Orders.tsx` (tag "Chờ QR", chặn hủy khi
-  chưa `force`) kiểm tra `"Đang chờ"`. Options của Custom Field có cả hai giá trị.
+- ~~`payment_status` lệch giá trị (`generate_qr` ghi "Chưa thanh toán", Orders / Desk kiểm "Đang chờ")~~ — đã sửa 2026-11-25:
+  `generate_qr` ghi "Đang chờ" → thẻ "Chờ QR" ở Orders + bước xác nhận khi hủy đơn đang chờ chuyển khoản (/pos, Desk) bắt đầu chạy.
 - `update_sepay_payment_log()` còn trong file nhưng webhook không gọi (webhook tự ghi log).
 
 ## 6. Fixtures

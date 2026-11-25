@@ -111,6 +111,8 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
 
 - `get_orders`, `get_kitchen_orders` trả thêm `order_channel` (`get_order_detail` đã có) → giai đoạn 2 hiện chip "QR".
 - Không đổi phân quyền. Thu ngân vẫn hủy được đơn QR Draft / thu tiền mặt ở Orders (nếu khách ra quầy).
+- Từ 2026-11-25 đơn QR đã sinh mã thanh toán có `payment_status = "Đang chờ"` (`pos_invoice_hooks.md` §2.0): hủy ở Orders / Desk
+  phải xác nhận (force). Job tự hủy (§5) không đổi: lọc `payment_status != "Đã thanh toán"`, không cần force.
 - Thông báo thu ngân khi đơn "Đã làm" (`pos_api.get_serve_queue`, `roles.md` §7b) **loại đơn QR** — khách QR vẫn tự nhận banner "mời đến quầy nhận"
   trên điện thoại (luồng QR không đổi, 2026-11-23). Màn Pha chế bấm "Đã làm" đơn QR: toast "Đã báo khách … (đặt QR) tới quầy nhận món".
 

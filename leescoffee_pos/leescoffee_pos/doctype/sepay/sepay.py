@@ -11,6 +11,7 @@ from ..branch_config.branch_config import (
     get_va_bank_config,
     get_sepay_qr_url,
 )
+from ..pos_invoice_hooks.pos_invoice_hooks import PAYMENT_CANCELLED, PAYMENT_PAID, PAYMENT_WAITING
 
 @frappe.whitelist()
 def generate_qr_for_invoice(invoice_name):
@@ -28,7 +29,7 @@ def generate_qr_for_invoice(invoice_name):
             - payment_code: Unique payment reference code
             - qr_url: VietQR image URL for display
             - amount: Invoice grand total amount
-            - payment_status: Current payment status ("Chưa thanh toán")
+            - payment_status: "Đang chờ" (chờ chuyển khoản)
 
     Logic:
         1. Validates invoice exists and doesn't already have a payment_code
@@ -48,7 +49,7 @@ def generate_qr_for_invoice(invoice_name):
                 "payment_code": invoice.payment_code,
                 "qr_url": _get_existing_qr_url(invoice.payment_code, invoice),
                 "amount": invoice.grand_total,
-                "payment_status": invoice.payment_status or "Chưa thanh toán",
+                "payment_status": invoice.payment_status or PAYMENT_WAITING,
                 "idempotent": True,
             }
 
@@ -68,7 +69,7 @@ def generate_qr_for_invoice(invoice_name):
 
         # Update invoice with payment info (status still Draft)
         invoice.payment_code = payment_code
-        invoice.payment_status = "Chưa thanh toán"
+        invoice.payment_status = PAYMENT_WAITING  # 2026-11-25: trước ghi "Chưa thanh toán" (lệch với Orders / Desk)
         # transaction_ref cleared for new payment
         if invoice.transaction_ref:
             invoice.transaction_ref = ""
@@ -83,7 +84,7 @@ def generate_qr_for_invoice(invoice_name):
             "payment_code": payment_code,
             "qr_url": qr_url,
             "amount": invoice.grand_total,
-            "payment_status": "Chưa thanh toán",
+            "payment_status": PAYMENT_WAITING,
             "idempotent": False,
         }
 
@@ -195,7 +196,7 @@ def sepay_webhook():
         #      VÀ transaction_ref = transaction_id của webhook (SePay gửi lại đúng giao dịch).
         if invoice.docstatus == 1:
             if (
-                invoice.payment_status == "Đã thanh toán"
+                invoice.payment_status == PAYMENT_PAID
                 and transaction_id
                 and (invoice.transaction_ref or "") == transaction_id
             ):
@@ -238,7 +239,7 @@ def sepay_webhook():
                 message=f"invoice={invoice.name}\ntransaction_id={transaction_id}\ncontent={content}",
             )
 
-        if invoice.payment_status == "Hủy":
+        if invoice.payment_status == PAYMENT_CANCELLED:
             frappe.throw(_("Giao dịch thuộc POS Invoice đã bị hủy"))
 
         if invoice.docstatus != 0:
@@ -305,8 +306,8 @@ def sepay_webhook():
             "amount": expected_amount,
         })
 
-        # 7. Cập nhật thông tin giao dịch SePay
-        invoice.payment_status = "Đã thanh toán"
+        # 7. Cập nhật thông tin giao dịch SePay. payment_status = "Đã thanh toán" do hook before_submit ghi
+        #    (pos_invoice_hooks.py, 2026-11-25) — một nơi cho mọi đường thanh toán.
         invoice.transaction_ref = transaction_id
 
         log_entry = {

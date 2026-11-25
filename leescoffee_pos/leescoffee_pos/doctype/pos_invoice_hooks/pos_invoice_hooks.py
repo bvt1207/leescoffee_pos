@@ -6,17 +6,37 @@ Hooks for POS Invoice DocType to handle Leescoffee POS business logic.
 - Buzzer Dine In chuyển sang Đang dùng khi invoice đã Paid và submit.
 - Thẻ bàn (MYPOS Buzzer) tự về Sẵn sàng khi đơn kết thúc (Đã hoàn thành / Khách không nhận / Không thực hiện được)
   hoặc bị hủy, nếu không còn hóa đơn Dine In khác giữ thẻ. Không có bước nhả thẻ thủ công.
+- payment_status (Custom Field "Trạng thái thanh toán", 2026-11-25): MỘT nơi tính theo trạng thái đơn —
+  before_submit -> "Đã thanh toán" (mọi đường: tiền mặt, webhook SePay, submit tay trên Desk, đơn QR);
+  on_cancel -> "Hủy". Đơn trả hàng (is_return) không đụng. Hủy đơn nháp (order_cancel.cancel_draft, không qua hook)
+  ghi "Hủy" trong cùng set_value. Sinh QR (sepay.generate_qr_for_invoice) ghi "Đang chờ".
 """
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 # Trạng thái kết thúc (Đã hoàn thành + kết thúc có lý do) không giữ thẻ bàn — kitchen_status.py.
 from .kitchen_status import KITCHEN_TERMINAL_STATUSES, is_terminal
 
+# Giá trị Select của POS Invoice.payment_status (fixtures/custom_field.json) — dùng chung, không gõ lại chuỗi.
+PAYMENT_UNPAID = "Chưa thanh toán"
+PAYMENT_WAITING = "Đang chờ"
+PAYMENT_PAID = "Đã thanh toán"
+PAYMENT_CANCELLED = "Hủy"
+
 
 class PosInvoiceHooks:
+
+    @staticmethod
+    def before_submit(doc, method=None):
+        """Đơn bán (không phải trả hàng) được submit = đã thu đủ tiền -> "Đã thanh toán".
+
+        Gán trên doc trước khi ghi DB: không thêm lần ghi, hiện trong Version của lần submit.
+        """
+        if cint(doc.get("is_return")):
+            return
+        doc.payment_status = PAYMENT_PAID
 
     @staticmethod
     def on_submit(doc, method=None):
@@ -166,11 +186,18 @@ class PosInvoiceHooks:
     @staticmethod
     def on_cancel(doc, method=None):
         """
-        Đơn đã submit bị hủy: không còn giữ thẻ, ở MỌI trạng thái pha chế (2026-11-23; trước chỉ khi chưa làm).
+        Đơn đã submit bị hủy: payment_status -> "Hủy" (không đụng đơn trả hàng); không còn giữ thẻ, ở MỌI trạng thái
+        pha chế (2026-11-23; trước chỉ khi chưa làm).
         """
+        if not cint(doc.get("is_return")) and doc.get("payment_status") != PAYMENT_CANCELLED:
+            doc.db_set("payment_status", PAYMENT_CANCELLED, update_modified=False)
         if doc.order_type != "Dine In" or not doc.buzzer:
             return
         PosInvoiceHooks._free_buzzer_if_unheld(doc)
+
+
+def before_submit(doc, method=None):
+    return PosInvoiceHooks.before_submit(doc, method)
 
 
 def on_submit(doc, method=None):
