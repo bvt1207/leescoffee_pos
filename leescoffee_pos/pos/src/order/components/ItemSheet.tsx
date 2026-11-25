@@ -4,6 +4,7 @@ import type { CartOption } from "../../types";
 import { MAX_LINE_QTY } from "../cart";
 import { money } from "../format";
 import type { MenuItem } from "../types";
+import { IconCheck, IconMinus, IconPlus } from "./icons";
 import Sheet from "./Sheet";
 
 /** Chọn size + tùy chọn (MYPOS Option Group động) + số lượng rồi thêm vào giỏ. */
@@ -23,6 +24,8 @@ export default function ItemSheet({
 	const [qty, setQty] = useState(1);
 	const size = item.sizes[sizeIndex];
 	const missing = useMemo(() => missingRequired(options, item.option_groups), [options, item.option_groups]);
+	// Giá 1 món theo lựa chọn đang chọn (ước tính để hiển thị; giá thật do server tính khi xem giỏ / đặt đơn).
+	const unit = size.rate + cartUnitSurcharge(options, item.option_groups);
 
 	const footer = (
 		<div className="qo-addbar">
@@ -34,9 +37,9 @@ export default function ItemSheet({
 					disabled={qty <= 1}
 					onClick={() => setQty((q) => Math.max(1, q - 1))}
 				>
-					−
+					<IconMinus size={18} />
 				</button>
-				<span className="qo-stepper__val" aria-live="polite">
+				<span key={qty} className="qo-stepper__val" aria-live="polite">
 					{qty}
 				</span>
 				<button
@@ -46,25 +49,39 @@ export default function ItemSheet({
 					disabled={qty >= MAX_LINE_QTY}
 					onClick={() => setQty((q) => Math.min(MAX_LINE_QTY, q + 1))}
 				>
-					+
+					<IconPlus size={18} />
 				</button>
 			</div>
 			<button
 				type="button"
-				className="qo-btn qo-btn--primary qo-addbar__cta"
+				className="qo-btn qo-btn--primary qo-btn--lg qo-addbar__cta"
 				disabled={missing.length > 0}
 				onClick={() => onAdd(sizeIndex, options, qty)}
 			>
 				{missing.length
 					? `Chọn ${missing[0].title}`
-					: `Thêm · ${money((size.rate + cartUnitSurcharge(options, item.option_groups)) * qty, currency)}`}
+					: `Thêm vào giỏ · ${money(unit * qty, currency)}`}
 			</button>
 		</div>
 	);
 
 	return (
 		<Sheet title={item.name} onClose={onClose} footer={footer} labelledBy="qo-item-title">
-			{item.image ? <img className="qo-item__img" src={item.image} alt="" /> : null}
+			<div className="qo-item__hero">
+				<span className="qo-item__thumb">
+					{item.image ? (
+						<img src={item.image} alt="" decoding="async" />
+					) : (
+						<span className="qo-card__initial" aria-hidden="true">
+							{item.name.charAt(0)}
+						</span>
+					)}
+				</span>
+				<div className="qo-item__info">
+					<div className="qo-item__price">{money(unit, currency)}</div>
+					{item.sizes.length > 1 ? <div className="qo-item__size">Size {size.label || "Mặc định"}</div> : null}
+				</div>
+			</div>
 
 			{item.sizes.length > 1 ? (
 				<fieldset className="qo-group">
@@ -80,6 +97,7 @@ export default function ItemSheet({
 								className={`qo-chip ${i === sizeIndex ? "is-on" : ""}`}
 								onClick={() => setSizeIndex(i)}
 							>
+								{i === sizeIndex ? <IconCheck size={16} className="qo-chip__check" /> : null}
 								<span>{s.label || "Mặc định"}</span>
 								<span className="qo-chip__price">{money(s.rate, currency)}</span>
 							</button>
@@ -110,6 +128,7 @@ export default function ItemSheet({
 										className={`qo-chip ${on ? "is-on" : ""}`}
 										onClick={() => setOptions((o) => toggleOption(o, g, v.label))}
 									>
+										{on ? <IconCheck size={16} className="qo-chip__check" /> : null}
 										<span>{v.label}</span>
 										{valueSurcharge(item.option_groups, g.name, v.label) > 0 ? (
 											<span className="qo-chip__price">

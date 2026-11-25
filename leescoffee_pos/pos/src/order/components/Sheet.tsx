@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { IconClose } from "./icons";
 
 /** Bottom sheet (mobile) / hộp giữa màn (màn rộng). Esc + bấm nền để đóng, khóa cuộn nền. */
 export default function Sheet({
@@ -42,12 +43,13 @@ export default function Sheet({
 				tabIndex={-1}
 				onClick={(e) => e.stopPropagation()}
 			>
+				<span className="qo-sheet__grip" aria-hidden="true" />
 				<header className="qo-sheet__head">
 					<h2 id={labelledBy} className="qo-sheet__title">
 						{title}
 					</h2>
-					<button type="button" className="qo-icon-btn" aria-label="Đóng" onClick={onClose}>
-						×
+					<button type="button" className="qo-icon-btn qo-sheet__close" aria-label="Đóng" onClick={onClose}>
+						<IconClose size={20} />
 					</button>
 				</header>
 				<div className="qo-sheet__body">{children}</div>

@@ -1,6 +1,7 @@
 import { formatOptions } from "../../lib/options";
 import { clock, hhmm, isActiveStage, money, orderTypeLabel } from "../format";
 import type { CustomerOrder } from "../types";
+import { IconCheck } from "./icons";
 import Sheet from "./Sheet";
 
 const STEPS: Array<{ stage: CustomerOrder["stage"]; label: string }> = [
@@ -8,6 +9,12 @@ const STEPS: Array<{ stage: CustomerOrder["stage"]; label: string }> = [
 	{ stage: "ready", label: "Đã làm" },
 	{ stage: "done", label: "Đã hoàn thành" },
 ];
+
+/** Một dòng giải thích dưới tiến trình, theo bước hiện tại (chỉ hiển thị, không đổi logic trạng thái). */
+const STEP_HINTS: Partial<Record<CustomerOrder["stage"], string>> = {
+	queued: "Quán đã nhận đơn và sẽ pha chế theo thứ tự.",
+	done: "Đơn đã hoàn thành. Cảm ơn bạn!",
+};
 
 /** Nhóm do server chia; thiếu `group` (server cũ) thì đơn còn xử lý = active. */
 const isActive = (o: CustomerOrder) => (o.group ? o.group === "active" : isActiveStage(o.stage));
@@ -72,10 +79,14 @@ function OrderCard({ order: o, onPay }: { order: CustomerOrder; onPay: (invoiceN
 				<div>
 					<div className="qo-order__id">{o.invoice_name}</div>
 					<div className="qo-order__meta">
-						{orderTypeLabel(o.order_type)} · {hhmm(o.creation)} · {money(o.amount, o.currency)}
+						{o.customer_name ? `${o.customer_name} · ` : ""}
+						{orderTypeLabel(o.order_type)} · {hhmm(o.creation)}
 					</div>
 				</div>
-				<span className={`qo-badge qo-badge--${o.stage}`}>{o.stage_label || "Đang xử lý"}</span>
+				<div className="qo-order__side">
+					<span className={`qo-badge qo-badge--${o.stage}`}>{o.stage_label || "Đang xử lý"}</span>
+					<span className="qo-order__amount">{money(o.amount, o.currency)}</span>
+				</div>
 			</div>
 
 			{o.stage_message ? (
@@ -85,17 +96,23 @@ function OrderCard({ order: o, onPay }: { order: CustomerOrder; onPay: (invoiceN
 			) : null}
 
 			{showSteps ? (
-				<ol className="qo-steps" aria-label="Tiến độ pha chế">
-					{STEPS.map((s, i) => (
-						<li
-							key={s.stage}
-							className={`qo-steps__item ${i <= stepIndex ? "is-done" : ""}`}
-							aria-current={i === stepIndex ? "step" : undefined}
-						>
-							{s.label}
-						</li>
-					))}
-				</ol>
+				<>
+					<ol className="qo-steps" aria-label="Tiến độ pha chế">
+						{STEPS.map((s, i) => (
+							<li
+								key={s.stage}
+								className={`qo-steps__item${i < stepIndex ? " is-done" : ""}${i === stepIndex ? " is-current" : ""}`}
+								aria-current={i === stepIndex ? "step" : undefined}
+							>
+								<span className="qo-steps__dot" aria-hidden="true">
+									{i < stepIndex || (i === stepIndex && s.stage === "done") ? <IconCheck size={14} strokeWidth={2.5} /> : null}
+								</span>
+								<span className="qo-steps__label">{s.label}</span>
+							</li>
+						))}
+					</ol>
+					{STEP_HINTS[o.stage] ? <p className="qo-order__hint">{STEP_HINTS[o.stage]}</p> : null}
+				</>
 			) : null}
 
 			{o.stage === "ready" && isActive(o) ? (

@@ -4,6 +4,7 @@ import { errorText, OrderApiError, orderApi } from "../api";
 import { cartPayload, MAX_LINE_QTY, useOrderCart } from "../cart";
 import { money } from "../format";
 import type { Loyalty, OrderTypeValue, Preview } from "../types";
+import { IconMinus, IconPlus, IconStar, IconTag, IconTrash } from "./icons";
 import OrderTypePicker from "./OrderTypePicker";
 import Sheet from "./Sheet";
 
@@ -103,9 +104,11 @@ export default function CartSheet({
 		<div className="qo-checkout">
 			<div className="qo-checkout__total">
 				<span>Tổng thanh toán</span>
-				<strong aria-live="polite">
-					{loading ? "Đang tính…" : money(preview ? preview.grand_total : fallbackTotal, currency)}
-				</strong>
+				{loading ? (
+					<span className="qo-skel qo-skel--amount" role="status" aria-label="Đang tính…" />
+				) : (
+					<strong aria-live="polite">{money(preview ? preview.grand_total : fallbackTotal, currency)}</strong>
+				)}
 			</div>
 			{error ? (
 				<div className="qo-alert qo-alert--error" role="alert">
@@ -114,10 +117,11 @@ export default function CartSheet({
 			) : null}
 			<button
 				type="button"
-				className="qo-btn qo-btn--primary qo-btn--block"
+				className="qo-btn qo-btn--primary qo-btn--block qo-btn--lg"
 				disabled={!lines.length || !isOpen || busy || loading || !!previewError}
 				onClick={checkout}
 			>
+				{busy ? <span className="qo-spinner qo-spinner--on-primary" aria-hidden="true" /> : null}
 				{!isOpen ? "Quán chưa mở bán" : busy ? "Đang tạo đơn…" : "Đặt món & chuyển khoản"}
 			</button>
 		</div>
@@ -142,6 +146,9 @@ export default function CartSheet({
 							const unitExtra = cartUnitSurcharge(l.options, l.option_groups);
 							return (
 								<li key={l.key} className="qo-line">
+									<span className="qo-line__thumb" aria-hidden="true">
+										{l.image ? <img src={l.image} alt="" loading="lazy" decoding="async" /> : l.item_name.charAt(0)}
+									</span>
 									<div className="qo-line__main">
 										<div className="qo-line__name">
 											{l.item_name}
@@ -149,7 +156,10 @@ export default function CartSheet({
 										</div>
 										{opts ? <div className="qo-line__opts">{opts}</div> : null}
 										{p && p.rules.length ? (
-											<div className="qo-line__promo">{p.rules.map((r) => r.title).join(", ")}</div>
+											<div className="qo-line__promo">
+												<IconTag size={14} />
+												<span>{p.rules.map((r) => r.title).join(", ")}</span>
+											</div>
 										) : null}
 										<div className="qo-line__price">
 											{discounted ? (
@@ -165,7 +175,7 @@ export default function CartSheet({
 											aria-label={l.qty <= 1 ? `Xóa ${l.item_name}` : `Bớt 1 ${l.item_name}`}
 											onClick={() => (l.qty <= 1 ? remove(l.key) : setQty(l.key, l.qty - 1))}
 										>
-											{l.qty <= 1 ? "×" : "−"}
+											{l.qty <= 1 ? <IconTrash size={17} /> : <IconMinus size={17} />}
 										</button>
 										<span className="qo-stepper__val">{l.qty}</span>
 										<button
@@ -175,7 +185,7 @@ export default function CartSheet({
 											disabled={l.qty >= MAX_LINE_QTY}
 											onClick={() => setQty(l.key, l.qty + 1)}
 										>
-											+
+											<IconPlus size={17} />
 										</button>
 									</div>
 								</li>
@@ -234,6 +244,7 @@ export default function CartSheet({
 
 					{pts?.enrolled ? (
 						<div className="qo-points">
+							<IconStar size={20} className="qo-points__icon" />
 							<strong>
 								{pts.tier_name ? `${pts.tier_name} · ` : ""}
 								{pts.loyalty_points ?? 0} điểm

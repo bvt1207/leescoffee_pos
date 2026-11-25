@@ -98,3 +98,24 @@ export const IconStore = make(
 		<path d="M10 20v-4.5h4V20" />
 	</>
 );
+
+export const IconChevronLeft = make(<path d="m14.5 6-6 6 6 6" />);
+
+export const IconTrash = make(
+	<>
+		<path d="M4.5 7h15" />
+		<path d="M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" />
+		<path d="M6.5 7l.8 12.1a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9L17.5 7" />
+	</>
+);
+
+export const IconTag = make(
+	<>
+		<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0l-8.3-8.3Z" />
+		<circle cx="8" cy="8" r="1.4" />
+	</>
+);
+
+export const IconStar = make(
+	<path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8L12 3.8Z" />
+);
