@@ -8,7 +8,7 @@
 | Role | desk_access | Dùng cho |
 |------|-------------|----------|
 | `POS CASHIER` | 1 | Thu ngân: mở/đóng ca, /pos, Orders |
-| `POS KITCHEN` | 1 | Pha chế: vào `/desk`, thấy icon `leescoffee_pos`, bấm POS → `/pos` tự chuyển `/pos/kitchen` |
+| `POS KITCHEN` | 1 | Pha chế: vào `/desk`, thấy icon "MYPOS Kitchen" → `/pos/kitchen` (2026-11-25; trước đó icon `leescoffee_pos`) |
 | `POS MANAGER` | 1 | Quản lý cửa hàng |
 
 **KITCHEN `desk_access = 1` (quyết định Van, 2026-11-17):** để pha chế đăng nhập và vào màn Pha chế từ Desk
@@ -130,13 +130,26 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 ## 4. Quy tắc module
 
 Mỗi role phải có quyền **Read ít nhất một DocType module `Leescoffee POS`** (MYPOS Menu/MYPOS Buzzer)
-thì user không phải Administrator mới vào được workspace `leescoffee_pos` (`allowed_modules`).
+thì user không phải Administrator mới vào được các workspace MYPOS của module (`allowed_modules`; tên cũ `leescoffee_pos`).
 Chữ module phải khớp chính xác `Leescoffee POS` (CLAUDE.md §5).
 
 ## 5. Workspace / Desktop Icon / Workspace Sidebar
 
-Giữ `roles: []` (quyết định của Van, 2026-11-12). Truy cập đã bị chặn theo module; đặt `roles`
-dễ chặn nhầm user ERPNext khác.
+**Đảo quyết định 2026-11-12 (`roles: []`) — Van duyệt 2026-11-25, CHỜ TEST:** mỗi vai trò có workspace riêng, giới hạn bằng
+`Workspace.roles`; mọi workspace giới hạn role kèm thêm `System Manager` để System Manager / Administrator luôn thấy tất cả mà không cần
+role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sidebar: `workspace.md` §7.
+
+| Workspace / Desktop Icon | roles |
+|---|---|
+| MYPOS Cashier | POS CASHIER, System Manager |
+| MYPOS Kitchen | POS KITCHEN, System Manager |
+| MYPOS Manager | POS MANAGER, System Manager |
+| MYPOS Admin | System Manager |
+
+- Không cấp thêm quyền DocType nào (`PERMS` không đổi). Link thiếu quyền Read tự ẩn: MANAGER không có Loyalty Program (quyết định Van);
+  Pricing Rule / Promotional Scheme chỉ hiện khi user MANAGER được gán thêm `Sales Manager` (§1).
+- User có role `Workspace Manager` thấy mọi workspace (Frappe), kể cả workspace không thuộc vai trò.
+- Không đặt `Role.home_page` (quyết định Van 2026-11-25: dễ xung đột khi user nhiều role).
 
 ## 6. Role đã tạo tay trên site
 

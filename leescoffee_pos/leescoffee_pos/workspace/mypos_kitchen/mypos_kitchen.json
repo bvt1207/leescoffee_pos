@@ -1,0 +1,45 @@
+{
+ "app": "leescoffee_pos",
+ "charts": [],
+ "content": "[{\"id\":\"mypos_kiS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"MYPOS Kitchen Screen\",\"col\":3}}]",
+ "creation": "2026-11-25 10:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "computer",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "MYPOS Kitchen",
+ "links": [],
+ "modified": "2026-11-25 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Leescoffee POS",
+ "name": "MYPOS Kitchen",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "POS KITCHEN"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 1.2,
+ "shortcuts": [
+  {
+   "color": "Orange",
+   "label": "MYPOS Kitchen Screen",
+   "type": "URL",
+   "url": "/pos/kitchen"
+  }
+ ],
+ "standard": 1,
+ "title": "MYPOS Kitchen",
+ "type": "Workspace"
+}

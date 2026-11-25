@@ -94,29 +94,51 @@ bench --site <site-name> export-fixtures
 - `is_standard: 1` bắt buộc để fixture hoạt động
 - Icon lấy từ [Frappe Icons](https://frappeframework.com/docs/user/en/desk/icons) (ví dụ: `menu`, `coffee`, `table`, `kitchen`)
 
-## 7. Workspace hiện có: `leescoffee_pos`
+## 7. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — CHỜ VAN TEST
 
-File: `leescoffee_pos/leescoffee_pos/workspace/leescoffee_pos/leescoffee_pos.json`
-(`name`/`title`/`label` = `leescoffee_pos`, `module` = `Leescoffee POS`).
+Bốn workspace, module vẫn `Leescoffee POS`, mỗi file `leescoffee_pos/leescoffee_pos/workspace/<scrub(name)>/<scrub(name)>.json`
+(`standard: 1`, `public: 1`, `app: leescoffee_pos`). Route Desk = `/desk/<slug(name)>`.
 
-- **Quy tắc module:** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
+| Workspace → route | `roles` | Shortcuts | Cards (Card Break → link) |
+|---|---|---|---|
+| MYPOS Cashier → `/desk/mypos-cashier` | POS CASHIER, System Manager | Open MYPOS (`/pos`), MYPOS Customer Display (`/pos/customer`) | Shift: POS Opening Entry, POS Closing Entry |
+| MYPOS Kitchen → `/desk/mypos-kitchen` | POS KITCHEN, System Manager | MYPOS Kitchen Screen (`/pos/kitchen`) | — |
+| MYPOS Manager → `/desk/mypos-manager` | POS MANAGER, System Manager | Open MYPOS, Draft Orders, Unserved Orders | Shift & Cash (Opening, Closing, POS Invoice Merge Log); Order Handling (POS Invoice, MYPOS Buzzer); Menu & Promotions (MYPOS Menu, MYPOS Option Group, Pricing Rule, Promotional Scheme); QR & Display (MYPOS Order QR, MYPOS Banner) |
+| MYPOS Admin → `/desk/mypos-admin` | System Manager | Open MYPOS, Draft Orders, Unserved Orders, MYPOS Kitchen Screen, MYPOS Customer Display | Branch Setup (Branch, POS Profile, Customer, User Permission); Shift & Cash; Order Handling; Menu & Promotions (+ Loyalty Program); QR & Display; Troubleshooting (Error Log, Notification Log) |
 
-- 1 card "MYPOS Setup" (đổi từ "Lee's Coffee Setup" 2026-11-15; `link_count: 9`, `modified` 2026-11-24 10:00), thứ tự link: Branch, POS Profile,
-  POS Opening Entry, POS Closing Entry, MYPOS Menu, MYPOS Buzzer, MYPOS Option Group, MYPOS Order QR, MYPOS Banner (thêm 2026-11-24, `d13b37c`, Pass).
-  Sau migrate: `Workspace Link` của `leescoffee_pos` = **10 dòng** (9 Link + 1 Card Break).
-- 2026-11-21 đã thêm link Report "MYPOS Review Queue" (`66efbd6` + `b8b8056`, Pass) và link DocType "MYPOS Order Cancel Log" (`2c481d3`).
-  **2026-11-23 đã bỏ cả hai** (Report + DocType đã xóa, patch `v1_simplify_cancel_review` xóa cả Workspace Link) — ĐÃ TEST PASS trên bench DEV (`0553fd2`):
-  card về 8 link, `link_count: 8`. Sau migrate: `Workspace Link` = **9 dòng** (8 Link + 1 Card Break).
-- Link "MYPOS Buzzer" (thẻ bàn): giữ label **"MYPOS Buzzer"** — Desk dùng tên kỹ thuật, chỉ POS / hóa đơn in dùng "Thẻ bàn". (`f2236b4` đổi label thành
-  "Thẻ bàn", `adcb92d` đặt lại "MYPOS Buzzer"; `modified` 2026-11-23 16:00) — ĐÃ TEST PASS trên bench DEV.
-- 1 shortcut `POS` (type URL, `/pos`). Workspace Sidebar chỉ có dòng Home.
+Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admin 24; Workspace Shortcut 2 / 1 / 3 / 5; Has Role 2 / 2 / 2 / 1.
+
+- **Quy tắc hiển thị (đã đọc mã Frappe v16.49 / v16.61):** workspace hiện khi module hiển thị với user (Read ít nhất 1 DocType module,
+  roles.md §4) VÀ user có một role trong `roles`. Mọi workspace giới hạn role đều kèm `System Manager` (Administrator có mọi role).
+  User có role `Workspace Manager` thấy MỌI workspace (không dùng user đó để test). Link DocType trong card ẩn khi thiếu quyền Read
+  (vd. Pricing Rule / Promotional Scheme chỉ hiện cho MANAGER có thêm Sales Manager; Loyalty Program chỉ ở Admin, quyết định Van D4).
+- **Shortcut URL** luôn mở tab mới (`shortcut_widget.js`). **Shortcut DocType** luôn đếm `frappe.db.count` theo `stats_filter` và
+  dùng nó làm bộ lọc danh sách (`frappe.route_options`). Draft Orders: `docstatus = 0`. Unserved Orders: `docstatus = 1`,
+  `is_return = 0`, `custom_kitchen_status in (Chưa làm, Đã làm)` ([Unverified] toán tử `in` qua route_options — test tay).
+- **Mô tả card**: `Workspace Link.description` (Card Break), có ở v16.49 và v16.50+.
+- **Sidebar Desk** (phụ thuộc phiên bản Frappe, ship cả hai; mỗi file trơ ở phiên bản kia):
+  - Frappe ≥ 16.50: `leescoffee_pos/leescoffee_pos/sidebar/mypos/mypos.json` (DocType `Sidebar`, name/title "MYPOS", 4 item Workspace:
+    Cashier / Kitchen / Manager / Admin). Sidebar item loại Workspace tự lọc theo `roles` của workspace.
+  - Frappe < 16.50: `leescoffee_pos/workspace_sidebar/mypos.json` (Workspace Sidebar "MYPOS", cùng 4 item).
+- **Desktop Icon** (`leescoffee_pos/desktop_icon/mypos_*.json`, External, có `roles` = role chính + System Manager):
+  MYPOS Cashier → `/desk/mypos-cashier`, MYPOS Kitchen → `/pos/kitchen`, MYPOS Manager → `/desk/mypos-manager`,
+  MYPOS Admin → `/desk/mypos-admin` (chỉ System Manager).
+- **Đổi tên `leescoffee_pos` → MYPOS Admin**: không dùng `rename_doc` (nội dung lấy từ file; route cũ hỏng trong mọi cách). File cũ đã xóa khỏi
+  repo; patch `v1_mypos_workspaces` xóa workspace / Desktop Icon / Workspace Sidebar cũ `leescoffee_pos` khi đủ 4 workspace mới.
+  Bookmark `/desk/leescoffee_pos`, `/app/leescoffee_pos` không còn dùng được → dùng icon hoặc route mới.
 
 Quy tắc khi sửa JSON workspace:
 
 - `link_count` của Card Break = số dòng `type: Link` ngay sau nó.
-- `card_name` trong `content` phải khớp chính xác `label` của Card Break.
+- `card_name` / `shortcut_name` trong `content` phải khớp chính xác `label` của Card Break / shortcut.
 - Mỗi lần sửa phải **tăng `modified`**, nếu không migrate bỏ qua file. Không đổi `creation`, `name`.
-- Nạp lại workspace có thể **nhân bản** dòng `Workspace Link` (Van ghi nhận trên bench) → xóa
-  trước khi migrate:
-  `frappe.db.delete("Workspace Link", {"parent": "leescoffee_pos", "parenttype": "Workspace"}); frappe.db.commit()`
-  rồi kiểm tra `frappe.db.count("Workspace Link", {"parent": "leescoffee_pos"})` = số Link + số Card Break.
+- **Workspace Link trùng:** [đã đọc mã v16.61] import file xóa doc cũ cùng mọi dòng con rồi insert lại, nên import không tự sinh dòng trùng
+  (nguyên nhân bản trùng trước đây chưa xác định). Patch `v1_mypos_workspaces` (post_model_sync, idempotent) so số dòng con với file,
+  lệch → `import_file_by_path(force=True)`. Không xóa Workspace Link bằng patch post_model_sync (chạy SAU khi file đã nạp).
+  Muốn áp lại: đổi nhãn `#...` của dòng patch trong `patches.txt`.
+- **Dự phòng xóa tay** (trước migrate, console), rồi migrate để nạp lại:
+  `for n in ["MYPOS Cashier","MYPOS Kitchen","MYPOS Manager","MYPOS Admin"]: frappe.db.delete("Workspace Link", {"parent": n, "parenttype": "Workspace"})`
+  → `frappe.db.commit()`; sau migrate kiểm số dòng như bảng trên.
+- Tùy chỉnh workspace trên Desk (Custom Workspace ở v16.50+) có thể đè roles / nội dung file; patch chỉ in cảnh báo, không xóa.
+
+Lịch sử: workspace `leescoffee_pos` cũ có 1 card "MYPOS Setup" (tên trước đó "Lee's Coffee Setup") gom mọi link + shortcut POS, `roles: []`.

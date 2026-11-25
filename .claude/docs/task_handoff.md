@@ -1,7 +1,32 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-24 (tên khách + toast "Đã làm" ở màn Pha chế). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-25 (workspace theo vai trò, tiền tố MYPOS). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0r. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — CHỜ VAN TEST
+- 4 workspace thay workspace `leescoffee_pos`: MYPOS Cashier / MYPOS Kitchen / MYPOS Manager / MYPOS Admin, mỗi workspace có `roles` = role chính +
+  System Manager (Admin: chỉ System Manager). 4 Desktop Icon cùng tên + roles. Sidebar "MYPOS" ship 2 dạng (`sidebar/mypos/` cho Frappe ≥ 16.50,
+  `workspace_sidebar/mypos.json` cho < 16.50). Patch `v1_mypos_workspaces` (post_model_sync): đối chiếu số dòng con với file, lệch → import lại
+  (force); xóa workspace / icon / Workspace Sidebar cũ `leescoffee_pos`; ≥ 16.50 xóa Sidebar không chuẩn khác của module. Chi tiết: `workspace.md` §7.
+- Không đổi quyền DocType, pos/src, logic nghiệp vụ. Kết quả §0 (bench version) chưa có trong lúc làm → ship cả 2 dạng sidebar.
+
+### Chuẩn bị chuyển sang module MYPOS (CHƯA làm — task sau)
+- **Đã mang tên MYPOS (chỉ giao diện):** Workspace MYPOS Cashier / Kitchen / Manager / Admin; Desktop Icon cùng 4 tên; Sidebar / Workspace Sidebar "MYPOS";
+  nhãn shortcut "Open MYPOS", "MYPOS Customer Display", "MYPOS Kitchen Screen"; DocType có sẵn tiền tố MYPOS (Menu, Menu Item, Buzzer, Option Group/Value/Target,
+  Order QR, Banner).
+- **Còn gắn module `Leescoffee POS` (phải đổi khi chuyển):** `module` của 4 workspace + Sidebar / Workspace Sidebar; `module` của mọi DocType app
+  (thư mục `leescoffee_pos/leescoffee_pos/doctype/*`), Custom Field / Property Setter fixtures (`module` nếu có), `modules.txt`, Module Def;
+  đường dẫn import `leescoffee_pos.leescoffee_pos.*` trong `hooks.py` (doc_events, scheduler, doctype_js), patches, `api/*`; tên app / package
+  `leescoffee_pos`, App title "Leescoffee POS", `desktop_icon` field `app`.
+- **Rủi ro cần nhớ:**
+  - `allowed_modules`: user không phải Administrator chỉ vào được workspace khi Read ít nhất 1 DocType CÙNG module với workspace. Chuyển workspace sang
+    module MYPOS mà DocType còn ở Leescoffee POS (hoặc ngược lại) → PermissionError / workspace biến mất (roles.md §4).
+  - Workspace / Sidebar chuyển module = đổi thư mục file (`<module>/workspace/...`, `<module>/sidebar/...`); file cũ phải xóa trên bench, nếu không
+    sẽ có 2 bản. Bộ dọn orphan chỉ xóa bản `standard` không còn file.
+  - Workspace Link trùng (workspace.md §7): sau migrate luôn đếm dòng con; dùng patch force-reimport, không xóa SQL ở post_model_sync.
+  - Sidebar tên "MYPOS": Frappe chặn tiêu đề Sidebar trùng tên một module KHÁC (`validate_title_is_its_own`). Tạo Module Def "MYPOS" khi Sidebar vẫn
+    thuộc Leescoffee POS → lưu Sidebar trên Desk bị chặn; chuyển Sidebar sang module MYPOS cùng lúc (tiêu đề = module là hợp lệ).
+  - Đổi `module` của DocType: tăng `modified` JSON để migrate nạp lại; kiểm Custom DocPerm (patch `v1_create_pos_roles` theo tên DocType, không theo module).
 
 ## 0q. Màn Pha chế: tên khách trên thẻ + toast "Đã làm" (2026-11-24) — ĐÃ TEST PASS trên bench DEV (`76ab2c2`)
 - Chỉ frontend (`pages/Kitchen.tsx`, `styles/global.css`); `get_kitchen_orders` đã có `customer_name` + `is_walk_in` (task 0p), không đổi Python, không thêm request.

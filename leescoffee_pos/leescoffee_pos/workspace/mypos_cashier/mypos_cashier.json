@@ -1,0 +1,82 @@
+{
+ "app": "leescoffee_pos",
+ "charts": [],
+ "content": "[{\"id\":\"mypos_caS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_caS02\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"MYPOS Customer Display\",\"col\":3}},{\"id\":\"mypos_caSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_caC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift\",\"col\":4}}]",
+ "creation": "2026-11-25 10:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "receipt",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "MYPOS Cashier",
+ "links": [
+  {
+   "description": "Open your shift before selling, close it at the end of the day.",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Opening Entry",
+   "link_count": 0,
+   "link_to": "POS Opening Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Closing Entry",
+   "link_count": 0,
+   "link_to": "POS Closing Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-11-25 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Leescoffee POS",
+ "name": "MYPOS Cashier",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "POS CASHIER"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 1.1,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "label": "Open MYPOS",
+   "type": "URL",
+   "url": "/pos"
+  },
+  {
+   "color": "Grey",
+   "label": "MYPOS Customer Display",
+   "type": "URL",
+   "url": "/pos/customer"
+  }
+ ],
+ "standard": 1,
+ "title": "MYPOS Cashier",
+ "type": "Workspace"
+}

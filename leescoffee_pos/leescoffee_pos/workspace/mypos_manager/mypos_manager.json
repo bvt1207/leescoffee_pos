@@ -1,0 +1,214 @@
+{
+ "app": "leescoffee_pos",
+ "charts": [],
+ "content": "[{\"id\":\"mypos_maS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_maS02\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Draft Orders\",\"col\":3}},{\"id\":\"mypos_maS03\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unserved Orders\",\"col\":3}},{\"id\":\"mypos_maSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_maC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift & Cash\",\"col\":4}},{\"id\":\"mypos_maC02\",\"type\":\"card\",\"data\":{\"card_name\":\"Order Handling\",\"col\":4}},{\"id\":\"mypos_maC03\",\"type\":\"card\",\"data\":{\"card_name\":\"Menu & Promotions\",\"col\":4}},{\"id\":\"mypos_maC04\",\"type\":\"card\",\"data\":{\"card_name\":\"QR & Display\",\"col\":4}}]",
+ "creation": "2026-11-25 10:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "chart",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "MYPOS Manager",
+ "links": [
+  {
+   "description": "Open, close and consolidate cashier shifts.",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shift & Cash",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Opening Entry",
+   "link_count": 0,
+   "link_to": "POS Opening Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Closing Entry",
+   "link_count": 0,
+   "link_to": "POS Closing Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Invoice Merge Log",
+   "link_count": 0,
+   "link_to": "POS Invoice Merge Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "Review POS invoices and table cards.",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Order Handling",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "POS Invoice",
+   "link_count": 0,
+   "link_to": "POS Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MYPOS Buzzer",
+   "link_count": 0,
+   "link_to": "MYPOS Buzzer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "Menus, item options, pricing rules and promotions.",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Menu & Promotions",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MYPOS Menu",
+   "link_count": 0,
+   "link_to": "MYPOS Menu",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MYPOS Option Group",
+   "link_count": 0,
+   "link_to": "MYPOS Option Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pricing Rule",
+   "link_count": 0,
+   "link_to": "Pricing Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Promotional Scheme",
+   "link_count": 0,
+   "link_to": "Promotional Scheme",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "description": "QR ordering codes and customer display banners.",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "QR & Display",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MYPOS Order QR",
+   "link_count": 0,
+   "link_to": "MYPOS Order QR",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MYPOS Banner",
+   "link_count": 0,
+   "link_to": "MYPOS Banner",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-11-25 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Leescoffee POS",
+ "name": "MYPOS Manager",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "POS MANAGER"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 1.3,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "label": "Open MYPOS",
+   "type": "URL",
+   "url": "/pos"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{} Draft",
+   "label": "Draft Orders",
+   "link_to": "POS Invoice",
+   "stats_filter": "[[\"POS Invoice\",\"docstatus\",\"=\",0,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "format": "{} Waiting",
+   "label": "Unserved Orders",
+   "link_to": "POS Invoice",
+   "stats_filter": "[[\"POS Invoice\",\"docstatus\",\"=\",1,false],[\"POS Invoice\",\"is_return\",\"=\",0,false],[\"POS Invoice\",\"custom_kitchen_status\",\"in\",[\"Chưa làm\",\"Đã làm\"],false]]",
+   "type": "DocType"
+  }
+ ],
+ "standard": 1,
+ "title": "MYPOS Manager",
+ "type": "Workspace"
+}
