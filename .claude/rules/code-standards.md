@@ -6,7 +6,7 @@
 
 - **DocType name**: Title Case (`MYPOS Menu`)
 - **Fieldname**: snake_case (`order_type`, `price_list`)
-- **Module**: `Leescoffee POS` cho mọi DocType/Workspace — chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
+- **Module**: `Leescoffee POS` cho mọi DocType/Workspace — chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào các workspace MYPOS (`/desk/mypos-*`), vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
 - **Import path**: luôn viết đủ `leescoffee_pos.leescoffee_pos.<path>`, không rút gọn thành 1 cấp.
 
 ## 2. DocType JSON checklist

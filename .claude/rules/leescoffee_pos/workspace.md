@@ -94,7 +94,7 @@ bench --site <site-name> export-fixtures
 - `is_standard: 1` bắt buộc để fixture hoạt động
 - Icon lấy từ [Frappe Icons](https://frappeframework.com/docs/user/en/desk/icons) (ví dụ: `menu`, `coffee`, `table`, `kitchen`)
 
-## 7. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — CHỜ VAN TEST
+## 7. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — ĐÃ TEST PASS trên bench DEV (`8f2e389`)
 
 Bốn workspace, module vẫn `Leescoffee POS`, mỗi file `leescoffee_pos/leescoffee_pos/workspace/<scrub(name)>/<scrub(name)>.json`
 (`standard: 1`, `public: 1`, `app: leescoffee_pos`). Route Desk = `/desk/<slug(name)>`.

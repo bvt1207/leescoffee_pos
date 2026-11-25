@@ -135,7 +135,7 @@ Chữ module phải khớp chính xác `Leescoffee POS` (CLAUDE.md §5).
 
 ## 5. Workspace / Desktop Icon / Workspace Sidebar
 
-**Đảo quyết định 2026-11-12 (`roles: []`) — Van duyệt 2026-11-25, CHỜ TEST:** mỗi vai trò có workspace riêng, giới hạn bằng
+**Đảo quyết định 2026-11-12 (`roles: []`) — Van duyệt 2026-11-25, ĐÃ TEST PASS (`8f2e389`):** mỗi vai trò có workspace riêng, giới hạn bằng
 `Workspace.roles`; mọi workspace giới hạn role kèm thêm `System Manager` để System Manager / Administrator luôn thấy tất cả mà không cần
 role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sidebar: `workspace.md` §7.
 

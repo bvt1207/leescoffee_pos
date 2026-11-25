@@ -49,10 +49,11 @@ PROJECTPOS/                        # git repo
     ├── patches.txt, patches/      # v1_rename_mypos_doctypes.py (pre_model_sync); v1_remove_pos_settings.py,
     │                              # v1_create_pos_roles.py, v1_kitchen_desk_access.py,
     │                              # v1_clear_legacy_option_default.py, v1_kitchen_outcomes.py,
-    │                              # v1_simplify_cancel_review.py, v1_table_card_cleanup.py (post_model_sync)
+    │                              # v1_simplify_cancel_review.py, v1_table_card_cleanup.py,
+    │                              # v1_mypos_workspaces.py (post_model_sync)
     ├── config/, templates/
-    ├── desktop_icon/leescoffee_pos.json
-    ├── workspace_sidebar/leescoffee_pos.json
+    ├── desktop_icon/mypos_cashier.json, mypos_kitchen.json, mypos_manager.json, mypos_admin.json
+    ├── workspace_sidebar/mypos.json   # Workspace Sidebar "MYPOS" (Frappe < 16.50)
     ├── fixtures/custom_field.json, role.json, property_setter.json  # property_setter: lọc chuẩn POS Profile trên list POS Invoice
     ├── public/
     │   ├── images/logo.svg
@@ -82,7 +83,8 @@ PROJECTPOS/                        # git repo
         │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         │   ├── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
         │   └── customer_display_api.py  # màn hình khách /pos/customer: trạng thái theo user (Redis) + banner
-        ├── workspace/leescoffee_pos/leescoffee_pos.json
+        ├── workspace/             # mypos_cashier/, mypos_kitchen/, mypos_manager/, mypos_admin/ (<tên>/<tên>.json)
+        ├── sidebar/mypos/mypos.json   # Sidebar "MYPOS" (Frappe ≥ 16.50)
         └── doctype/
             ├── mypos_buzzer/              # thẻ bàn (đổi từ thẻ rung 2026-11-23; tên cũ leescoffee_buzzer)
             ├── mypos_menu/                # menu theo Price List (tên cũ leescoffee_menu)

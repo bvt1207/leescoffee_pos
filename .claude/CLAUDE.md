@@ -148,6 +148,9 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
 - **Màn hình khách `/pos/customer`** (2026-11-24, đã test Pass, `d13b37c`): chỉ hiển thị, đăng nhập bằng tài khoản thu ngân (thiết bị
   riêng). Trạng thái theo user ở Redis cache (`customer_display_api.py`), realtime + poll 3 giây; tiền luôn do server tính. Banner từ
   DocType `MYPOS Banner` (theo POS Profile, trống = mọi profile, 5 giây đổi ảnh). Chi tiết: `.claude/rules/leescoffee_pos/customer_display.md`.
+- **Workspace Desk theo vai trò** (2026-11-25, đã test Pass, `8f2e389`): MYPOS Cashier / Kitchen / Manager / Admin, giới hạn bằng
+  `Workspace.roles` (+ System Manager), Desktop Icon + Sidebar "MYPOS". Workspace cũ `leescoffee_pos` đã xóa (patch `v1_mypos_workspaces`).
+  Chỉ đổi giao diện: module `Leescoffee POS`, app, route `/pos` giữ nguyên. Chi tiết: `.claude/rules/leescoffee_pos/workspace.md` §7.
 
 ## 3b. Định hướng mở rộng — Kênh QR (app riêng, làm SAU giai đoạn hiện tại)
 
@@ -235,7 +238,7 @@ tạo/sửa** (đường dẫn đầy đủ) — không nói chung chung; (b) kh
   - DocType thuần cấu hình (như MYPOS Menu Item), không có custom lifecycle logic → không thêm doc_events chỉ để cho có.
 - Ví dụ trong mục này viết `...PosInvoiceHooks.on_submit` để minh họa đường dẫn đầy đủ;
   `hooks.py` thực tế reference module-level wrapper `...pos_invoice_hooks.on_submit`.
-- **Tên module (đã thống nhất 2026-11-08):** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào `/desk/leescoffee_pos`, vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
+- **Tên module (đã thống nhất 2026-11-08):** chữ `module` của mọi DocType/Workspace phải **khớp chính xác** `Leescoffee POS` (như `modules.txt`, Module Def). Lệch chữ → user không phải Administrator bị PermissionError khi vào các workspace MYPOS (`/desk/mypos-*`), vì `allowed_modules` lấy từ `module` của các DocType user có quyền Read.
   Mỗi khi sửa `module` trong JSON, thêm/tăng `"modified"` để migrate nạp lại.
 
 ## 6. Triển khai & fixtures

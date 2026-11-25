@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-25 (workspace theo vai trò, tiền tố MYPOS). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0r. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — CHỜ VAN TEST
+## 0r. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — ĐÃ TEST PASS (`8f2e389`)
 - 4 workspace thay workspace `leescoffee_pos`: MYPOS Cashier / MYPOS Kitchen / MYPOS Manager / MYPOS Admin, mỗi workspace có `roles` = role chính +
   System Manager (Admin: chỉ System Manager). 4 Desktop Icon cùng tên + roles. Sidebar "MYPOS" ship 2 dạng (`sidebar/mypos/` cho Frappe ≥ 16.50,
   `workspace_sidebar/mypos.json` cho < 16.50). Patch `v1_mypos_workspaces` (post_model_sync): đối chiếu số dòng con với file, lệch → import lại
