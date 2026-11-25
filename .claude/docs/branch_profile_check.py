@@ -5,16 +5,17 @@ def check_branch_profile(pos_profile):
 	    check_branch_profile("Lee's Coffee POS")
 
 	KHÔNG đụng chi nhánh / profile thật: tạo Branch tạm "ZZTEST BR <hash>", chép `pos_profile` thành 3 profile tạm
-	(A, B cùng Branch tạm; NB để thử thiếu Branch), user tạm zz.test.br.{u,v}@example.com (POS CASHIER), ca mở tạm
+	(A, C ở Branch tạm 1; B ở Branch tạm 2; NB để thử thiếu Branch), user tạm zz.test.br.{u,v}@example.com (POS CASHIER), ca mở tạm
 	(db_insert, bỏ qua hook), banner tạm. Cuối hàm ROLLBACK rồi dọn mọi dữ liệu "ZZTEST BR" / zz.test.br còn sót.
 	Ca:
 	  1  Lưu profile đang bật mà Branch trống -> chặn; đã tắt -> lưu được
-	  2  Lưu profile thứ hai cùng Branch -> lưu được + cảnh báo
+	  2  Mỗi Branch tối đa 1 profile đang bật: profile thứ hai đang bật -> chặn (nêu tên profile kia); tắt -> lưu được;
+	     bật lại -> chặn
 	  3  User chỉ thuộc profile đang bật thiếu Branch -> resolve_pos_profile_name báo lỗi có tên profile
-	  4  User thuộc A, B (không default) -> A (tên A→Z); B default -> B
+	  4  User thuộc A (Branch 1), B (Branch 2), không default -> A (tên A→Z); B default -> B
 	  5  get_buzzers với profile thiếu Branch -> báo lỗi (không trả thẻ mọi chi nhánh)
 	  6  _verify_sepay_key: thiếu Branch / Branch chưa có key / key sai -> 403 + Error Log đúng tiêu đề; key đúng -> qua
-	  7  _get_pos_profile(branch) có 2 profile: không ca -> A; B mở ca -> B
+	  7  _get_pos_profile(branch) có 2 profile đang bật (dữ liệu cũ, tạo bằng cờ self-test): không ca -> A; C mở ca -> C
 	  8  /order _shop: banner public đầu tiên; ảnh private bị bỏ; get_brand_info không còn khóa "banner"
 	"""
 	import traceback
@@ -59,8 +60,10 @@ def check_branch_profile(pos_profile):
 		frappe.db.commit()
 		return profiles
 
-	def make_profile(suffix, branch, users=(), disabled=0):
+	def make_profile(suffix, branch, users=(), disabled=0, shared=False):
 		prof = frappe.copy_doc(frappe.get_doc("POS Profile", pos_profile))
+		if shared:  # giả lập dữ liệu cũ: 2 profile đang bật cùng Branch (bỏ qua quy tắc "1 profile / Branch")
+			prof.flags.mypos_allow_shared_branch = True
 		prof.set("__newname", f"{PREFIX}{suffix}-{tag}")
 		prof.branch = branch
 		prof.disabled = disabled
@@ -79,6 +82,7 @@ def check_branch_profile(pos_profile):
 		purge()
 		frappe.set_user("Administrator")
 		branch = frappe.get_doc({"doctype": "Branch", "branch": f"{PREFIX}{tag}"}).insert(ignore_permissions=True).name
+		branch2 = frappe.get_doc({"doctype": "Branch", "branch": f"{PREFIX}{tag}-2"}).insert(ignore_permissions=True).name
 		users = {}
 		for k in ("u", "v"):
 			email = f"{USER_PREFIX}.{k}.{tag}@example.com"
@@ -92,23 +96,23 @@ def check_branch_profile(pos_profile):
 		e = err_of(make_profile, "Y", None, disabled=1)
 		ok("1b Đã tắt + Branch trống -> lưu được", e is None, f"({e})" if e else "")
 
-		print("== 2. Cảnh báo chi nhánh có profile đang bật khác ==")
+		print("== 2. Mỗi Branch tối đa 1 profile đang bật ==")
 		a = make_profile("A", branch, users=[users["v"]])
-		frappe.clear_messages()
-		b = make_profile("B", branch, users=[users["v"]])
-		def _msg(m):  # message_log: dict hoặc chuỗi JSON (tiếng Việt có thể bị escape \uXXXX)
-			if isinstance(m, str):
-				try:
-					m = frappe.parse_json(m)
-				except Exception:  # noqa: BLE001
-					return m
-			return str(m.get("message") if isinstance(m, dict) else m)
-		msgs = " ".join(_msg(m) for m in (frappe.message_log or []))
-		ok("2 Profile B lưu được + cảnh báo nêu A", a.name in msgs and "đã có POS Profile đang bật" in msgs, f"({msgs[:120]})")
-		frappe.clear_messages()
+		e = err_of(make_profile, "B", branch, users=[users["v"]])
+		ok("2a Profile thứ hai đang bật cùng Branch -> chặn, nêu tên A", e and a.name in str(e) and "chỉ được một POS Profile đang bật" in str(e),
+			f"-> {str(e)[:110]}" if e else "-> KHÔNG chặn")
+		e = err_of(make_profile, "B", branch, users=[users["v"]], disabled=1)
+		ok("2b Đã tắt, cùng Branch -> lưu được", e is None, f"({e})" if e else "")
+		b = frappe.get_doc("POS Profile", f"{PREFIX}B-{tag}")
+		b.disabled = 0
+		e = err_of(b.save, ignore_permissions=True)
+		ok("2c Bật lại khi A còn bật -> chặn", e and a.name in str(e), f"-> {str(e)[:110]}" if e else "-> KHÔNG chặn")
+		b = frappe.get_doc("POS Profile", b.name)
+		b.branch, b.disabled = branch2, 0
+		b.save(ignore_permissions=True)  # B sang Branch tạm 2 cho ca 4
 
 		print("== 3. resolve_pos_profile_name: profile của user thiếu Branch ==")
-		nb = make_profile("NB", branch, users=[users["u"]])
+		nb = make_profile("NB", branch, users=[users["u"]], shared=True)
 		frappe.db.set_value("POS Profile", nb.name, "branch", None)  # dữ liệu cũ: bỏ qua validate
 		frappe.set_user(users["u"])
 		e = err_of(BC.resolve_pos_profile_name)
@@ -156,14 +160,15 @@ def check_branch_profile(pos_profile):
 		S._received_sepay_key = orig_key
 
 		print("== 7. Chọn profile của chi nhánh ==")
+		c = make_profile("C", branch, shared=True)
 		p1 = P._get_pos_profile(branch).name
 		ok("7a Không ca nào mở -> A", p1 == a.name, f"({p1})")
-		shift = frappe.get_doc({"doctype": "POS Opening Entry", "name": f"{PREFIX}SHIFT-{tag}", "pos_profile": b.name,
-			"company": b.company, "user": users["v"], "status": "Open", "docstatus": 1,
+		shift = frappe.get_doc({"doctype": "POS Opening Entry", "name": f"{PREFIX}SHIFT-{tag}", "pos_profile": c.name,
+			"company": c.company, "user": users["v"], "status": "Open", "docstatus": 1,
 			"period_start_date": frappe.utils.now_datetime(), "posting_date": frappe.utils.nowdate()})
 		shift.db_insert()
 		p2 = P._get_pos_profile(branch).name
-		ok("7b B mở ca -> B", p2 == b.name, f"({p2})")
+		ok("7b C mở ca -> C", p2 == c.name, f"({p2})")
 		frappe.db.delete("POS Opening Entry", {"name": shift.name})
 
 		print("== 8. Ảnh đầu trang /order ==")

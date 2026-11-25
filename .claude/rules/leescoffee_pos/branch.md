@@ -18,9 +18,21 @@
 ## 2. Xác định chi nhánh
 
 - Có POS Invoice / POS Profile → `POS Profile.branch`.
-- **POS Profile đang bật bắt buộc có Branch** (2026-11-25, `pos_profile_hooks._check_branch`): thiếu → chặn lưu ("… đang bật nhưng chưa
-  gán Chi nhánh …"); profile đã tắt thì lưu được. Chi nhánh đã có profile đang bật khác → cảnh báo cam (không chặn). Không đặt `reqd`
-  trong fixture, không patch: dữ liệu cũ chỉ bị chặn ở lần lưu kế tiếp.
+- **Quy tắc 1 — POS Profile đang bật bắt buộc có Branch** (2026-11-25, `pos_profile_hooks._check_branch`): thiếu → chặn lưu
+  ("… đang bật nhưng chưa gán Chi nhánh …"); profile đã tắt (`disabled = 1`) thì lưu được.
+- **Quy tắc 2 — mỗi Branch tối đa MỘT POS Profile đang bật** (2026-11-25, cùng hàm): profile đang bật, có Branch, mà đã có profile
+  khác đang bật cùng Branch → **chặn lưu**, thông báo nêu tên profile đang chiếm Branch + cách xử lý (tắt profile kia, chọn Branch khác,
+  hoặc tắt profile này). Profile đã tắt lưu thoải mái, kể cả cùng Branch. Bật lại profile đã tắt cũng đi qua kiểm tra này.
+  - **Lý do:** web QR `/order` chỉ biết **Branch** (`MYPOS Order QR` không có field POS Profile) → từ Branch phải ra đúng MỘT profile
+    (kho, Price List / menu, ca, owner đơn để đóng ca gom đúng). Hai profile cùng Branch làm đơn QR rơi vào profile tùy ca đang mở.
+  - Không đặt `reqd` trong fixture, không patch, không tự sửa dữ liệu: profile đang vi phạm chỉ bị chặn ở **lần lưu kế tiếp**.
+    Kiểm tra trước (bench console, chỉ đọc):
+    ``frappe.db.sql("select branch, group_concat(name) from `tabPOS Profile` where disabled = 0 group by branch having count(*) > 1")``
+  - Self-test cần profile tạm cùng Branch với profile thật: đặt `prof.flags.mypos_allow_shared_branch = True` trong code
+    (`.claude/docs/*_check.py`); cờ không đặt được qua Desk / API.
+  - **Mở rộng nhiều tầng sau này** (vd. nhiều quầy / khu vực trong một chi nhánh): thêm field `pos_profile` (Link) trên `MYPOS Order QR`
+    để mỗi mã QR trỏ thẳng profile; `customer_order_api` lấy profile từ mã QR thay vì từ Branch; khi đó nới quy tắc 2 (cho nhiều
+    profile đang bật cùng Branch nếu mọi mã QR của Branch đã chọn profile). Chưa làm.
 - Không có (gọi `get_default_branch()` hoặc `_get_pos_profile()` không truyền branch) →
   `branch_config.resolve_pos_profile_name()` (2026-11-25):
   1. User nằm trong "Applicable for Users" của ít nhất một POS Profile **đang bật** → profile đầu tiên (`default = 1` trước, rồi tên
@@ -28,11 +40,9 @@
      (trước đây lặng lẽ dùng profile duy nhất có Branch — sai kho, giá, ca).
   2. User không thuộc profile đang bật nào (vd. Administrator / System Manager): đúng **một** POS Profile đang bật có `branch`.
   3. Còn lại → `frappe.throw`.
-- `_get_pos_profile(branch_name)` (dùng cho web QR `customer_order_api._profile`) → `pos_api._branch_profile_name`: chi nhánh có
-  ≥ 2 profile đang bật → profile **đang mở ca** đầu tiên theo tên A→Z, không có thì profile đầu theo tên (trước đây `get_value`
-  không sắp xếp). Một profile → không thêm truy vấn. Không có profile → throw.
-  - Hệ quả: nếu các profile cùng chi nhánh dùng Price List khác nhau, menu `/order` đổi theo ca đang mở. Khuyến nghị: mỗi chi nhánh
-    MỘT profile đang bật (profile thử nghiệm: tắt hoặc gán Branch test riêng).
+- `_get_pos_profile(branch_name)` (dùng cho web QR `customer_order_api._profile`) → `pos_api._branch_profile_name`: phòng thủ cho
+  dữ liệu cũ vi phạm quy tắc 2 — chi nhánh có ≥ 2 profile đang bật → profile **đang mở ca** đầu tiên theo tên A→Z, không có thì profile
+  đầu theo tên (trước đây `get_value` không sắp xếp). Một profile → không thêm truy vấn. Không có profile → throw.
 - `pos_api.get_buzzers`: profile thiếu Branch → throw (không lọc rỗng = thẻ mọi chi nhánh).
 
 ## 3. Kiểm tra company
@@ -57,7 +67,7 @@
 - [ ] `sepay_enabled` = 1, `sepay_va_account`, `sepay_bank_code`, `sepay_api_key` (trùng key cấu hình bên SePay; thiếu key → webhook
       và đặt món QR không chạy)
 
-**POS Profile** (mỗi chi nhánh **một** profile đang bật)
+**POS Profile** (mỗi chi nhánh **một** profile đang bật — bắt buộc, §2 quy tắc 2; profile thử nghiệm: tắt hoặc gán Branch test riêng)
 - [ ] `company`, `warehouse`, `selling_price_list` (phải có `MYPOS Menu` cùng Price List), `currency`
 - [ ] **`branch`** (bắt buộc khi profile đang bật)
 - [ ] `custom_walk_in_customer` — Khách vãng lai (Customer không SĐT, không Loyalty Program; `pos_profile.md` §5)

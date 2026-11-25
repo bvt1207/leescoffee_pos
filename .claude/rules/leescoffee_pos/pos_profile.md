@@ -21,7 +21,7 @@
 | Điều kiện | Mức |
 |---|---|
 | Profile đang bật, `branch` trống (2026-11-25) | Chặn (`branch.md` §2) |
-| Chi nhánh đã có profile đang bật khác (2026-11-25) | Cảnh báo — vẫn lưu |
+| Profile đang bật, Branch đã có profile khác đang bật (2026-11-25) | Chặn (`branch.md` §2 quy tắc 2); profile đã tắt thì lưu được |
 | Customer không tồn tại | Chặn |
 | Customer disabled | Chặn |
 | Customer có Loyalty Program | Chặn (khách vãng lai không tích điểm) |

@@ -4,7 +4,9 @@
 > Đọc file này đầu phiên mới.
 
 ## 0s. POS Profile bắt buộc Branch + bỏ Branch.brand_banner (2026-11-25) — CHỜ VAN TEST
-- Profile đang bật thiếu Branch → chặn lưu; chi nhánh có profile đang bật khác → cảnh báo (`pos_profile_hooks._check_branch`).
+- Profile đang bật thiếu Branch → chặn lưu; mỗi Branch tối đa 1 profile đang bật → chặn lưu (`pos_profile_hooks._check_branch`).
+  Lee's Coffee POS + POS TEST cùng Branch: Van tự tắt POS TEST trên Desk (code không sửa dữ liệu). Self-test cũ dùng cờ
+  `flags.mypos_allow_shared_branch` cho profile tạm.
 - `resolve_pos_profile_name`: profile đang bật của user thiếu Branch → lỗi rõ, không rơi sang profile khác. `get_buzzers`: thiếu Branch
   → lỗi. `_get_pos_profile(branch)`: nhiều profile → đang mở ca trước, rồi tên A→Z. Webhook SePay: Error Log đúng lý do (vẫn 403).
 - `/order` lấy ảnh đầu trang từ MYPOS Banner public (`mypos_banner.active_banners`, dùng chung màn khách); bỏ Custom Field

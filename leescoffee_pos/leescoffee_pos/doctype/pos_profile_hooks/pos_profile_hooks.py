@@ -8,7 +8,7 @@ Quy tắc:
   không dùng được để đăng nhập web đặt món QR.
 - Field chuẩn `POS Profile.customer` của ERPNext KHÔNG được đọc (app không dùng màn POS gốc).
 
-Branch (2026-11-25): profile ĐANG BẬT phải có Branch (chặn lưu); chi nhánh đã có profile đang bật khác -> cảnh báo.
+Branch (2026-11-25): profile ĐANG BẬT phải có Branch, và mỗi Branch tối đa MỘT profile đang bật (cả hai: chặn lưu).
 
 doc_events: POS Profile.validate -> `validate` (hooks.py).
 """
@@ -116,6 +116,10 @@ def _check_branch(doc):
 			).format(doc.name or _("mới")),
 			title=_("Thiếu chi nhánh"),
 		)
+	# Mỗi Branch tối đa MỘT profile đang bật: web QR /order chỉ biết Branch (MYPOS Order QR không có profile).
+	# Cờ flags.mypos_allow_shared_branch chỉ đặt được trong code (self-test .claude/docs/*_check.py), không qua Desk/API.
+	if doc.flags.get("mypos_allow_shared_branch"):
+		return
 	others = frappe.get_all(
 		"POS Profile",
 		filters={"branch": branch, "disabled": 0, "name": ["!=", doc.name or ""]},
@@ -123,13 +127,12 @@ def _check_branch(doc):
 		order_by="name asc",
 	)
 	if others:
-		frappe.msgprint(
+		frappe.throw(
 			_(
-				"Chi nhánh {0} đã có POS Profile đang bật: {1}. Đơn QR của chi nhánh sẽ ưu tiên profile đang mở ca, "
-				"sau đó theo tên (A→Z). Nên giữ mỗi chi nhánh một POS Profile đang bật."
+				"Chi nhánh {0} đã có POS Profile đang bật: {1}. Mỗi chi nhánh chỉ được một POS Profile đang bật. "
+				"Hãy tắt (Disabled) profile kia trước, chọn Branch khác cho profile này, hoặc tắt profile này."
 			).format(branch, ", ".join(others)),
-			indicator="orange",
-			alert=True,
+			title=_("Chi nhánh đã có POS Profile"),
 		)
 
 

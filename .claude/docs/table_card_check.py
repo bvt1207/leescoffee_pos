@@ -184,6 +184,9 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 			prof.set("applicable_for_users", [])
 			for key in members:
 				prof.append("applicable_for_users", {"user": users[key], "default": 1})
+			# 2026-11-25: mỗi Branch tối đa 1 profile đang bật (pos_profile_hooks). Profile tạm cùng Branch với profile thật
+			# -> bật cờ chỉ dùng cho self-test (không đặt được từ Desk/API).
+			prof.flags.mypos_allow_shared_branch = True
 			prof.insert(ignore_permissions=True)
 			ctx["profiles"].append(prof.name)
 			return prof.name
