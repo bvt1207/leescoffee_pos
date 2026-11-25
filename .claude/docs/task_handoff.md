@@ -1,7 +1,16 @@
 # Task Handoff — Leescoffee POS
 
-> Cập nhật 2026-11-25 (workspace theo vai trò, tiền tố MYPOS). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
+> Cập nhật 2026-11-25 (POS Profile bắt buộc Branch, bỏ Branch.brand_banner). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
+
+## 0s. POS Profile bắt buộc Branch + bỏ Branch.brand_banner (2026-11-25) — CHỜ VAN TEST
+- Profile đang bật thiếu Branch → chặn lưu; chi nhánh có profile đang bật khác → cảnh báo (`pos_profile_hooks._check_branch`).
+- `resolve_pos_profile_name`: profile đang bật của user thiếu Branch → lỗi rõ, không rơi sang profile khác. `get_buzzers`: thiếu Branch
+  → lỗi. `_get_pos_profile(branch)`: nhiều profile → đang mở ca trước, rồi tên A→Z. Webhook SePay: Error Log đúng lý do (vẫn 403).
+- `/order` lấy ảnh đầu trang từ MYPOS Banner public (`mypos_banner.active_banners`, dùng chung màn khách); bỏ Custom Field
+  `Branch-brand_banner` (fixture + patch `v1_remove_brand_banner`, có log sao lưu đường dẫn ảnh).
+- Checklist cấu hình 1 cửa hàng (UAT): `branch.md` §5. Self-test: `.claude/docs/branch_profile_check.py` (`check_branch_profile(...)`).
+- Chờ sau khi Pass: CLAUDE.md §1b (bỏ `brand_banner` khỏi danh sách field thương hiệu), `project-structure.md` (patch mới, script test).
 
 ## 0r. Workspace theo vai trò, tiền tố MYPOS (2026-11-25) — ĐÃ TEST PASS (`8f2e389`)
 - 4 workspace thay workspace `leescoffee_pos`: MYPOS Cashier / MYPOS Kitchen / MYPOS Manager / MYPOS Admin, mỗi workspace có `roles` = role chính +

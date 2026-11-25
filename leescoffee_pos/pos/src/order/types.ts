@@ -7,13 +7,14 @@ export type OrderTypeValue = "Take Away" | "Dine In";
 export interface Brand {
 	name: string;
 	logo: string;
-	banner: string;
 	phone: string;
 	address: string;
 }
 
 export interface Shop {
 	brand: Brand;
+	/** Ảnh đầu trang đăng nhập: MYPOS Banner public đầu tiên ('' = không có). */
+	banner: string;
 	is_open: boolean;
 	order_types: OrderTypeValue[];
 	pay_window_minutes: number;

@@ -562,18 +562,31 @@ def verify_sepay_key_for_branch(branch_name, received):
 
 
 def _verify_sepay_key(invoice):
-    """Chặn webhook giả: key gửi kèm phải khớp sepay_api_key của Branch của đơn."""
-    branch_name = (
-        frappe.db.get_value("POS Profile", invoice.pos_profile, "branch")
-        if invoice.pos_profile
-        else None
+    """Chặn webhook giả: key gửi kèm phải khớp sepay_api_key của Branch của đơn.
+
+    Luôn 403 khi không xác thực được; Error Log ghi ĐÚNG lý do (2026-11-25): đơn không có POS Profile,
+    POS Profile thiếu Branch, Branch chưa có API key, hoặc key sai / thiếu.
+    """
+    from frappe.utils.password import get_decrypted_password
+
+    profile = invoice.get("pos_profile")
+    branch_name = frappe.db.get_value("POS Profile", profile, "branch") if profile else None
+    if not profile:
+        title = "SePay webhook: đơn không có POS Profile"
+    elif not branch_name:
+        title = "SePay webhook: POS Profile thiếu Branch"
+    elif not get_decrypted_password("Branch", branch_name, "sepay_api_key", raise_exception=False):
+        title = "SePay webhook: Branch chưa cấu hình API key"
+    elif not verify_sepay_key_for_branch(branch_name, _received_sepay_key()):
+        title = "SePay webhook: sai hoặc thiếu API key"
+    else:
+        return
+    frappe.log_error(
+        title=title,
+        message=f"invoice={invoice.name}\npos_profile={profile}\nbranch={branch_name}"
+        f"\nip={getattr(frappe.local, 'request_ip', None)}",
     )
-    if not verify_sepay_key_for_branch(branch_name, _received_sepay_key()):
-        frappe.log_error(
-            title="SePay webhook: sai hoặc thiếu API key",
-            message=f"invoice={invoice.name}\nbranch={branch_name}\nip={getattr(frappe.local, 'request_ip', None)}",
-        )
-        raise frappe.PermissionError(_("Webhook SePay không hợp lệ."))
+    raise frappe.PermissionError(_("Webhook SePay không hợp lệ."))
 
 
 def update_sepay_payment_log(invoice_name, log_entry):

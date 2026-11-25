@@ -154,6 +154,8 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
 - **"Đơn của tôi"**: `MyOrdersPanel` 2 vùng "Đang xử lý" / "Lịch sử (30 ngày)", mỗi vùng có trạng thái rỗng. Vào lại
   (F5 / đăng nhập) mà có đơn active → tự mở panel 1 lần. Banner sẵn sàng chỉ cho đơn `ready` thuộc nhóm active.
   Poll 5 giây chỉ khi có đơn active, tab hiện, không ở PaymentView.
+- **Ảnh đầu trang LoginView** (2026-11-25): `get_shop().banner` = MYPOS Banner public đầu tiên của POS Profile chi nhánh
+  (`customer_display.md` §4); rỗng → không hiện ảnh. Không còn `brand.banner` (Branch.brand_banner đã bỏ).
 - **Luồng**: get_shop → LoginView → chọn Mang đi/Tại quán (lưu trong phiên, đổi được ở giỏ) → MenuView (tab nhóm,
   tìm kiếm) → ItemSheet (size, chip option, số lượng) → CartSheet (preview trễ 400ms, CTKM, điểm/hạng, ghi chú)
   → create_order → PaymentView (create_payment_qr, đếm ngược theo `expires_in` của server, poll get_order 3 giây)

@@ -132,16 +132,12 @@ def _require_sale_role():
 def _get_pos_profile(branch_name=None):
 	"""Trả về POS Profile đang dùng.
 
-	- Có `branch_name`: POS Profile đang bật của chi nhánh đó, không có thì throw.
+	- Có `branch_name`: POS Profile đang bật của chi nhánh đó (`_branch_profile_name`), không có thì throw.
 	- Không có: `resolve_pos_profile_name()` (POS Profile gán cho user, hoặc
 	  POS Profile đang bật duy nhất; không xác định được thì throw).
 	"""
 	if branch_name:
-		profile_name = frappe.db.get_value(
-			"POS Profile",
-			{"branch": branch_name, "disabled": 0},
-			"name",
-		)
+		profile_name = _branch_profile_name(branch_name)
 		if not profile_name:
 			frappe.throw(
 				_("Chi nhánh {0} chưa có POS Profile đang bật. Vui lòng tạo POS Profile và gán Branch.").format(
@@ -152,6 +148,24 @@ def _get_pos_profile(branch_name=None):
 		profile_name = resolve_pos_profile_name()
 
 	return frappe.get_doc("POS Profile", profile_name)
+
+
+def _branch_profile_name(branch_name):
+	"""POS Profile đang bật của chi nhánh, chọn XÁC ĐỊNH khi có nhiều profile (2026-11-25):
+	profile đang mở ca (A→Z) trước, không có thì profile đầu theo tên A→Z. Một profile -> không thêm truy vấn."""
+	names = frappe.get_all(
+		"POS Profile", filters={"branch": branch_name, "disabled": 0}, pluck="name", order_by="name asc"
+	)
+	if len(names) <= 1:
+		return names[0] if names else None
+	open_profiles = set(
+		frappe.get_all(
+			"POS Opening Entry",
+			filters={"pos_profile": ["in", names], "status": "Open", "docstatus": 1},
+			pluck="pos_profile",
+		)
+	)
+	return next((n for n in names if n in open_profiles), names[0])
 
 
 def _company_warnings(profile):
@@ -622,11 +636,14 @@ def get_buzzers(branch_name=None):
 
 	status trả về tính theo đơn còn giữ ("Đang dùng" / "Sẵn sàng"), không theo field status lưu trên thẻ."""
 	profile = _get_pos_profile(branch_name)
-	branch = getattr(profile, "branch", None) or branch_name
+	branch = getattr(profile, "branch", None)
+	if not branch:
+		# Không bao giờ lọc rỗng (= thẻ của mọi chi nhánh).
+		frappe.throw(_("POS Profile {0} chưa được gán chi nhánh nên chưa thể gán thẻ bàn.").format(profile.name))
 
 	buzzers = frappe.get_all(
 		"MYPOS Buzzer",
-		filters={"branch": branch} if branch else {},
+		filters={"branch": branch},
 		fields=["name", "buzzer_number", "status", "branch"],
 		order_by="buzzer_number asc",
 	)

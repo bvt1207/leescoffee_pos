@@ -3,7 +3,6 @@ export type OrderType = "Take Away" | "Dine In";
 export interface BrandInfo {
 	name: string;
 	logo: string;
-	banner: string;
 	phone: string;
 	address: string;
 }

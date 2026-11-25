@@ -38,7 +38,7 @@ export default function LoginView({
 
 	return (
 		<main className="qo-login">
-			{shop.brand.banner ? <img className="qo-login__banner" src={shop.brand.banner} alt="" /> : null}
+			{shop.banner ? <img className="qo-login__banner" src={shop.banner} alt="" /> : null}
 			<div className="qo-login__card">
 				<BrandHeader brand={shop.brand} />
 				<h1 className="qo-login__title">Đặt món không cần xếp hàng</h1>

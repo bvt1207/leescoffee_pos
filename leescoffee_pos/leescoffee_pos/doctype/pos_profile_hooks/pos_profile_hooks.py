@@ -8,6 +8,8 @@ Quy tắc:
   không dùng được để đăng nhập web đặt món QR.
 - Field chuẩn `POS Profile.customer` của ERPNext KHÔNG được đọc (app không dùng màn POS gốc).
 
+Branch (2026-11-25): profile ĐANG BẬT phải có Branch (chặn lưu); chi nhánh đã có profile đang bật khác -> cảnh báo.
+
 doc_events: POS Profile.validate -> `validate` (hooks.py).
 """
 
@@ -101,5 +103,36 @@ def _check_walk_in(doc):
 		)
 
 
+def _check_branch(doc):
+	"""Profile đang bật phải gán Branch: /pos, màn khách, SePay, thẻ bàn, đơn QR đều tìm chi nhánh qua field này."""
+	if doc.get("disabled"):
+		return
+	branch = doc.get("branch")
+	if not branch:
+		frappe.throw(
+			_(
+				"POS Profile {0} đang bật nhưng chưa gán Chi nhánh (Branch). "
+				"Chọn Branch trước khi lưu, hoặc tắt profile (Disabled)."
+			).format(doc.name or _("mới")),
+			title=_("Thiếu chi nhánh"),
+		)
+	others = frappe.get_all(
+		"POS Profile",
+		filters={"branch": branch, "disabled": 0, "name": ["!=", doc.name or ""]},
+		pluck="name",
+		order_by="name asc",
+	)
+	if others:
+		frappe.msgprint(
+			_(
+				"Chi nhánh {0} đã có POS Profile đang bật: {1}. Đơn QR của chi nhánh sẽ ưu tiên profile đang mở ca, "
+				"sau đó theo tên (A→Z). Nên giữ mỗi chi nhánh một POS Profile đang bật."
+			).format(branch, ", ".join(others)),
+			indicator="orange",
+			alert=True,
+		)
+
+
 def validate(doc, method=None):
+	_check_branch(doc)
 	_check_walk_in(doc)

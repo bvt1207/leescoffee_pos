@@ -19,7 +19,7 @@ import time
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, getdate, now_datetime, nowdate
+from frappe.utils import cint, flt, now_datetime
 
 from ..doctype.branch_config.branch_config import get_brand_info, resolve_pos_profile_name
 from ..doctype.pos_profile_hooks.pos_profile_hooks import get_walk_in_customer
@@ -259,22 +259,10 @@ def touch_cancelled(invoice_name, owner=None):
 def get_customer_display_config():
 	"""Thương hiệu (Branch) + banner của POS Profile người gọi. Không trả cấu hình SePay / kế toán."""
 	_user, profile_name = _require_display_user()
+	from ..doctype.mypos_banner.mypos_banner import active_banners
+
 	profile = frappe.db.get_value("POS Profile", profile_name, ["branch", "currency", "company"], as_dict=True)
-	today = getdate(nowdate())
-	rows = frappe.get_all(
-		"MYPOS Banner",
-		filters={"enabled": 1},
-		or_filters=[["pos_profile", "is", "not set"], ["pos_profile", "=", profile_name]],
-		fields=["title", "image", "valid_from", "valid_upto", "sort_order", "creation"],
-		order_by="sort_order asc, creation asc",
-	)
-	banners = [
-		{"title": r.title, "image": r.image}
-		for r in rows
-		if r.image
-		and (not r.valid_from or getdate(r.valid_from) <= today)
-		and (not r.valid_upto or getdate(r.valid_upto) >= today)
-	]
+	banners = active_banners(profile_name)
 	return {
 		"brand": get_brand_info(profile.branch) if profile.branch else {},
 		"currency": profile.currency or frappe.db.get_value("Company", profile.company, "default_currency"),

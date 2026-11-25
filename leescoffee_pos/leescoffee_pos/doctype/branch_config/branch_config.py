@@ -5,10 +5,11 @@ from frappe import _
 def resolve_pos_profile_name():
     """Xác định POS Profile khi nơi gọi không truyền chi nhánh.
 
-    Thứ tự:
-      1. POS Profile đang bật, có gán branch, mà user hiện tại nằm trong bảng
-         "POS Profile User" (applicable_for_users). Ưu tiên dòng `default = 1`.
-      2. Nếu không có: đúng MỘT POS Profile đang bật có gán branch.
+    Thứ tự (2026-11-25):
+      1. User nằm trong "Applicable for Users" của ít nhất một POS Profile ĐANG BẬT -> lấy profile đầu tiên
+         (`default = 1` trước, rồi tên A→Z). Profile đó thiếu branch -> throw, KHÔNG rơi sang profile khác.
+      2. User không thuộc profile đang bật nào (vd. Administrator / System Manager): đúng MỘT POS Profile đang bật
+         có gán branch.
       3. Còn lại: frappe.throw (không đoán bừa).
 
     Returns:
@@ -19,11 +20,31 @@ def resolve_pos_profile_name():
         filters={"user": frappe.session.user, "parenttype": "POS Profile"},
         fields=["parent", "default"],
     )
-    # Frappe v16 chặn backtick trong order_by -> sắp xếp bằng Python (default = 1 trước).
-    user_rows.sort(key=lambda r: r.get("default") or 0, reverse=True)
-    for row in user_rows:
-        if frappe.db.get_value("POS Profile", {"name": row.parent, "disabled": 0, "branch": ["is", "set"]}, "name"):
-            return row.parent
+    if user_rows:
+        enabled = {
+            p.name: p.branch
+            for p in frappe.get_all(
+                "POS Profile",
+                filters={"name": ["in", list({r.parent for r in user_rows})], "disabled": 0},
+                fields=["name", "branch"],
+            )
+        }
+        # Frappe v16 chặn backtick trong order_by -> sắp xếp bằng Python: default = 1 trước, rồi tên A→Z.
+        rows = sorted(
+            (r for r in user_rows if r.parent in enabled),
+            key=lambda r: (-(r.get("default") or 0), r.parent),
+        )
+        if rows:
+            chosen = rows[0].parent
+            if not enabled[chosen]:
+                frappe.throw(
+                    _(
+                        "POS Profile {0} của bạn chưa được gán chi nhánh (Branch). "
+                        "Nhờ quản lý chọn Branch cho profile này."
+                    ).format(chosen),
+                    title=_("Thiếu chi nhánh"),
+                )
+            return chosen
 
     profiles = frappe.get_all(
         "POS Profile",
@@ -88,7 +109,6 @@ def get_branch_config(branch_name=None):
     # Branding - chỉ đọc từ Branch
     config["brand_name"] = branch.get("brand_name") or ""
     config["brand_logo"] = branch.get("brand_logo") or ""
-    config["brand_banner"] = branch.get("brand_banner") or ""
     config["brand_phone"] = branch.get("brand_phone") or ""
     config["brand_address"] = branch.get("brand_address") or ""
 
@@ -142,7 +162,6 @@ def get_brand_info(branch_name=None):
     return {
         "name": branch.get("brand_name") or "",
         "logo": branch.get("brand_logo") or "",
-        "banner": branch.get("brand_banner") or "",
         "phone": branch.get("brand_phone") or "",
         "address": branch.get("brand_address") or "",
     }

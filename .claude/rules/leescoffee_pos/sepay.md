@@ -22,6 +22,8 @@
   `payment_code`; nhận header `Authorization: Apikey <key>` hoặc `?key=<key>` trên URL webhook; sai/thiếu → 403
   (`PermissionError` không bị bọc) + Error Log. Branch chưa có key → mọi webhook bị từ chối.
   Chống xử lý lặp theo `transaction_ref`. Chi tiết + lưu ý 401 của Frappe: `order-qr.md` §3.
+  Error Log theo đúng lý do (2026-11-25, vẫn 403): "SePay webhook: đơn không có POS Profile" / "… POS Profile thiếu Branch" /
+  "… Branch chưa cấu hình API key" / "… sai hoặc thiếu API key" (key gửi kèm sai hoặc không có).
 - **Chỉ đọc Branch** cho SePay config (branding cũng chỉ đọc Branch — xem `branch.md`).
 - **Không dùng** `merchant_code`, `secret_key`, `env`, `callback_url` (đã loại bỏ).
 
