@@ -10,7 +10,8 @@
 - D1: Pha chế chỉ đơn của POS Profile user thuộc về; pha chế không thuộc profile → lỗi rõ ràng. **Cấu hình: thêm tài khoản pha chế vào
   Applicable for Users** (`branch.md` §5) TRƯỚC khi copy.
 - Kiểm: `.claude/docs/poll_load_check.py` (`check_poll_load`). Chi tiết: `rules/leescoffee_pos/realtime.md`; triển khai thật: `.claude/docs/deploy.md`.
-- **Giai đoạn 3 (chưa làm, chờ PASS):** publish_realtime phòng `all` (D2-i) + poll 30 giây khi socket kết nối (`realtime.md` §5). Phần docs đã có.
+- **Giai đoạn 3 (làm 2026-11-25, CHỜ VAN TEST):** publish_realtime `mypos_pos_changed` {p, v} phòng `all` (D2-i) sau mỗi lần tăng phiên bản;
+  Pha chế / Orders / thu ngân / màn khách poll 30 giây khi socket kết nối, về 4 giây (màn khách 3 giây) khi mất (`realtime.md` §5).
 - DEV socket.io: mở `http://localhost:8001` (không phải `127.0.0.1`), `realtime.md` §6.
 
 ## 0u. Làm gọn workspace + list POS Invoice + sidebar Manager (2026-11-26) — ĐÃ TEST PASS (`6cf87db`)

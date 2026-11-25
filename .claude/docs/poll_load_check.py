@@ -1,5 +1,5 @@
 def check_poll_load(pos_profile, item_code, mode_of_payment, price_list=None, rounds=20):
-	"""Giảm tải poll (2026-11-25, giai đoạn 1 + 2): phiên bản thay đổi theo POS Profile (change_feed.py + get_pos_changes),
+	"""Giảm tải poll (2026-11-25, giai đoạn 1 + 2 + realtime giai đoạn 3 mục 2d): phiên bản thay đổi theo POS Profile (change_feed.py + get_pos_changes),
 	Pha chế chỉ đơn của profile user thuộc về (D1), get_orders_shift, bỏ N+1 số thẻ bàn. In thêm số truy vấn SQL + thời gian
 	mỗi API để so trước / sau.
 
@@ -247,6 +247,19 @@ def check_poll_load(pos_profile, item_code, mode_of_payment, price_list=None, ro
 		frappe.db.commit()
 		ok("2c commit -> phiên bản đổi", ver(prof1) != v0, f"({v0} -> {ver(prof1)})")
 		frappe.flags.mypos_chg_immediate = True
+
+		print("== 2d. Realtime (giai đoạn 3): sự kiện phòng 'all', payload CHỈ {p, v} ==")
+		sent = []
+		orig_pub = frappe.publish_realtime
+		frappe.publish_realtime = lambda *a, **kw: sent.append((a, kw))
+		try:
+			CF.bump(prof1)
+		finally:
+			frappe.publish_realtime = orig_pub
+		ev = sent[-1] if sent else None
+		ok("2d bump -> publish_realtime('mypos_pos_changed', {p, v}, room='all'), v = phiên bản hiện tại",
+			ev is not None and ev[0][0] == "mypos_pos_changed" and ev[1].get("room") == "all"
+			and set(ev[0][1]) == {"p", "v"} and ev[0][1]["p"] == prof1 and ev[0][1]["v"] == ver(prof1), f"({ev})")
 
 		print("== 3. get_pos_changes ==")
 		res, err = as_user("A", P.get_pos_changes)

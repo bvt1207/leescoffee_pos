@@ -5,7 +5,9 @@
 - `bump(profile)` tăng sau khi giao dịch commit (rollback -> không tăng): POS Invoice `on_change` (mọi save / submit / cancel /
   update_after_submit / db_set, kể cả insert), `order_cancel.cancel_draft` (set_value không chạy hook), POS Opening / Closing Entry.
 - Chỉ đọc / ghi Redis; lỗi chỉ ghi Error Log, không chặn bán hàng.
-- Giai đoạn 3 (chưa làm): `bump` gọi thêm publish_realtime tới phòng "all" (payload chỉ {p, v}) — `rules/leescoffee_pos/realtime.md`.
+- Giai đoạn 3 (2026-11-25): sau khi tăng, publish_realtime REALTIME_EVENT tới phòng "all" (mọi System User đang kết nối, quyết định D2-i),
+  payload CHỈ {p: tên POS Profile, v: phiên bản} — không dữ liệu đơn / khách / tiền; client tự lọc theo profile của mình.
+  Socket lỗi -> bỏ qua (client vẫn poll phiên bản). `rules/leescoffee_pos/realtime.md` §5.
 """
 
 import secrets
@@ -13,6 +15,7 @@ import secrets
 import frappe
 
 COUNTER_PREFIX = "mypos_chg:"
+REALTIME_EVENT = "mypos_pos_changed"
 # POS Profile của user cho get_pos_changes (đọc DB một lần, giữ ngắn; lưu POS Profile -> xóa hết).
 PROFILE_CACHE_PREFIX = "mypos_user_profile:"
 PROFILE_CACHE_SECONDS = 300
@@ -41,9 +44,22 @@ def _incr(profile):
 	try:
 		key = _key(COUNTER_PREFIX + profile)
 		_seed(key)
-		frappe.cache.incr(key)
+		version = frappe.cache.incr(key)
 	except Exception:
 		frappe.log_error(title="MYPOS: không tăng được phiên bản thay đổi", message=frappe.get_traceback())
+		return
+	_publish(profile, version)
+
+
+def _publish(profile, version):
+	"""Báo realtime phòng "all" (truyền room rõ ràng: trong job nền Frappe mặc định gửi vào phòng task)."""
+	try:
+		from frappe.realtime import get_site_room
+
+		frappe.publish_realtime(REALTIME_EVENT, {"p": profile, "v": str(version)}, room=get_site_room())
+	except Exception:
+		# Socket / Redis pub-sub không chạy -> client vẫn nhận qua poll phiên bản.
+		pass
 
 
 def bump(profile):

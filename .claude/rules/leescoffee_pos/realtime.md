@@ -58,13 +58,16 @@ Số request khi KHÔNG có thay đổi: Pha chế 12 → 15/phút nhưng là re
 - Cấu hình: thêm mọi tài khoản pha chế vào Applicable for Users của profile chi nhánh (`branch.md` §5). KITCHEN vẫn không mở ca được
   (`pos_shift_hooks`), không có quyền DocType mới.
 
-## 5. Giai đoạn 3 — realtime (CHƯA LÀM, chờ giai đoạn 1 + 2 PASS)
+## 5. Giai đoạn 3 — realtime (làm 2026-11-25, CHỜ VAN TEST)
 
 - `change_feed._incr` gọi thêm `frappe.publish_realtime("mypos_pos_changed", {"p": profile, "v": <phiên bản>}, room="all")` sau commit
   (D2-i: phòng `all` = mọi System User đang kết nối; payload KHÔNG có dữ liệu đơn / khách / tiền). Lỗi socket chỉ bỏ qua.
 - `lib/changes.ts`: nghe sự kiện qua `lib/realtime.ts`, so `p` với profile của mình → đặt phiên bản mới ngay. Socket đang kết nối → poll phiên bản
   **30 giây**; mất kết nối → **4 giây**; `connect` lại → hỏi ngay. `realtime.ts` trả trạng thái kết nối.
-- Màn khách: poll 30 giây khi socket kết nối, 3 giây khi không (hiện luôn 3 giây).
+- Màn khách: poll 30 giây khi socket kết nối, 3 giây khi không (`CustomerDisplay.tsx`, `REALTIME_POLL_SECONDS`).
+- Code: `change_feed._publish` (room truyền rõ `get_site_room()`: trong job nền Frappe mặc định gửi vào phòng task), `lib/realtime.ts`
+  (`onStatus` kết nối / mất kết nối), `lib/changes.ts` (`REALTIME_POLL_MS = 30000`, lọc `p` theo profile từ `get_pos_changes`).
+- Kiểm: `check_poll_load` mục 2d (sự kiện, phòng, payload chỉ {p, v}).
 - Ca kiểm: có socket (cập nhật ≤ 1 giây), tắt socketio (≤ 5 giây), restart, tab ẩn / hiện.
 
 **Khi nào chuyển sang phòng theo POS Profile:** (a) một site phục vụ **nhiều doanh nghiệp khác nhau** (tên POS Profile của doanh nghiệp này

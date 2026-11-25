@@ -12,6 +12,8 @@ import type { CustomerDisplayConfig, CustomerDisplayOrder, CustomerDisplayState 
 export const PAID_HOLD_SECONDS = 5;
 /** Poll dự phòng (giây) khi socket realtime không chạy; mỗi lần chỉ đọc cache nếu không có gì mới. */
 const POLL_SECONDS = 3;
+/** Poll (giây) khi socket đang kết nối: sự kiện realtime là đường chính, poll chỉ là lưới an toàn (2026-11-25). */
+const REALTIME_POLL_SECONDS = 30;
 /** Tải lại banner / thương hiệu (phút). */
 const CONFIG_REFRESH_MINUTES = 5;
 const REALTIME_EVENT = "mypos_customer_display";
@@ -26,6 +28,7 @@ export default function CustomerDisplay() {
 	const [state, setState] = useState<CustomerDisplayState | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [paidUntil, setPaidUntil] = useState(0);
+	const [connected, setConnected] = useState(false);
 	const [, setTick] = useState(0);
 	const version = useRef(0);
 	const loaded = useRef(false);
@@ -68,13 +71,19 @@ export default function CustomerDisplay() {
 				throw e;
 			}),
 		true,
-		POLL_SECONDS * 1000
+		(connected ? REALTIME_POLL_SECONDS : POLL_SECONDS) * 1000
 	);
 
-	// Realtime: server báo phiên bản mới -> lấy ngay (poll vẫn chạy làm dự phòng).
-	useRealtimeEvent(REALTIME_EVENT, () => {
-		void fetchState().catch(() => undefined);
-	});
+	// Realtime: server báo phiên bản mới -> lấy ngay. Socket kết nối -> poll giãn 30 giây; mất kết nối -> về 3 giây (đổi chu kỳ
+	// khởi động lại vòng poll và hỏi ngay).
+	useRealtimeEvent(
+		REALTIME_EVENT,
+		() => {
+			void fetchState().catch(() => undefined);
+		},
+		true,
+		setConnected
+	);
 
 	// Hết thời gian giữ màn thành công -> vẽ lại để về màn chờ.
 	useEffect(() => {
