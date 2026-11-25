@@ -74,8 +74,10 @@ def check_branch_profile(pos_profile):
 		return prof
 
 	def last_error_title():
-		row = frappe.get_all("Error Log", fields=["method", "title"], order_by="creation desc", limit=1)
-		return (row[0].get("title") or row[0].get("method") or "") if row else ""
+		# Frappe v16: Error Log không có cột `title`; tiêu đề của log_error(title=...) nằm ở cột `method`.
+		row = frappe.get_all("Error Log", filters={"method": ["like", "SePay webhook:%"]}, fields=["method"],
+			order_by="creation desc", limit=1)
+		return (row[0].method or "") if row else ""
 
 	orig_profile, orig_key = P._get_pos_profile, S._received_sepay_key
 	try:
