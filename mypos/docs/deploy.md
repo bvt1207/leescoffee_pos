@@ -150,35 +150,24 @@ Cho Frappe tự xuất file chuẩn rồi lấy file đó làm bản chuẩn c�
    Manager / MYPOS Manager / chart, Admin / MYPOS Admin / settings. Save.
    Xóa (hoặc ghi lại tên) mọi Sidebar khác có Module = MYPOS.
 3. Frappe ghi file vào `apps/mypos/mypos/mypos/sidebar/mypos/mypos.json` (developer_mode + standard). Kiểm: `git -C apps/mypos diff`.
-4. Copy file đó về repo (`PROJECTPOS/mypos/mypos/mypos/sidebar/mypos/mypos.json`), commit; ghi lại khác biệt so với bản cũ.
+4. Copy file đó về repo phát triển (`<repo>/mypos/mypos/mypos/sidebar/mypos/mypos.json` nếu app nằm trong thư mục con `mypos/`), commit; ghi lại khác biệt so với bản cũ.
 5. Tắt lại: `bench --site local.com set-config developer_mode 0`, clear-cache, khởi động lại; chạy lại §5.1.
 
 ## 6. Phát hành lên GitHub (`bench get-app` cần app ở GỐC repo)
 
-Repo phát triển có app ở thư mục con `mypos/`. Tách lịch sử thư mục đó thành một nhánh riêng có app ở gốc:
+Repo phát hành công khai: **`https://github.com/bvt1207/mypos`**, nhánh `main` và `version-16` (cùng commit). Repo phát triển (private) có
+app ở thư mục con `mypos/`; nhánh phát hành được tách bằng `git subtree split`:
 
 ```bash
 cd <repo phát triển>
-git subtree split --prefix=mypos -b mypos-release     # nhánh mới, gốc = nội dung thư mục mypos/
-
-# Kiểm nhánh split trong thư mục tạm
-rm -rf /tmp/mypos-check && git clone --branch mypos-release --single-branch . /tmp/mypos-check
-ls /tmp/mypos-check                                   # có pyproject.toml, README.md, mypos/, pos/, docs/ ở GỐC
-grep -n '^name' /tmp/mypos-check/pyproject.toml       # name = "mypos"
-grep -n '^app_name\|^required_apps\|^after_install\|^after_migrate' /tmp/mypos-check/mypos/hooks.py
-cat /tmp/mypos-check/mypos/modules.txt                # MYPOS
-ls /tmp/mypos-check/mypos/mypos                       # api doctype sidebar workspace ...
-ls /tmp/mypos-check/mypos/{fixtures,setup,selfcheck,desktop_icon,www}
-grep -rliE 'lee[s]coffee' /tmp/mypos-check || echo "sạch"   # [s]: dòng này không tự khớp
+git subtree split --prefix=mypos -b mypos-release     # nhánh local, gốc = nội dung thư mục mypos/
+git push <remote repo mypos> mypos-release:main
+git push <remote repo mypos> mypos-release:version-16
 ```
 
-Tạo repo GitHub (rỗng, không README / license / .gitignore) rồi đẩy nhánh split thành `main` (và `version-16` nếu dùng `--branch version-16`):
-
-```bash
-gh repo create <owner>/mypos --private          # hoặc tạo trên web
-git push git@github.com:<owner>/mypos.git mypos-release:main
-git push git@github.com:<owner>/mypos.git mypos-release:version-16
-```
-
-Lần sau: chạy lại `git subtree split --prefix=mypos -b mypos-release` (cập nhật nhánh) rồi push như trên.
-Bench: `bench get-app git@github.com:<owner>/mypos.git --branch main` (repo private cần SSH key / token trên máy bench).
+- Kiểm trước khi push (clone tạm: `pyproject.toml` ở gốc, số file, không tên cũ / đường dẫn cá nhân / khóa, email tác giả), tạo repo,
+  chuyển Public, tag, cài thử, xử lý khi lỡ lộ thông tin: hướng dẫn từng bước nằm ở repo phát triển (`tools/github_release_steps.md`).
+- Không sửa trực tiếp trên repo phát hành: mọi thay đổi đi qua repo phát triển rồi split lại (sửa trực tiếp làm nhánh split lệch).
+- Cài: `bench get-app https://github.com/bvt1207/mypos.git --branch version-16` rồi theo [install.md](install.md) §2.
+- Cập nhật bench đã cài từ GitHub: `bench update --app mypos` (hoặc `git pull` trong `apps/mypos`), `npm run build` trong `apps/mypos/pos`,
+  `bench build --app mypos`, `bench --site <site> migrate`, khởi động lại bench.

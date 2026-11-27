@@ -117,7 +117,7 @@ def _check_branch(doc):
 			title=_("Thiếu chi nhánh"),
 		)
 	# Mỗi Branch tối đa MỘT profile đang bật: web QR /order chỉ biết Branch (MYPOS Order QR không có profile).
-	# Cờ flags.mypos_allow_shared_branch chỉ đặt được trong code (self-test .claude/docs/*_check.py), không qua Desk/API.
+	# Cờ flags.mypos_allow_shared_branch chỉ đặt được trong code (selfcheck mypos/selfcheck/*_check.py), không qua Desk/API.
 	if doc.flags.get("mypos_allow_shared_branch"):
 		return
 	others = frappe.get_all(

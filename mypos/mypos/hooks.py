@@ -1,7 +1,7 @@
 app_name = "mypos"
 app_title = "MYPOS"
 app_publisher = "BVTHACH"
-app_description = "POS for coffee shop chain"
+app_description = "POS for coffee shop chains on Frappe / ERPNext v16"
 app_email = "bvtsk19@gmail.com"
 app_license = "mit"
 

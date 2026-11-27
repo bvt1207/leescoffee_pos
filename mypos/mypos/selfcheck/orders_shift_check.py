@@ -10,7 +10,7 @@ def check_orders_shift(item_code=None, mode_of_payment=None, branch_name=None, p
 	posting_date/status bằng db.set_value để giả đơn ca trước / hôm qua (Consolidated giả) / 8 ngày trước,
 	và 3 user tạm (mỗi người 1 role POS). Không commit: cuối hàm ROLLBACK; nếu có commit ngầm thì tự
 	trả status, hủy + xóa đơn, Loyalty Point Entry, user tạm và in WARN.
-	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest() (file riêng trong .claude/docs/).
+	Sau khi PASS: chạy lại run_order_qr_selftest() và run_order_history_selftest() (mypos/selfcheck/order_qr_selftest.py, order_history_selftest.py).
 	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
 	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""

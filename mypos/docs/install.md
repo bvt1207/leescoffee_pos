@@ -9,7 +9,7 @@
 
 ```bash
 cd ~/frappe-bench
-bench get-app <URL repo mypos> --branch <branch>
+bench get-app https://github.com/bvt1207/mypos.git --branch version-16
 bench --site local.com backup                     # site đang có dữ liệu thì sao lưu trước
 bench --site local.com install-app mypos
 cd apps/mypos/pos && npm install && npm run build && cd ~/frappe-bench

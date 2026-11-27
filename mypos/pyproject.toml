@@ -3,13 +3,18 @@ name = "mypos"
 authors = [
     { name = "BVTHACH", email = "bvtsk19@gmail.com"}
 ]
-description = "POS for coffee shop chain"
+description = "POS for coffee shop chains on Frappe / ERPNext v16"
 requires-python = ">=3.14"
 readme = "README.md"
+license = { text = "MIT" }
 dynamic = ["version"]
 dependencies = [
     # "frappe~=16.0.0" # Installed and managed by bench.
 ]
+
+[project.urls]
+Repository = "https://github.com/bvt1207/mypos"
+Issues = "https://github.com/bvt1207/mypos/issues"
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
