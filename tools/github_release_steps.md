@@ -1,6 +1,6 @@
 # Phát hành app `mypos` lên GitHub (repo riêng, public)
 
-Repo phát triển `PROJECTPOS` (remote `bvt1207/leescoffee_pos`, có `.claude/`, `tools/`, code cũ) **giữ Private, không đụng**. App được
+Repo phát triển `PROJECTPOS` (remote `origin`, repo private, có `.claude/`, `tools/`, code cũ) **giữ Private, không đụng**. App được
 tách bằng `git subtree split --prefix=mypos` thành nhánh `mypos-release` (gốc = nội dung thư mục `mypos/`) rồi push lên repo mới
 `bvt1207/mypos`.
 
