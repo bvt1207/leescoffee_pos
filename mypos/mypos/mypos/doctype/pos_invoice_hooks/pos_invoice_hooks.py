@@ -216,6 +216,15 @@ def on_cancel(doc, method=None):
     return PosInvoiceHooks.on_cancel(doc, method)
 
 
+def validate(doc, method=None):
+    """CTKM theo TỔNG qty mỗi mã (2026-11-27, ERPNext 16.61): chạy SAU validate của ERPNext, áp lại luật đã chọn theo
+    tổng qty lên các dòng cùng mã. Chi tiết: pos_api.reapply_total_qty_rules, docs/rules/options.md §7."""
+    # Import trong hàm: pos_api import module này (tránh vòng import).
+    from mypos.mypos.api.pos_api import reapply_total_qty_rules
+
+    return reapply_total_qty_rules(doc)
+
+
 @frappe.whitelist()
 def get_status_board_orders():
     """

@@ -177,6 +177,8 @@ after_migrate = "mypos.setup.install.after_migrate"
 
 doc_events = {
 	"POS Invoice": {
+		# CTKM theo tổng qty mỗi mã: áp lại sau khi ERPNext chọn Pricing Rule theo từng dòng (ERPNext 16.61, options.md §7).
+		"validate": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.validate",
 		"before_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_submit",
 		"on_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit",
 		"before_save": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",

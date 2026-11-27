@@ -1160,6 +1160,48 @@ def _apply_rules_on_total_qty(invoice, profile, order_type, customer, price_list
 				row.rate = flt(row.price_list_rate)
 
 
+def reapply_total_qty_rules(doc):
+	"""doc_events POS Invoice `validate` (chạy SAU validate của ERPNext): giữ CTKM theo TỔNG qty mỗi mã khi LƯU đơn.
+
+	ERPNext 16.61 (`pricing_rule.select_pricing_rules`) chỉ dùng lại luật đã ghi trên dòng khi SUBMIT và dòng không đổi
+	(`is_row_unchanged_since_save`); mọi lần lưu khác (insert ở create_draft_order, save trong pay_cash / webhook SePay,
+	sửa trên Desk) chọn lại luật theo qty TỪNG dòng -> 2 + 2 ly cùng mã chỉ được mức của qty 2. Hàm này áp lại kết quả
+	`_apply_rules_on_total_qty` (cùng logic với preview) rồi tính lại tổng. Lúc submit ERPNext dùng lại luật đã lưu.
+
+	Chỉ chạy khi: không phải đơn trả hàng, không bật ignore_pricing_rule, chưa hủy, có >= 2 dòng (không tính dòng tặng)
+	cùng mã. Kiểm thanh toán đủ (`validate_full_payment`) chỉ chạy lúc submit nên không bị tổng tạm của ERPNext chặn.
+	"""
+	if doc.get("is_return") or cint(doc.get("ignore_pricing_rule")) or cint(doc.docstatus) == 2:
+		return
+	codes = [r.item_code for r in doc.get("items") or [] if r.item_code and not cint(r.get("is_free_item"))]
+	if len(codes) == len(set(codes)) or not doc.get("pos_profile"):
+		return
+
+	profile = frappe.get_cached_doc("POS Profile", doc.pos_profile)
+	pay = next((p for p in doc.get("payments") or [] if p.mode_of_payment), None)
+	if not pay:
+		pay = next((p for p in profile.get("payments") or [] if p.mode_of_payment), None)
+	if not pay:
+		return
+	mode = {
+		"name": pay.mode_of_payment,
+		"account": pay.get("account") or "",
+		"type": pay.get("type") or frappe.db.get_value("Mode of Payment", pay.mode_of_payment, "type"),
+	}
+
+	before = [(flt(r.rate), r.get("pricing_rules")) for r in doc.items]
+	_apply_rules_on_total_qty(
+		doc, profile, doc.get("order_type"), doc.customer, doc.get("selling_price_list"), mode
+	)
+	if before == [(flt(r.rate), r.get("pricing_rules")) for r in doc.items]:
+		return
+	doc.calculate_taxes_and_totals()
+	if hasattr(doc, "set_pos_paid_amount"):
+		doc.set_pos_paid_amount()
+	if hasattr(doc, "validate_change_amount"):
+		doc.validate_change_amount()
+
+
 # ---------------------------------------------------------------------------
 # Màn Đơn hàng (Orders): "Ca hiện tại" (mặc định) và "Lịch sử" (chỉ MANAGER)
 # ---------------------------------------------------------------------------

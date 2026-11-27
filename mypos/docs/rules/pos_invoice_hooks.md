@@ -137,6 +137,7 @@ LIMIT 1
 ```python
 doc_events = {
     "POS Invoice": {
+        "validate": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.validate",  # CTKM theo tổng qty (options.md §7)
         "on_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit",
         "before_save": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",
         "on_update_after_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
