@@ -1,0 +1,154 @@
+import { useEffect, useRef, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { navOf, usePos } from "../lib/pos-context";
+import { useSearch } from "../store/search";
+import { useServeQueue } from "../store/serveQueue";
+
+export default function AppHeader() {
+	const search = useSearch((s) => s.search);
+	const onSearch = useSearch((s) => s.setSearch);
+	const { config } = usePos();
+	const { pathname } = useLocation();
+	const brand = config?.brand;
+	const user = (config as { user?: { full_name?: string; name?: string } } | null)?.user;
+	const displayName = user?.full_name || user?.name || "";
+	const initial = (displayName || "?").trim().slice(0, 1).toUpperCase();
+
+	const nav = navOf(config);
+	// Số đơn "Đã làm" chờ giao (chỉ có dữ liệu khi máy có quyền Orders, xem App.tsx) -> chấm đỏ ở "Pha chế".
+	const serveCount = useServeQueue((s) => s.items.length);
+	const isKitchen = pathname.startsWith("/kitchen");
+	const placeholder = pathname.startsWith("/orders") ? "Tìm đơn…" : "Tìm món…";
+
+	const [menuOpen, setMenuOpen] = useState(false);
+	const menuRef = useRef<HTMLDivElement>(null);
+	const searchRef = useRef<HTMLInputElement>(null);
+
+	// Đóng dropdown khi bấm ra ngoài
+	useEffect(() => {
+		const onDown = (e: MouseEvent) => {
+			if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+		};
+		document.addEventListener("mousedown", onDown);
+		return () => document.removeEventListener("mousedown", onDown);
+	}, []);
+
+	// Ctrl/Cmd + K để focus ô tìm
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault();
+				searchRef.current?.focus();
+			}
+		};
+		document.addEventListener("keydown", onKey);
+		return () => document.removeEventListener("keydown", onKey);
+	}, []);
+
+	const logout = async () => {
+		try {
+			await fetch("/api/method/logout", { method: "POST", credentials: "same-origin" });
+		} finally {
+			window.location.href = "/login?redirect-to=%2Fpos";
+		}
+	};
+
+	const clearCache = () => {
+		localStorage.clear();
+		sessionStorage.clear();
+		window.location.reload();
+	};
+
+	return (
+		<header className="pos-header">
+			<div className="pos-header__brand">
+				{brand?.logo ? (
+					<img className="pos-header__logo" src={brand.logo} alt={brand.name || "Logo"} />
+				) : null}
+				<div className="pos-header__titles">
+					<div className="pos-header__name">{brand?.name || "POS"}</div>
+					{brand?.address ? <div className="pos-header__sub">{brand.address}</div> : null}
+				</div>
+			</div>
+
+			<div className="pos-header__search">
+				{isKitchen ? null : (
+					<>
+						<input
+							ref={searchRef}
+							type="search"
+							className="pos-header__search-input"
+							placeholder={placeholder}
+							value={search}
+							onChange={(e) => onSearch(e.target.value)}
+							aria-label={placeholder}
+						/>
+						<kbd className="pos-header__kbd">Ctrl K</kbd>
+					</>
+				)}
+			</div>
+
+			<div className="pos-header__right">
+				<nav className="pos-header__nav">
+					{nav.includes("sell") ? <NavLink to="/" end className="pos-navlink">Bán món</NavLink> : null}
+					{nav.includes("orders") ? <NavLink to="/orders" className="pos-navlink">Đơn hàng</NavLink> : null}
+					{nav.includes("kitchen") ? <NavLink to="/kitchen" className="pos-navlink">
+							Pha chế
+							{serveCount > 0 ? (
+								<span className="pos-navlink__badge" aria-label={`${serveCount} đơn đã làm chờ giao`}>
+									{serveCount}
+								</span>
+							) : null}
+						</NavLink> : null}
+				</nav>
+
+				{displayName ? (
+					<div className="pos-user" ref={menuRef}>
+						<button
+							type="button"
+							className="pos-user__btn"
+							aria-haspopup="menu"
+							aria-expanded={menuOpen}
+							onClick={() => setMenuOpen((v) => !v)}
+						>
+							<span className="pos-header__avatar">{initial}</span>
+							<span className="pos-header__user-name">{displayName}</span>
+							<span className="pos-user__chevron" aria-hidden>▾</span>
+						</button>
+
+						{menuOpen ? (
+							<div className="pos-user__menu" role="menu">
+								<div className="pos-user__info">
+									<div className="pos-user__full">{displayName}</div>
+									{user?.name && user.name !== displayName ? (
+										<div className="pos-user__email">{user.name}</div>
+									) : null}
+								</div>
+								<a className="pos-user__item" role="menuitem" href="/desk">Chuyển sang Desk</a>
+								{nav.includes("sell") ? (
+									// Màn khách: mở cửa sổ riêng (kéo sang màn hình phụ) hoặc mở cùng tài khoản trên thiết bị khác.
+									<a
+										className="pos-user__item"
+										role="menuitem"
+										href="/pos/customer"
+										target="mypos_customer_display"
+										rel="noopener"
+										onClick={() => setMenuOpen(false)}
+									>
+										Mở màn hình khách
+									</a>
+								) : null}
+								<button type="button" className="pos-user__item" role="menuitem" onClick={clearCache}>
+									Xóa bộ nhớ đệm
+								</button>
+								<button type="button" className="pos-user__item pos-user__item--danger" role="menuitem" onClick={logout}>
+									Đăng xuất
+								</button>
+							</div>
+						) : null}
+					</div>
+				) : null}
+			</div>
+		</header>
+	);
+}
