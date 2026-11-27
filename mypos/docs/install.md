@@ -47,24 +47,25 @@ Mỗi lần `bench migrate`: `after_migrate` bổ sung role / quyền còn thi�
 
 ## 3. Cấu hình tay sau khi cài (theo thứ tự)
 
-Không có dữ liệu mẫu trong code. Mọi mục dưới đây nhập trên Desk.
+Không có dữ liệu mẫu trong code. Mọi mục dưới đây nhập trên Desk; đánh dấu `[x]` khi xong.
 
-1. **Company, Warehouse, Price List, Item / Item Price, Mode of Payment** (chuẩn ERPNext): 1 mode tiền mặt + 1 mode chuyển khoản (`type = Bank`, có tài khoản).
-2. **Branch** (`docs/rules/branch.md` §5): `company`, `brand_name`, `brand_logo` (file **public**), `brand_phone`, `brand_address`;
+1. [ ] **Company, Warehouse, Price List, Item / Item Price, Mode of Payment** (chuẩn ERPNext): 1 mode tiền mặt + 1 mode chuyển khoản (`type = Bank`, có tài khoản).
+2. [ ] **Branch** (`docs/rules/branch.md` §5): `company`, `brand_name`, `brand_logo` (file **public**), `brand_phone`, `brand_address`;
    SePay: `sepay_enabled`, `sepay_va_account`, `sepay_bank_code`, `sepay_api_key` (trùng key cấu hình webhook bên SePay).
-3. **Customer khách vãng lai**: Customer Group Individual, không SĐT, không Loyalty Program (`docs/rules/pos_profile.md` §5).
-4. **POS Profile** (mỗi Branch đúng 1 profile đang bật): `company`, `warehouse`, `selling_price_list`, `currency`, **`branch`**,
+3. [ ] **Customer khách vãng lai**: Customer Group Individual, không SĐT, không Loyalty Program (`docs/rules/pos_profile.md` §5).
+4. [ ] **POS Profile** (mỗi Branch đúng 1 profile đang bật): `company`, `warehouse`, `selling_price_list`, `currency`, **`branch`**,
    `custom_walk_in_customer`, Payments (2 mode ở bước 1), `income_account` (phụ thu topping).
-5. **User + Role**: thu ngân `POS CASHIER`; pha chế `POS KITCHEN`; quản lý `POS MANAGER` (+ `Sales User`, `Sales Manager`, `Stock User`,
+5. [ ] **User + Role**: thu ngân `POS CASHIER`; pha chế `POS KITCHEN`; quản lý `POS MANAGER` (+ `Sales User`, `Sales Manager`, `Stock User`,
    `Auditor` nếu cần, `docs/rules/roles.md` §1). Tài khoản TV `/pos/status`: POS KITCHEN riêng.
-6. **POS Profile → Applicable for Users**: mọi thu ngân, quản lý bán hàng **và mọi tài khoản pha chế**; mỗi user `default` ở đúng 1 profile.
+6. [ ] **POS Profile → Applicable for Users**: mọi thu ngân, quản lý bán hàng **và mọi tài khoản pha chế**; mỗi user `default` ở đúng 1 profile.
    Nhiều chi nhánh: User Permission `POS Profile` cho từng quản lý.
-7. **MYPOS Menu** cùng Price List của POS Profile; **MYPOS Option Group** (đường / đá / topping) nếu dùng (`docs/rules/options.md` §6).
-8. **MYPOS Buzzer** (thẻ bàn) gắn Branch; **MYPOS Order QR** gắn Branch (in mã từ form); **MYPOS Banner** (ảnh public, 16:9).
-9. **POS Settings** (ERPNext): `invoice_type = POS Invoice` (đóng ca gộp POS Invoice).
-10. **host_name** của site (URL trong mã QR đặt món, `docs/deploy.md` §3):
+7. [ ] **MYPOS Menu** cùng Price List của POS Profile; **MYPOS Option Group** (đường / đá / topping) nếu dùng (`docs/rules/options.md` §6).
+8. [ ] **MYPOS Buzzer** (thẻ bàn) gắn Branch; **MYPOS Order QR** gắn Branch (in mã từ form); **MYPOS Banner** (ảnh public, 16:9).
+9. [ ] **POS Settings** (ERPNext): `invoice_type = POS Invoice` (đóng ca gộp POS Invoice).
+10. [ ] **host_name** của site (URL trong mã QR đặt món, `docs/deploy.md` §3):
     `bench --site local.com set-config host_name "http://<host>:<port>"`. Đổi host thì in lại mã QR.
-11. Webhook SePay: URL `https://<host>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook` (`docs/rules/sepay.md`, `order-qr.md` §3).
+11. [ ] Webhook SePay: URL `https://<host>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook` (`docs/rules/sepay.md`, `order-qr.md` §3).
+12. [ ] Scheduler bật: `bench --site local.com scheduler status` (disabled → `bench --site local.com enable-scheduler`).
 
 Kiểm nhanh (bench console, chỉ đọc):
 
@@ -76,4 +77,4 @@ frappe.get_all("Custom Field", filters={"module": "MYPOS"}, pluck="name")   # 35
 
 ## 4. Kiểm tra
 
-Script tự kiểm: [testing.md](testing.md). Màn hình: `/pos`, `/pos/orders`, `/pos/kitchen`, `/pos/customer`, `/pos/status`, `/order/<token>`.
+Script tự kiểm: [testing.md](testing.md). Kiểm tay theo từng màn (cột PASS / FAIL): [checklist.md](checklist.md). Màn hình: `/pos`, `/pos/orders`, `/pos/kitchen`, `/pos/customer`, `/pos/status`, `/order/<token>`.

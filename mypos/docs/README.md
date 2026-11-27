@@ -38,6 +38,7 @@ mypos/                      gốc app (gốc repo GitHub)
 | [install.md](install.md) | Cài trên bench mới, cấu hình sau cài (checklist), kiểm nhanh |
 | [deploy.md](deploy.md) | Triển khai thật: socket.io, nginx, gunicorn, Redis, host_name, treo TV |
 | [testing.md](testing.md) | Chạy script tự kiểm bằng `bench execute` |
+| [checklist.md](checklist.md) | Checklist kiểm tay sau cài / cập nhật (PASS / FAIL) |
 | [code-standards.md](code-standards.md) | Quy ước đặt tên, DocType JSON, hook, import path |
 
 ## Quy tắc nghiệp vụ (`rules/`)
