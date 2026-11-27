@@ -1,5 +1,8 @@
 # Copy app mypos sang bench (WSL)
 
+> **Quy trình được duyệt: [copy_mypos_steps.md](copy_mypos_steps.md)** (dán tay từng bước, không rsync, không script tự động).
+> Script dưới đây giữ để tham khảo, KHÔNG dùng cho lần copy chính thức.
+
 `copy_mypos_to_bench.sh` chép `PROJECTPOS/mypos` (ổ Windows) sang `~/frappe-bench/apps/mypos`. Chạy trong **WSL**; script chỉ
 copy file, không chạy lệnh bench / npm nào — cuối cùng in ra các lệnh để bạn tự chạy.
 
