@@ -166,13 +166,6 @@ def check_shift_owner(pos_profile=None, item_code=None, mode_of_payment=None, pr
 	frappe.set_user("Administrator")
 	try:
 		src = frappe.get_doc("POS Profile", pos_profile)
-		# Khách vãng lai TẠM (2026-11-24): profile tạm dùng Customer ZZTEST, không dựa vào cấu hình của profile thật.
-		wi = frappe.new_doc("Customer")
-		wi.customer_name = f"{WALK_IN_PREFIX}{frappe.generate_hash(length=6)}"
-		wi.customer_type = "Individual"
-		wi.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group") or "Individual"
-		wi.territory = frappe.db.get_single_value("Selling Settings", "territory") or "All Territories"
-		wi.insert(ignore_permissions=True)
 		company = src.company
 		price_list = price_list or src.get("selling_price_list")
 		balance_modes = [p.mode_of_payment for p in (src.get("payments") or []) if p.mode_of_payment] or [mode_of_payment]
@@ -182,6 +175,18 @@ def check_shift_owner(pos_profile=None, item_code=None, mode_of_payment=None, pr
 		report_cleanup(removed0, failed0, "đầu")
 		if failed0:
 			raise RuntimeError("Còn dữ liệu thử của lần chạy trước không xóa được — xóa tay theo WARN rồi chạy lại.")
+
+		# Khách vãng lai TẠM (2026-11-24), tạo SAU bước dọn (dọn xóa mọi Customer tiền tố WALK_IN_PREFIX): profile tạm dùng Customer ZZTEST, không dựa vào cấu hình của profile thật.
+		wi = frappe.new_doc("Customer")
+		wi.customer_name = f"{WALK_IN_PREFIX}{frappe.generate_hash(length=6)}"
+		wi.customer_type = "Individual"
+		# Nhóm / vùng LÁ (Customer không nhận nhóm cha): Selling Settings nếu là lá, không thì lá đầu tiên của cây.
+		for field, dt in (("customer_group", "Customer Group"), ("territory", "Territory")):
+			v = frappe.db.get_single_value("Selling Settings", field)
+			if not v or frappe.db.get_value(dt, v, "is_group"):
+				v = (frappe.get_all(dt, filters={"is_group": 0}, pluck="name", order_by="lft asc", limit=1) or [None])[0]
+			wi.set(field, v)
+		wi.insert(ignore_permissions=True)
 
 		print("== 1. Dữ liệu tạm ==")
 		for key, role in ROLE_OF.items():

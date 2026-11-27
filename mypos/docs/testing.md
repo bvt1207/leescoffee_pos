@@ -68,7 +68,7 @@ Truyền tham số (POS Profile / món / Branch có sẵn) → chạy trên dữ
 
 Tag `ZZTEST-<MMDDHHMMSS><3 ký tự>`, gồm: Item Group, Price List (VND), 4 món không tồn kho (`-CF` 30.000, `-TS` 35.000 có Option Group
 "Đường" legacy `sugar_level`, `-ESP` 39.000 có Pricing Rule tạm 2–3 ly −5% / ≥ 4 ly −10%, `-FREE` 20.000), Mode of Payment "<tag> Bank",
-Customer "<tag> WI" (khách vãng lai), Branch (thương hiệu + SePay giả, API key ngẫu nhiên), POS Profile (Cash + Bank, Applicable for
+Customer "<tag> WI" (khách vãng lai), Branch (thương hiệu + SePay giả, API key ngẫu nhiên) + 2 thẻ bàn, POS Profile (Cash + Bank, Applicable for
 Users = Administrator), MYPOS Menu; test cần ca: POS Opening Entry của Administrator. Không đụng dữ liệu thật; không đổi cấu hình site.
 
 ## 4. Cách chạy

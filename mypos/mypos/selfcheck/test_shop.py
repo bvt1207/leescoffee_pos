@@ -10,11 +10,12 @@ def zz_test_shop(action="create", tag=None, open_shift=True, quiet=False):
 	tên có tiền tố tag = "ZZTEST-<MMDDHHMMSS><3 ký tự>":
 	  Item Group <tag>; Price List <tag> (VND, bán); 4 Item không tồn kho <tag>-CF 30.000, <tag>-TS 35.000 (có Option Group
 	  "Đường" legacy sugar_level), <tag>-ESP 39.000 (Pricing Rule tạm 2-3 ly -5%, >= 4 ly -10%), <tag>-FREE 20.000;
-	  Mode of Payment "<tag> Bank" (Bank); Customer "<tag> WI" (khách vãng lai); Branch <tag> (thương hiệu + SePay giả, API key ngẫu nhiên);
+	  Mode of Payment "<tag> Bank" (Bank); Customer "<tag> WI" (khách vãng lai); Branch <tag> (thương hiệu + SePay giả, API key ngẫu nhiên)
+	  + 2 thẻ bàn <tag>-B1, <tag>-B2;
 	  POS Profile <tag> (Cash + Bank, Applicable for Users = Administrator, branch, khách vãng lai, income_account);
 	  MYPOS Menu <tag> (4 món); open_shift=True -> POS Opening Entry của Administrator (submit).
 	  Commit. Trả {"ok": True, "tag", "company", "branch", "pos_profile", "price_list", "menu", "item", "item_options",
-	  "item_promo", "item_free", "mop_cash", "mop_bank", "walk_in", "opening"}. Lỗi giữa chừng -> tự dọn phần đã tạo, ok False.
+	  "item_promo", "item_free", "mop_cash", "mop_bank", "walk_in", "opening", "buzzers"}. Lỗi giữa chừng -> tự dọn phần đã tạo, ok False.
 	action = "drop": xóa mọi thứ của tag (cả đơn / ca / mã QR / thẻ bàn / POS Profile gắn Branch tag do test tạo), theo thứ tự
 	  phụ thuộc; mỗi lần xóa: thử lại 3 lần khi QueryDeadlockError (rollback, chờ 1 giây), commit ngay; còn sót -> in WARN.
 	  tag=None -> mọi tag "ZZTEST-*" tìm thấy (Branch / Item Group).
@@ -197,6 +198,9 @@ def zz_test_shop(action="create", tag=None, open_shift=True, quiet=False):
 				"brand_address": "ZZTEST", "sepay_enabled": 1, "sepay_va_account": "ZZTEST0000", "sepay_bank_code": "MB",
 				"sepay_api_key": secrets.token_urlsafe(16)})
 			branch.insert(ignore_permissions=True)
+			for k in (1, 2):  # thẻ bàn (MYPOS Buzzer, tên = buzzer_number, duy nhất toàn site)
+				frappe.get_doc({"doctype": "MYPOS Buzzer", "buzzer_number": f"{t}-B{k}", "branch": t,
+					"status": "Sẵn sàng"}).insert(ignore_permissions=True)
 			prof = frappe.get_doc({"doctype": "POS Profile", "company": company, "warehouse": pre["warehouse"],
 				"currency": currency, "selling_price_list": t, "write_off_account": pre["write_off_account"],
 				"write_off_cost_center": pre["cost_center"], "write_off_limit": 1, "cost_center": pre["cost_center"],
@@ -223,7 +227,8 @@ def zz_test_shop(action="create", tag=None, open_shift=True, quiet=False):
 			drop_one(t)
 			return {"ok": False, "reason": f"Không dựng được quán thử: {short}"}
 		say(f"Đã dựng quán thử {t} (Company {company}, ca mở: {opening or 'không'})")
-		return {"ok": True, "company": company, "walk_in": walk_in, "mop_cash": pre["mop_cash"], "opening": opening, **n}
+		return {"ok": True, "company": company, "walk_in": walk_in, "mop_cash": pre["mop_cash"], "opening": opening,
+			"buzzers": [f"{t}-B1", f"{t}-B2"], **n}
 
 	if action == "create":
 		return create()

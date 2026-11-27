@@ -286,13 +286,16 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 		_r, err = check_closing("A")
 		passed("3d Hết Draft -> đóng ca không bị chặn", err)
 
-		print("== 4. Đơn đã thanh toán (pha chế chưa xong) không chặn ==")
+		# Từ 2026-11-20 (docs/rules/roles.md §2d): đơn đã thu tiền còn "Chưa làm" / "Đã làm" CHẶN đóng ca (kiểm sâu ở open_orders_check).
+		print("== 4. Đơn đã thanh toán, chưa pha chế: chặn đóng ca (không còn Draft) ==")
 		p1 = draft()
 		_r, err = as_user("A", P.pay_cash, p1)
 		passed("4a Thu tiền mặt", err)
 		ok("4b Đơn Paid, bếp 'Chưa làm'", frappe.db.get_value("POS Invoice", p1, "custom_kitchen_status") == "Chưa làm")
 		_r, err = check_closing("A")
-		passed("4c Chỉ còn đơn Paid chưa pha chế -> không chặn", err)
+		blocked("4c Chỉ còn đơn Paid chưa pha chế -> chặn, nêu 'chưa pha chế'", err, "chưa pha chế")
+		ok("4d Thông báo chặn KHÔNG nêu Draft (không còn đơn chưa thanh toán)", err is not None and "chưa thanh toán:" not in str(err),
+			f"-> {str(err)[:120]}" if err else "")
 		cancel_paid(p1)  # tránh gộp hóa đơn khi đóng ca thật ở mục 8
 
 		print("== 5. Draft QR: trong hạn chặn, quá 15 phút không chặn ==")

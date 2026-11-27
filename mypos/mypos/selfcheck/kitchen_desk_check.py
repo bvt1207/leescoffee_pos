@@ -82,9 +82,15 @@ def check_kitchen_desk(cleanup=True):
 		try:
 			err, msg = call(get_desktop_page, json.dumps({"name": "MYPOS Kitchen", "title": "MYPOS Kitchen"}))
 			ok(err is None, f"get_desktop_page('MYPOS Kitchen') bằng {k} thành công" + (f" — lỗi {err}: {msg}" if err else ""))
-			cfg_err, _m = call(P.get_pos_config)
-			nav = None if cfg_err else P.get_pos_config().get("nav")
-			ok(nav == ["kitchen"], f"get_pos_config nav = {nav} (bấm POS -> /pos/kitchen)")
+			cfg_err, cfg_msg = call(P.get_pos_config)
+			if cfg_err:
+				# Từ 2026-11-25 (quy tắc D1, docs/rules/realtime.md §4): user CHỈ có POS KITCHEN mà chưa thuộc POS Profile đang bật nào
+				# -> get_pos_config báo lỗi rõ (không lộ đơn chi nhánh khác). User tạm ở đây không thuộc profile nào -> đúng thiết kế.
+				ok(cfg_err == "ValidationError" and "chưa thuộc POS Profile" in cfg_msg,
+					f"get_pos_config: KITCHEN chưa thuộc POS Profile -> báo lỗi rõ ({cfg_err}: {cfg_msg[:90]})")
+			else:
+				nav = P.get_pos_config().get("nav")
+				ok(nav == ["kitchen"], f"get_pos_config nav = {nav} (bấm POS -> /pos/kitchen)")
 		finally:
 			frappe.set_user("Administrator")
 

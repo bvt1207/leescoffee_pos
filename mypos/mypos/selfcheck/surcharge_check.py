@@ -251,15 +251,18 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 		# 2026-11-23: hủy KHÔNG xóa đơn (order_cancel.cancel_draft) -> dòng phụ thu còn, cùng docstatus 2 với đơn.
 		from mypos.mypos.doctype.pos_invoice_hooks import order_cancel as OC
 
+		# Mục G đã đổi giá Trân châu thành 20.000 -> đơn H0 / H2 mang phụ thu 20.000 (tổng 59.000).
+		t10_now = next(flt(v.extra_price) for v in frappe.get_doc("MYPOS Option Group", grp.name).values if v.label == T10)
+
 		def cancelled_with_surcharge(name):
 			rows = frappe.get_all("Sales Taxes and Charges", filters={"parent": name, "parenttype": "POS Invoice",
 				"description": P.SURCHARGE_DESCRIPTION}, fields=["tax_amount", "docstatus"])
 			return frappe.db.get_value("POS Invoice", name, "docstatus") == 2 and len(rows) == 1 \
-				and flt(rows[0].tax_amount) == 10000 and rows[0].docstatus == 2
+				and flt(rows[0].tax_amount) == t10_now and rows[0].docstatus == 2
 
 		_p, h1 = run_case("H0 tạo đơn để hủy", [L(1, top(T10))], 59000)
 		P.cancel_draft_order(h1.name, 1, "Đặt nhầm")
-		ok("H1 cancel_draft_order: đơn Cancelled, 1 dòng phụ thu 10.000 (docstatus 2), không nhân đôi",
+		ok(f"H1 cancel_draft_order: đơn Cancelled, 1 dòng phụ thu {money(t10_now)} (docstatus 2), không nhân đôi",
 			cancelled_with_surcharge(h1.name))
 		_p, h2 = run_case("H2 tạo đơn để job hủy", [L(1, top(T10))], 59000)
 		OC.cancel_draft(h2.name, OC.REASON_QR_EXPIRED, OC.SOURCE_AUTO_QR)  # cùng hàm job auto_cancel_qr_drafts dùng
