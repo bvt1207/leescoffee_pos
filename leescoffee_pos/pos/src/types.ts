@@ -265,6 +265,10 @@ export interface OrderStatusEntry {
 	label: string;
 	/** Thời điểm sắp xếp (cột trái: creation; cột phải: kitchen_done_at hoặc creation). */
 	at: string;
+	/** Món: CHỈ tên + số lượng (server gộp cùng tên, tối đa 12). Không giá / tùy chọn / ghi chú. */
+	items: Array<{ name: string; qty: number }>;
+	/** Số món server không trả (vượt giới hạn). */
+	items_more: number;
 }
 
 export interface OrderStatusBoard {

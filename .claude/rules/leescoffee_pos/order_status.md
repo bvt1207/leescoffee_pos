@@ -44,7 +44,11 @@ Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện đ�
 | `get_order_status_changes(pos_profile)` | `{profile, v}` — chỉ đọc Redis + cache profile (`STATUS_CACHE_PREFIX`) | poll phiên bản |
 | `get_order_status_board(pos_profile)` | `{profile, v, preparing[], ready[], more: {preparing, ready}}` | mở, khi `v` đổi, lưới an toàn |
 
-- Mỗi dòng **chỉ** `{code, name, label, at}`. Không có tên hóa đơn đầy đủ, mã / tên đầy đủ / SĐT khách, tiền, món, ghi chú.
+- Mỗi dòng **chỉ** `{code, name, label, at, items, items_more}`. Không có tên hóa đơn đầy đủ, mã / tên đầy đủ / SĐT khách, tiền, giá,
+  tùy chọn món, ghi chú.
+- `items` (2026-11-27): `[{name, qty}]` — CHỈ tên món (`POS Invoice Item.item_name`) + số lượng, `items_by_invoice` MỘT truy vấn cho cả
+  danh sách (đi cùng response, không thêm request). Gộp các dòng cùng tên (khác tùy chọn → cộng số lượng), thứ tự dòng đầu; tối đa
+  `ITEM_LIMIT = 12` món mỗi đơn, phần vượt = `items_more`.
 - `code` = `short_order_code`: cùng quy tắc `shortOrderNo` (cụm số cuối, "#00088") của tem ly / Pha chế / toast thu ngân.
 - `name` = `short_call_name(customer_name)`: từ cuối của tên, giữ dấu, cắt `NAME_MAX = 12` ký tự (+ "…"); "" khi tên trống, từ cuối có
   ≥ `NAME_DIGIT_LIMIT = 4` chữ số (tránh lộ SĐT), hoặc khách vãng lai của profile (`walk_in_by_profile`) → TV chỉ hiện mã.
@@ -64,6 +68,11 @@ Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện đ�
   ≥ `STALE_AFTER_MS` (30 giây).
 - Số request / phút khi KHÔNG có thay đổi: không socket 15 (`changes`, chỉ Redis) + 1 (lưới an toàn) = 16; có socket 2 + 1 = 3.
   Có thay đổi: thêm đúng 1 `get_order_status_board`. Config: 1 mỗi 5 phút.
+- Dòng đơn (2026-11-27): mã to bên trái; bên phải hàng trên = tên gọi (trái, trống vẫn giữ chỗ) + loại đơn (phải, cố định vị trí), hàng
+  dưới = món "2× Cà Phê Sữa Đá · 1× Trà Đào" trong khung cao đúng 2 dòng (`StatusItems.tsx` bớt món từ cuối, thay bằng "+ N món"; N gồm
+  `items_more`). Mọi dòng cao bằng nhau theo bậc, không nhảy khi đơn vào / ra. Cột phải: món chữ trắng đậm hơn, nhỏ hơn mã.
+- Số dòng tối đa mỗi cột ở 1080p (bậc nhỏ nhất, sau khi thêm món): trái 8, phải 7 (trước: 12 / 10); khi dư, một dòng nhường cho
+  "+ N đơn nữa" → hiện 7 / 6 đơn.
 - Không cuộn: mỗi cột 3 bậc chiều cao dòng (`ROW_VH` trong `StatusColumn.tsx`, khớp `.pos-sb-col--t0/1/2` trong CSS); chọn bậc lớn nhất chứa
   hết; bậc nhỏ nhất (mã ≈ 40px ở 1080p) vẫn không đủ → hiện vừa chỗ + "+ N đơn nữa". Cột phải rộng 55%, chữ lớn hơn, nền `--pos-primary`.
 - Chuyển động ≤ 300ms: dòng mới hiện dần, dòng đổi chỗ / sang cột kia trượt (FLIP, Web Animations), dòng rời màn mờ dần 260ms;

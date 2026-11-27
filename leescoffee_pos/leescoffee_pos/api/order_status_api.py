@@ -8,7 +8,8 @@
 - POS Profile: Cashier / Kitchen = profile user thuộc về (`require_membership=True`, cùng lỗi với màn Pha chế);
   quản lý (POS MANAGER / System Manager / Administrator) được chọn profile đang bật.
 - Dữ liệu trả TỐI THIỂU, rút gọn ở server: mã ngắn, tên gọi (từ cuối của tên, ≤ NAME_MAX ký tự), nhãn loại đơn / thẻ bàn,
-  thời điểm. Không trả tên hóa đơn đầy đủ, mã / tên đầy đủ / SĐT khách, tiền, món, ghi chú.
+  thời điểm, món (CHỈ tên món + số lượng, 2026-11-27). Không trả tên hóa đơn đầy đủ, mã / tên đầy đủ / SĐT khách, tiền, giá,
+  tùy chọn món, ghi chú.
 - Cập nhật: dùng chung phiên bản thay đổi theo POS Profile (`change_feed`, `rules/leescoffee_pos/realtime.md`).
 Chi tiết: `rules/leescoffee_pos/order_status.md`.
 """
@@ -29,6 +30,8 @@ READY = "Đã làm"
 MAX_ROWS = 60
 # Độ dài tối đa của tên gọi hiển thị (ký tự).
 NAME_MAX = 12
+# Số món tối đa trả cho mỗi đơn (sau khi gộp cùng tên); phần vượt chỉ trả số đếm `items_more`.
+ITEM_LIMIT = 12
 # Từ cuối có từ chừng này chữ số trở lên -> coi như số điện thoại / mã, không hiện.
 NAME_DIGIT_LIMIT = 4
 # Cache POS Profile cho request poll phiên bản. Dùng chung tiền tố change_feed.PROFILE_CACHE_PREFIX nên lưu / xóa POS Profile
@@ -66,6 +69,39 @@ def short_call_name(full_name):
 	if not last or sum(ch.isdigit() for ch in last) >= NAME_DIGIT_LIMIT:
 		return ""
 	return last if len(last) <= NAME_MAX else last[: NAME_MAX - 1] + "…"
+
+
+def _qty(value):
+	"""Số lượng hiển thị: 2.0 -> 2 (int), 1.5 giữ nguyên."""
+	value = float(value or 0)
+	return int(value) if value.is_integer() else value
+
+
+def items_by_invoice(names):
+	"""{tên hóa đơn: ([{name, qty}], số món bị bỏ)} trong MỘT truy vấn. CHỈ tên món + số lượng (không giá, tùy chọn, ghi chú).
+
+	Gộp các dòng cùng tên món (cùng món khác tùy chọn -> cộng số lượng), giữ thứ tự dòng đầu tiên; tối đa ITEM_LIMIT món mỗi đơn.
+	"""
+	if not names:
+		return {}
+	rows = frappe.get_all(
+		"POS Invoice Item",
+		filters={"parent": ["in", list(names)], "parenttype": "POS Invoice"},
+		fields=["parent", "item_name", "qty"],
+		order_by="parent asc, idx asc",
+	)
+	merged = {}
+	for r in rows:
+		lines = merged.setdefault(r.parent, {})
+		key = (r.item_name or "").strip()
+		if not key:
+			continue
+		lines[key] = lines.get(key, 0) + float(r.qty or 0)
+	out = {}
+	for parent, lines in merged.items():
+		items = [{"name": name, "qty": _qty(qty)} for name, qty in lines.items()]
+		out[parent] = (items[:ITEM_LIMIT], max(0, len(items) - ITEM_LIMIT))
+	return out
 
 
 def order_label(order_type, buzzer_number):
@@ -137,7 +173,7 @@ def get_order_status_changes(pos_profile=None):
 
 @frappe.whitelist()
 def get_order_status_board(pos_profile=None):
-	"""Hai cột của màn theo dõi đơn. Mỗi dòng {code, name, label, at}; `more` = số đơn vượt MAX_ROWS (không trả chi tiết)."""
+	"""Hai cột của màn theo dõi đơn. Mỗi dòng {code, name, label, at, items: [{name, qty}], items_more}; `more` = số đơn vượt MAX_ROWS (không trả chi tiết)."""
 	profile, _roles = _resolve_profile(pos_profile)
 	# Đọc phiên bản TRƯỚC khi truy vấn: thay đổi xảy ra giữa chừng sẽ làm phiên bản kế tiếp khác -> client tải lại.
 	version = get_version(profile)
@@ -169,13 +205,18 @@ def get_order_status_board(pos_profile=None):
 		r["sort_at"] = r.creation
 
 	_set_buzzer_numbers(preparing + ready)
+	# Món của các đơn đang hiện: MỘT truy vấn, đi cùng response (không thêm request phía client).
+	items = items_by_invoice([r.name for r in preparing + ready])
 
 	def entry(r):
+		lines, hidden = items.get(r.name, ([], 0))
 		return {
 			"code": short_order_code(r.name),
 			"name": "" if walk_in and r.customer == walk_in else short_call_name(r.customer_name),
 			"label": order_label(r.order_type, r.get("buzzer_number")),
 			"at": str(r["sort_at"]),
+			"items": lines,
+			"items_more": hidden,
 		}
 
 	return {

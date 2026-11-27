@@ -1,15 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import StatusItems from "./StatusItems";
 import type { OrderStatusEntry } from "../../types";
 
 export type BoardEntry = OrderStatusEntry & { key: string };
 
 /**
- * Bậc cỡ chữ: chiều cao một dòng theo % chiều cao màn (vh). Bậc cuối là nhỏ nhất vẫn đọc được từ xa
- * (mã ≈ 40px ở 1080p). CSS `.pos-sb-col--t0/1/2` đặt cỡ chữ tương ứng (styles/status-board.css).
+ * Bậc cỡ chữ: chiều cao một dòng theo % chiều cao màn (vh). Dòng gồm hàng tên gọi + loại đơn và tối đa 2 dòng món
+ * (2026-11-27) nên cao cố định, không nhảy khi đơn có ít / nhiều món. Bậc cuối là nhỏ nhất vẫn đọc được từ xa
+ * (mã ≈ 43px, món ≈ 19–21px ở 1080p). CSS `.pos-sb-col--t0/1/2` đặt cỡ chữ tương ứng (styles/status-board.css).
+ * 1080p, bậc nhỏ nhất: cột trái tối đa 8 dòng, cột phải 7 dòng (một dòng nhường cho "+ N đơn nữa" khi dư).
  */
 const ROW_VH: Record<"preparing" | "ready", number[]> = {
-	preparing: [9, 7, 5.6],
-	ready: [11, 8.5, 6.5],
+	preparing: [11.5, 10, 8.4],
+	ready: [13.5, 11, 9.2],
 };
 /** Khoảng cách giữa các dòng (vh) — khớp `gap` của `.pos-sb-col__list`. */
 const GAP_VH = 0.8;
@@ -108,9 +111,12 @@ export default function StatusColumn({
 					>
 						<span className="pos-sb-row__code">{entry.code}</span>
 						<span className="pos-sb-row__info">
-							{/* Luôn có ô tên (trống khi không có tên) để mọi dòng cùng bố cục: tên trên, loại đơn dưới. */}
-							<span className="pos-sb-row__name">{entry.name}</span>
-							<span className="pos-sb-row__label">{entry.label}</span>
+							{/* Hàng trên: tên gọi (trái, trống vẫn giữ chỗ) + loại đơn (phải, luôn cùng vị trí). Hàng dưới: món, tối đa 2 dòng. */}
+							<span className="pos-sb-row__top">
+								<span className="pos-sb-row__name">{entry.name}</span>
+								<span className="pos-sb-row__label">{entry.label}</span>
+							</span>
+							<StatusItems items={entry.items || []} more={entry.items_more || 0} tier={tier} />
 						</span>
 					</li>
 				))}

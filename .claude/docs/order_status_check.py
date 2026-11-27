@@ -27,7 +27,8 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 	ROLE_OF = {"A": "POS CASHIER", "K": "POS KITCHEN", "B": "POS CASHIER", "M": "POS MANAGER", "X": "POS KITCHEN"}
 	# Khóa được phép trong response (ngoài ra là lộ dữ liệu)
 	BOARD_KEYS = {"profile", "v", "preparing", "ready", "more"}
-	ENTRY_KEYS = {"code", "name", "label", "at"}
+	ENTRY_KEYS = {"code", "name", "label", "at", "items", "items_more"}
+	ITEM_KEYS = {"name", "qty"}  # món: CHỈ tên + số lượng (2026-11-27)
 	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
 	results, users, ctx = [], {}, {"profiles": []}
 
@@ -111,8 +112,8 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 				print(f'     Xóa tay (bench console): frappe.delete_doc("{dt}", "{name}", force=1, ignore_permissions=True); frappe.db.commit()')
 
 	# ---------------- thao tác thử ----------------
-	def paid(order_type="Take Away", buzzer=None, customer=None, key="A"):
-		line = [{"item_code": item_code, "qty": 1, "options": []}]
+	def paid(order_type="Take Away", buzzer=None, customer=None, key="A", lines=None):
+		line = lines or [{"item_code": item_code, "qty": 1, "options": []}]
 		res, err = as_user(key, P.create_draft_order, line, order_type, customer_name=customer,
 			mode_of_payment=mode_of_payment, price_list=ctx["price_list"], buzzer=buzzer)
 		if err:
@@ -161,6 +162,7 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 			ok(f"1 short_call_name({full!r}) = {want!r}", got == want, f"(được {got!r})")
 		ok("1 Tên dài cắt đúng NAME_MAX ký tự", len(S.short_call_name("A" * 40)) == S.NAME_MAX)
 		ok("1 Mã ngắn: ACC-PSINV-2026-00088 -> #00088", S.short_order_code("ACC-PSINV-2026-00088") == "#00088")
+		ok("1 Số lượng 2.0 -> 2, 1.5 giữ nguyên", S._qty(2.0) == 2 and isinstance(S._qty(2.0), int) and S._qty(1.5) == 1.5)
 
 		print("== 2. Dữ liệu tạm ==")
 		src = frappe.get_doc("POS Profile", pos_profile)
@@ -229,6 +231,9 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 		ok("3a Kitchen K (đúng profile): đơn Chưa làm ở cột trái", err is None and col == "preparing", f"({err or col})")
 		ok("3b Tên gọi chỉ là từ cuối ('Thạch'), nhãn 'Mang đi'", row and row["name"] == "Thạch" and row["label"] == "Mang đi",
 			f"({row})")
+		item_name = frappe.db.get_value("Item", item_code, "item_name")
+		ok("3b' Món: đúng 1 dòng {name: tên món, qty: 1}, items_more 0",
+			row and row["items"] == [{"name": item_name, "qty": 1}] and row["items_more"] == 0, f"({row and row['items']})")
 		_r, err = as_user("K", P.set_kitchen_status, t1, "Đã làm")
 		col, row = find(board("A")[0], c1)
 		ok("3c Đã làm -> sang cột phải (Cashier A thấy)", err is None and col == "ready", f"({err or col})")
@@ -255,6 +260,22 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 			ready.index(S.short_order_code(t4)) < ready.index(S.short_order_code(d4)), f"({ready})")
 		as_user("A", P.set_kitchen_status, t4, "Đã hoàn thành")
 		as_user("A", P.set_kitchen_status, d4, "Đã hoàn thành")
+
+		print("== 4b. Món: gộp cùng tên, giới hạn ITEM_LIMIT ==")
+		m4 = paid("Take Away", lines=[{"item_code": item_code, "qty": 2, "options": []},
+			{"item_code": item_code, "qty": 3, "options": []}])
+		_c, row = find(board("K")[0], S.short_order_code(m4))
+		ok("4e Hai dòng cùng món -> gộp 1 món qty 5", row and row["items"] == [{"name": item_name, "qty": 5}], f"({row and row['items']})")
+		fake = [frappe._dict(parent="X", item_name=f"Món {i}", qty=1) for i in range(S.ITEM_LIMIT + 3)]
+		orig = frappe.get_all
+		try:
+			frappe.get_all = lambda *a, **k: fake if a and a[0] == "POS Invoice Item" else orig(*a, **k)
+			lines, hidden = S.items_by_invoice(["X"])["X"]
+		finally:
+			frappe.get_all = orig
+		ok(f"4f {S.ITEM_LIMIT + 3} món khác tên -> trả {S.ITEM_LIMIT}, items_more 3", len(lines) == S.ITEM_LIMIT and hidden == 3,
+			f"({len(lines)}, {hidden})")
+		as_user("A", P.resolve_open_order, m4, "Khách không nhận", "dọn thử")
 
 		print("== 5. Đơn kết thúc có lý do / hủy / Draft không hiện ==")
 		f5 = paid("Take Away")
@@ -305,10 +326,16 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 		b = board("K")[0]
 		ok("7a Khóa gốc chỉ gồm profile / v / preparing / ready / more", set(b) == BOARD_KEYS, f"({sorted(b)})")
 		bad = [e for e in b["preparing"] + b["ready"] if set(e) != ENTRY_KEYS]
-		ok("7b Mỗi dòng chỉ có code / name / label / at", not bad, f"({bad[:2]})")
+		ok("7b Mỗi dòng chỉ có code / name / label / at / items / items_more", not bad, f"({bad[:2]})")
+		bad_items = [it for e in b["preparing"] + b["ready"] for it in e["items"] if set(it) != ITEM_KEYS]
+		ok("7b' Mỗi món chỉ có name + qty (không giá, tùy chọn, ghi chú, item_code)", not bad_items, f"({bad_items[:2]})")
 		text = json.dumps(b, ensure_ascii=False, default=str)
 		ok("7c Không có tên đầy đủ, mã Customer, tên hóa đơn đầy đủ",
 			FULL_NAME not in text and named not in text and p6 not in text and t7 not in text, "")
+		rate = frappe.db.get_value("POS Invoice", t7, "grand_total")
+		ok("7c' Không có khóa tiền / giá / ghi chú / tùy chọn",
+			not any(k in text for k in ('"rate"', '"amount"', '"grand_total"', '"order_note"', '"options"', '"price"', '"mobile'))
+			and (not rate or f'"{rate}"' not in text), "")
 		mobile = frappe.db.get_value("Customer", named, "mobile_no") or ""
 		ok("7d Không có SĐT khách", not mobile or mobile not in text)
 		as_user("A", P.set_kitchen_status, p6, "Đã hoàn thành")

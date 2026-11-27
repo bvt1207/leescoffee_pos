@@ -189,16 +189,29 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* Bố cục cố định cho mọi dòng: hàng 1 = tên gọi (trống vẫn giữ chỗ), hàng 2 = loại đơn. */
+/* Bố cục cố định cho mọi dòng (2026-11-27): hàng trên = tên gọi (trái, trống vẫn giữ chỗ) + loại đơn (phải, luôn cùng vị trí);
+   hàng dưới = món, khung cao đúng 2 dòng chữ (StatusItems cắt bằng "+ N món"). Chiều cao dòng cố định theo bậc (--sb-row). */
 .pos-sb-row__info {
+	flex: 1;
 	display: grid;
 	grid-template-rows: auto auto;
+	row-gap: 0.3vh;
 	align-content: center;
+	min-width: 0;
+}
+
+.pos-sb-row__top {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1vw;
 	min-width: 0;
 	line-height: 1.15;
 }
 
 .pos-sb-row__name {
+	flex: 1;
+	min-width: 0;
 	min-height: 1.15em;
 	font-size: var(--sb-name);
 	font-weight: 700;
@@ -208,6 +221,7 @@
 }
 
 .pos-sb-row__label {
+	flex: none;
 	font-size: var(--sb-label);
 	font-weight: 600;
 	color: var(--pos-text-muted);
@@ -216,6 +230,36 @@
 
 .pos-sb-col--ready .pos-sb-row__label {
 	color: rgba(255, 255, 255, 0.85);
+}
+
+/* Món: chỉ "số lượng× tên", ngăn bằng " · ". Khung đúng 2 dòng, thừa bị StatusItems thay bằng "+ N món" (không cuộn, không cao vọt). */
+.pos-sb-row__items {
+	display: block;
+	height: 2.4em; /* 2 dòng × line-height 1.2 */
+	overflow: hidden;
+	font-size: var(--sb-items);
+	font-weight: 500;
+	line-height: 1.2;
+	color: var(--pos-text);
+}
+
+.pos-sb-col--ready .pos-sb-row__items {
+	color: var(--pos-primary-contrast);
+	font-weight: 600;
+}
+
+.pos-sb-item {
+	white-space: nowrap; /* "2× Cà Phê Sữa Đá" không bị bẻ giữa số lượng và tên */
+}
+
+.pos-sb-item__sep {
+	white-space: normal;
+	opacity: 0.6;
+}
+
+.pos-sb-item--more {
+	font-weight: 700;
+	opacity: 0.8;
 }
 
 .pos-sb-row.is-leaving {
@@ -247,14 +291,20 @@
 	opacity: 0.55;
 }
 
-/* ===== Bậc cỡ chữ (chiều cao dòng = ROW_VH) ===== */
+/* ===== Bậc cỡ chữ (chiều cao dòng = ROW_VH trong StatusColumn.tsx; dòng gồm hàng tên + 2 dòng món) ===== */
 
-.pos-sb-col--preparing.pos-sb-col--t0 { --sb-row: 9vh; --sb-code: 5.6vh; --sb-name: 3.2vh; --sb-label: 2.3vh; }
-.pos-sb-col--preparing.pos-sb-col--t1 { --sb-row: 7vh; --sb-code: 4.4vh; --sb-name: 2.6vh; --sb-label: 2vh; }
-.pos-sb-col--preparing.pos-sb-col--t2 { --sb-row: 5.6vh; --sb-code: 3.7vh; --sb-name: 2.2vh; --sb-label: 1.8vh; }
-.pos-sb-col--ready.pos-sb-col--t0 { --sb-row: 11vh; --sb-code: 7vh; --sb-name: 3.8vh; --sb-label: 2.6vh; }
-.pos-sb-col--ready.pos-sb-col--t1 { --sb-row: 8.5vh; --sb-code: 5.4vh; --sb-name: 3.1vh; --sb-label: 2.2vh; }
-.pos-sb-col--ready.pos-sb-col--t2 { --sb-row: 6.5vh; --sb-code: 4vh; --sb-name: 2.5vh; --sb-label: 1.9vh; }
+/* Đệm dọc 0.7vh + hàng tên (1.15 × --sb-name) + 0.3vh + 2 dòng món (2.4 × --sb-items) ≤ --sb-row ở mọi bậc. */
+.pos-sb-row {
+	padding-top: 0.7vh;
+	padding-bottom: 0.7vh;
+}
+
+.pos-sb-col--preparing.pos-sb-col--t0 { --sb-row: 11.5vh; --sb-code: 5.8vh; --sb-name: 2.9vh; --sb-label: 2.2vh; --sb-items: 2.3vh; }
+.pos-sb-col--preparing.pos-sb-col--t1 { --sb-row: 10vh; --sb-code: 4.8vh; --sb-name: 2.5vh; --sb-label: 1.9vh; --sb-items: 2vh; }
+.pos-sb-col--preparing.pos-sb-col--t2 { --sb-row: 8.4vh; --sb-code: 4vh; --sb-name: 2.1vh; --sb-label: 1.7vh; --sb-items: 1.75vh; }
+.pos-sb-col--ready.pos-sb-col--t0 { --sb-row: 13.5vh; --sb-code: 7vh; --sb-name: 3.4vh; --sb-label: 2.5vh; --sb-items: 2.6vh; }
+.pos-sb-col--ready.pos-sb-col--t1 { --sb-row: 11vh; --sb-code: 5.6vh; --sb-name: 2.8vh; --sb-label: 2.1vh; --sb-items: 2.2vh; }
+.pos-sb-col--ready.pos-sb-col--t2 { --sb-row: 9.2vh; --sb-code: 4.4vh; --sb-name: 2.3vh; --sb-label: 1.8vh; --sb-items: 1.9vh; }
 
 /* ===== Thông báo lỗi (chưa thuộc POS Profile...) ===== */
 
