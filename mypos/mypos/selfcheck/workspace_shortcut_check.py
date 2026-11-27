@@ -17,7 +17,7 @@ def check_workspace_shortcuts():
 		"MYPOS Admin": "mypos_admin",
 	}
 	ORDER_STATUS = ("Order Status", "/pos/status")
-	# Nhãn shortcut mong đợi theo thứ tự hiển thị (content) — quyết định Van 2026-11-27.
+	# Nhãn shortcut mong đợi theo thứ tự hiển thị (content) — quyết định chủ dự án 2026-11-27.
 	EXPECTED = {
 		"MYPOS Cashier": ["Open MYPOS", "Customer Display", "Order Status"],
 		"MYPOS Kitchen": ["Kitchen Screen", "Order Status"],

@@ -24,6 +24,24 @@ def run_order_history_selftest(branch=None, run_old=True):
 	from mypos.mypos.api import customer_order_api as C
 	from mypos.mypos.doctype.sepay import sepay as S
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	admin = frappe.session.user
 	results = []
 	made = {"qr": [], "customers": [], "invoices": [], "branches": []}
@@ -378,26 +396,29 @@ def run_order_history_selftest(branch=None, run_old=True):
 			try:
 				if not frappe.db.exists("POS Invoice", name):
 					continue
-				doc = frappe.get_doc("POS Invoice", name)
-				if doc.docstatus == 1:
-					doc.cancel()
-				frappe.delete_doc("POS Invoice", name, force=True, ignore_permissions=True)
+				def _drop(name=name):
+					doc = frappe.get_doc("POS Invoice", name)
+					if doc.docstatus == 1:
+						doc.cancel()
+					frappe.delete_doc("POS Invoice", name, force=True, ignore_permissions=True)
+
+				retry_deadlock(_drop)
 			except Exception as e:
 				print(f"Chưa dọn được đơn {name}: {e}")
 		for name in made["customers"]:
 			try:
 				if name and frappe.db.exists("Customer", name):
-					frappe.delete_doc("Customer", name, force=True, ignore_permissions=True)
+					retry_deadlock(frappe.delete_doc, "Customer", name, force=True, ignore_permissions=True)
 			except Exception as e:
 				print(f"Chưa dọn được khách {name}: {e}")
 		for name in made["qr"]:
 			try:
-				frappe.delete_doc("MYPOS Order QR", name, force=True, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "MYPOS Order QR", name, force=True, ignore_permissions=True)
 			except Exception as e:
 				print(f"Chưa dọn được mã QR {name}: {e}")
 		for name in made["branches"]:
 			try:
-				frappe.delete_doc("Branch", name, force=True, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "Branch", name, force=True, ignore_permissions=True)
 				print(f"Đã xóa Branch tạm {name}: {not frappe.db.exists('Branch', name)}")
 			except Exception as e:
 				print(f"Chưa dọn được Branch {name}: {e}")
@@ -407,6 +428,8 @@ def run_order_history_selftest(branch=None, run_old=True):
 
 	if run_old:
 		old = globals().get("run_order_qr_selftest")
+		if not old:
+			from mypos.selfcheck.order_qr_selftest import run_order_qr_selftest as old
 		if old:
 			print("\n===== Bộ cũ: run_order_qr_selftest =====")
 			old(branch)

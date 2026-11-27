@@ -24,6 +24,24 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 		resolve_option_groups,
 	)
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	results, made_inv = [], []
 	ctx = {"price_list": price_list, "walk_in": None}
 
@@ -174,15 +192,18 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 		left = [n for n in made_inv if frappe.db.exists("POS Invoice", n)]
 		for n in left:
 			try:
-				doc = frappe.get_doc("POS Invoice", n)
-				if doc.docstatus == 1:
-					doc.cancel()
-				frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+				def _drop(n=n):
+					doc = frappe.get_doc("POS Invoice", n)
+					if doc.docstatus == 1:
+						doc.cancel()
+					frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+
+				retry_deadlock(_drop)
 			except Exception as ex:  # noqa: BLE001
 				print(f"WARN không dọn được {n}: {ex} (hủy/xóa tay trên Desk)")
 		if left:
 			for lpe in frappe.get_all("Loyalty Point Entry", filters={"invoice": ["in", left]}, pluck="name"):
-				frappe.delete_doc("Loyalty Point Entry", lpe, force=1, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "Loyalty Point Entry", lpe, force=1, ignore_permissions=True)
 			frappe.db.commit()
 			print(f"WARN có commit ngầm, đã dọn {left}")
 		else:
@@ -190,7 +211,7 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 		_tmp = ctx.get("walk_in")
 		if _tmp and frappe.db.exists("Customer", _tmp):
 			try:
-				frappe.delete_doc("Customer", _tmp, force=1, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "Customer", _tmp, force=1, ignore_permissions=True)
 				frappe.db.commit()
 				print(f"WARN có commit ngầm, đã xóa khách tạm {_tmp}")
 			except Exception as ex:  # noqa: BLE001

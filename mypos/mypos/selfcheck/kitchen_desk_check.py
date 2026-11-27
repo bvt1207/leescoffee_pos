@@ -14,6 +14,24 @@ def check_kitchen_desk(cleanup=True):
 
 	from mypos.mypos.api import pos_api as P
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	ROLES = ("POS CASHIER", "POS KITCHEN", "POS MANAGER")
 	SALE_MSG = "không có quyền thực hiện thao tác bán hàng"
 	fails = []
@@ -97,7 +115,7 @@ def check_kitchen_desk(cleanup=True):
 		if cleanup:
 			left = [u for u in users.values() if frappe.db.exists("User", u)]
 			for u in left:
-				frappe.delete_doc("User", u, force=1, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "User", u, force=1, ignore_permissions=True)
 			if left:
 				frappe.db.commit()
 				print(f"WARN có commit ngầm, đã xóa user tạm: {left}")

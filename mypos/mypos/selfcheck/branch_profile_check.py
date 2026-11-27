@@ -27,6 +27,24 @@ def check_branch_profile(pos_profile):
 	from mypos.mypos.doctype.branch_config import branch_config as BC
 	from mypos.mypos.doctype.sepay import sepay as S
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	PREFIX = "ZZTEST BR "
 	USER_PREFIX = "zz.test.br"
 	tag = frappe.generate_hash(length=5)
@@ -49,14 +67,14 @@ def check_branch_profile(pos_profile):
 		frappe.set_user("Administrator")
 		profiles = frappe.get_all("POS Profile", filters={"name": ["like", PREFIX + "%"]}, pluck="name")
 		for p in profiles:
-			frappe.db.delete("POS Opening Entry", {"pos_profile": p})
-			frappe.delete_doc("POS Profile", p, force=1, ignore_permissions=True)
+			retry_deadlock(frappe.db.delete, "POS Opening Entry", {"pos_profile": p})
+			retry_deadlock(frappe.delete_doc, "POS Profile", p, force=1, ignore_permissions=True)
 		for b in frappe.get_all("MYPOS Banner", filters={"title": ["like", PREFIX + "%"]}, pluck="name"):
-			frappe.delete_doc("MYPOS Banner", b, force=1, ignore_permissions=True)
+			retry_deadlock(frappe.delete_doc, "MYPOS Banner", b, force=1, ignore_permissions=True)
 		for u in frappe.get_all("User", filters={"name": ["like", USER_PREFIX + ".%"]}, pluck="name"):
-			frappe.delete_doc("User", u, force=1, ignore_permissions=True)
+			retry_deadlock(frappe.delete_doc, "User", u, force=1, ignore_permissions=True)
 		for b in frappe.get_all("Branch", filters={"name": ["like", PREFIX + "%"]}, pluck="name"):
-			frappe.delete_doc("Branch", b, force=1, ignore_permissions=True)
+			retry_deadlock(frappe.delete_doc, "Branch", b, force=1, ignore_permissions=True)
 		frappe.db.commit()
 		return profiles
 

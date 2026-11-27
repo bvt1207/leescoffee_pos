@@ -28,6 +28,24 @@ def check_option_surcharge(mode_of_payment, price_list, esp1,
 	from mypos.mypos.doctype.mypos_option_group.option_resolver import clear_option_cache
 	from mypos.mypos.doctype.sepay import sepay as S
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	TOPPING_TITLE = "ZZTEST Topping phụ thu"
 	T10, T5, TOFF = "ZZ Trân châu", "ZZ Thạch", "ZZ Tắt"
 	results, made_inv, made_docs = [], [], []
@@ -283,14 +301,20 @@ def check_option_surcharge(mode_of_payment, price_list, esp1,
 		left_docs = [(dt, n) for dt, n in made_docs if frappe.db.exists(dt, n)]
 		for n in left_inv:
 			try:
-				d = frappe.get_doc("POS Invoice", n)
-				if d.docstatus == 1:
-					d.cancel()
-				frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+				def _drop(n=n):
+					d = frappe.get_doc("POS Invoice", n)
+					if d.docstatus == 1:
+						d.cancel()
+					frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+
+				retry_deadlock(_drop)
 			except Exception as e:  # noqa: BLE001
 				print(f"WARN không dọn được {n}: {e} (hủy/xóa tay trên Desk)")
 		for dt, n in left_docs:
-			frappe.delete_doc(dt, n, force=1, ignore_permissions=True)
+			try:
+				retry_deadlock(frappe.delete_doc, dt, n, force=1, ignore_permissions=True)
+			except Exception as e:  # noqa: BLE001
+				print(f"WARN không dọn được {dt} {n}: {e} (xóa tay trên Desk)")
 		cur = frappe.db.get_value("POS Profile", profile.name, ["income_account", "taxes_and_charges"], as_dict=True)
 		if cur != orig_profile or frappe.db.get_value("Company", profile.company, "default_income_account") != orig_company_income:
 			frappe.db.set_value("POS Profile", profile.name, "income_account", orig_profile.income_account)

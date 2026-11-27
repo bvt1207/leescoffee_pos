@@ -22,6 +22,24 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 	from mypos.mypos.api import pos_api as P
 	from mypos.mypos.doctype.branch_config.branch_config import resolve_pos_profile_name
 
+	# Dọn dữ liệu thử: QueryDeadlockError (MariaDB 1213 / 1020) -> rollback, chờ 1 giây, thử lại (tối đa 3 lần);
+	# thành công -> commit ngay (bản ghi đã xóa không bị rollback lần thử sau cuốn mất). Lỗi khác ném lại cho khối gọi.
+	DEADLOCK = getattr(frappe, "QueryDeadlockError", None) or getattr(frappe.exceptions, "QueryDeadlockError", ())
+
+	def retry_deadlock(fn, *args, **kwargs):
+		import time as _time
+
+		for attempt in range(3):
+			try:
+				result = fn(*args, **kwargs)
+				frappe.db.commit()
+				return result
+			except DEADLOCK:
+				frappe.db.rollback()
+				if attempt == 2:
+					raise
+				_time.sleep(1)
+
 	ROLES = ("POS CASHIER", "POS KITCHEN", "POS MANAGER")
 	results, made_inv, users = [], [], {}
 	ctx = {"price_list": price_list, "walk_in": None}
@@ -189,20 +207,23 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 			left_inv = [n for n in made_inv if frappe.db.exists("POS Invoice", n)]
 			for n in left_inv:
 				try:
-					if frappe.db.get_value("POS Invoice", n, "status") == "Consolidated":
-						frappe.db.set_value("POS Invoice", n, "status", "Paid", update_modified=False)
-					doc = frappe.get_doc("POS Invoice", n)
-					if doc.docstatus == 1:
-						doc.cancel()
-					frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+					def _drop(n=n):
+						if frappe.db.get_value("POS Invoice", n, "status") == "Consolidated":
+							frappe.db.set_value("POS Invoice", n, "status", "Paid", update_modified=False)
+						doc = frappe.get_doc("POS Invoice", n)
+						if doc.docstatus == 1:
+							doc.cancel()
+						frappe.delete_doc("POS Invoice", n, force=1, ignore_permissions=True)
+
+					retry_deadlock(_drop)
 				except Exception as ex:  # noqa: BLE001
 					print(f"WARN không dọn được {n}: {ex} (hủy/xóa tay trên Desk)")
 			if left_inv:
 				for lpe in frappe.get_all("Loyalty Point Entry", filters={"invoice": ["in", left_inv]}, pluck="name"):
-					frappe.delete_doc("Loyalty Point Entry", lpe, force=1, ignore_permissions=True)
+					retry_deadlock(frappe.delete_doc, "Loyalty Point Entry", lpe, force=1, ignore_permissions=True)
 			left_users = [u for u in users.values() if frappe.db.exists("User", u)]
 			for u in left_users:
-				frappe.delete_doc("User", u, force=1, ignore_permissions=True)
+				retry_deadlock(frappe.delete_doc, "User", u, force=1, ignore_permissions=True)
 			if left_inv or left_users:
 				frappe.db.commit()
 				print(f"WARN có commit ngầm, đã dọn đơn {left_inv} và user {left_users}")
@@ -211,7 +232,7 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 			_tmp = ctx.get("walk_in")
 			if _tmp and frappe.db.exists("Customer", _tmp):
 				try:
-					frappe.delete_doc("Customer", _tmp, force=1, ignore_permissions=True)
+					retry_deadlock(frappe.delete_doc, "Customer", _tmp, force=1, ignore_permissions=True)
 					frappe.db.commit()
 					print(f"WARN có commit ngầm, đã xóa khách tạm {_tmp}")
 				except Exception as ex:  # noqa: BLE001
