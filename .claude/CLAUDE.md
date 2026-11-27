@@ -3,6 +3,9 @@
 > File này là bộ não của dự án. Claude Code đọc file này đầu mỗi phiên làm việc để
 > hiểu bối cảnh mà không cần giải thích lại. Xem mục 9 để biết quy tắc tự bảo trì
 > file này: từ nay Claude Code tự cập nhật, Van không chỉnh tay.
+>
+> **Từ 2026-11-27: app chính là `mypos/`** (app `mypos`, module `MYPOS`, port từ `leescoffee_pos/`, branch `mypos-port`) — xem **mục 13**.
+> `leescoffee_pos/` và `.claude/rules/leescoffee_pos/` CHỈ ĐỌC (tham khảo lịch sử); quy tắc hiện hành nằm ở `mypos/docs/` và `mypos/CLAUDE.md`.
 
 ## 1. Bối cảnh dự án
 
@@ -314,6 +317,9 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [x] Màn hình khách `/pos/customer` + DocType `MYPOS Banner`: banner 5 giây, món + tổng tiền (CTKM, phụ thu, đổi điểm),
       VietQR, thanh toán thành công (phải thu 0). **Đã test Pass** (`d13b37c`, `4d06ddd`). Rule: `.claude/rules/leescoffee_pos/customer_display.md`
 - [ ] Chuẩn bị demo hội đồng, nhập dữ liệu Lee's Coffee qua Desk UI làm dữ liệu demo
+- [x] Port sang app mới `mypos` (module `MYPOS`, Frappe / ERPNext 16.61, bench mới `~/frappe-bench`, site `local.com`): không còn chuỗi
+      tên app cũ, Sidebar / màn Apps theo 16.61, bộ selfcheck chạy được khi site chưa có dữ liệu. **Đã test Pass 22/22** (2026-11-27,
+      `check_everything`; `3747288`, `984aa69`). Chi tiết mục 13.
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
 
@@ -391,3 +397,28 @@ Chi tiết luồng `generate_qr_for_invoice()` và `sepay_webhook()` (đã đố
 - Sau `bench migrate` + test pass, Van nói "duyệt" -> cập nhật CLAUDE.md (tick checklist), commit "docs:"
 - Từ ~60% token, nhắc Van mở phiên mới để tránh tự nén.
 - Nếu cắt giữa task: ghi `.claude/docs/task_handoff.md`
+
+## 13. App `mypos` (port 2026-11-27) — nơi làm việc từ nay
+
+- Vị trí: `PROJECTPOS/mypos/` (gốc app: `pyproject.toml`, `mypos/` package, `pos/` frontend, `docs/`, `CLAUDE.md`). Branch git `mypos-port`
+  (chưa push). Đẩy GitHub: `git subtree split --prefix=mypos` (`mypos/docs/deploy.md` §6) vì `bench get-app` cần app ở gốc repo.
+- Đọc trước khi sửa: `mypos/CLAUDE.md` → `mypos/docs/README.md` (mục lục) → `mypos/docs/rules/*.md`. Các file này là bản hiện hành của
+  `.claude/rules/leescoffee_pos/*` (đã đổi đường dẫn `mypos.mypos.*`, module `MYPOS`).
+- Khác app cũ (đã duyệt):
+  - Không patch cũ; thiết lập ở `mypos/setup/` (`after_install` + `after_migrate`: role + quyền theo `PERMS`, chỉ thêm, lỗi chỉ ghi Error Log).
+  - Custom Field fixture có `module = "MYPOS"`; bỏ fixture DocType; `required_apps = ["erpnext"]`; `frappe-dependencies >=16.50,<17`.
+  - Sidebar "MYPOS" (DocType `Sidebar`, trùng tên module, không còn `workspace_sidebar` / sidebar rỗng), xếp Admin, Manager, Cashier, Kitchen.
+  - Desk dùng màn **Apps**: hook `add_to_apps_screen` + `mypos/permissions.py::has_app_permission`, không khai `route` (vào workspace theo
+    role). Desktop Icon chỉ nạp ở chế độ lưới icon (Frappe đang loại bỏ) — giữ file, không dựa vào.
+  - Sửa cho ERPNext 16.61: tự mở ca điền `balance_details`; hook `validate` POS Invoice giữ CTKM theo tổng qty khi lưu đơn.
+- Kiểm: `bench --site local.com execute mypos.selfcheck.check_everything.check_everything` (22 test: điều kiện nền, 4 chỉ đọc, 2 user tạm,
+  15 quán thử `ZZTEST-*`). Điều kiện nền site mới: Setup Wizard (Vietnam / VND) + POS Settings Invoice Type = POS Invoice
+  (`mypos/docs/testing.md`, `tools/test_without_data.md`). Kiểm tay: `mypos/docs/checklist.md`.
+- Copy sang bench: `tools/copy_mypos_steps.md` (không rsync; cổng dừng ở diff trước khi copy; sao lưu `~/mypos_backups`).
+  **Van cho phép (2026-11-27) Claude Code tự chạy các bước copy trong WSL** qua `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -- bash <file .sh trong
+  tools/_wsl/>` (thư mục bỏ qua trong git), phạm vi: đọc (ls / find / diff / grep / wc / tar -tzf / bench version / list-apps / execute chỉ đọc),
+  ghi CHỈ trong `~/frappe-bench/apps/mypos` (cp --no-preserve=mode,ownership, mkdir -p, chmod 755 / 644) và `~/mypos_backups`. CẤM: rm / mv,
+  --delete, ghi `.git` của DST, bench migrate / build / restart / install-app / backup, npm, pip, sửa `leescoffee_pos` hoặc `~/frappe-benchver16`.
+  Danh sách "sẽ bị thay" ở bước diff chỉ gồm file vừa sửa thì chạy tiếp, có file lạ thì DỪNG.
+- Sau mỗi task trên `mypos`: commit (không push), copy theo quy trình trên, đưa Van lệnh bench cần chạy (restart nếu đổi Python / hooks,
+  migrate nếu đổi DocType / fixtures / workspace / sidebar) + lệnh `check_everything`; cập nhật `mypos/docs` cùng commit.
