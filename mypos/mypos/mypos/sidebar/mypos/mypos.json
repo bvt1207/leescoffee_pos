@@ -1,10 +1,7 @@
 {
  "app": "mypos",
- "creation": "2026-11-25 10:00:00.000000",
- "docstatus": 0,
  "doctype": "Sidebar",
  "header_icon": "milestone",
- "idx": 0,
  "items": [
   {
    "child": 0,
@@ -17,6 +14,7 @@
    "label": "Cashier",
    "link_to": "MYPOS Cashier",
    "link_type": "Workspace",
+   "open_in_new_tab": 0,
    "parentfield": "items",
    "parenttype": "Sidebar",
    "show_arrow": 0,
@@ -33,6 +31,7 @@
    "label": "Kitchen",
    "link_to": "MYPOS Kitchen",
    "link_type": "Workspace",
+   "open_in_new_tab": 0,
    "parentfield": "items",
    "parenttype": "Sidebar",
    "show_arrow": 0,
@@ -49,6 +48,7 @@
    "label": "Manager",
    "link_to": "MYPOS Manager",
    "link_type": "Workspace",
+   "open_in_new_tab": 0,
    "parentfield": "items",
    "parenttype": "Sidebar",
    "show_arrow": 0,
@@ -65,17 +65,15 @@
    "label": "Admin",
    "link_to": "MYPOS Admin",
    "link_type": "Workspace",
+   "open_in_new_tab": 0,
    "parentfield": "items",
    "parenttype": "Sidebar",
    "show_arrow": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-11-25 10:00:00.000000",
- "modified_by": "Administrator",
  "module": "MYPOS",
  "name": "MYPOS",
- "owner": "Administrator",
  "standard": 1,
  "title": "MYPOS"
 }
