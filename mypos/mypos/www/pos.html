@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+		/>
+		<title>{{ title }}</title>
+		<meta name="csrf-token" content="{{ csrf_token }}" />
+		<link rel="stylesheet" href="/assets/mypos/pos/pos.css" />
+	</head>
+	<body>
+		<!-- Điểm mount React app (mypos/pos) -->
+		<div id="root"></div>
+
+		<script>
+			window.POS_CONFIG = {
+				csrfToken: "{{ csrf_token }}",
+				apiBase: "/api/method/mypos.mypos.api.pos_api",
+				realtime: {
+					site: "{{ realtime_site }}",
+					port: {{ realtime_port or 9000 }},
+					devServer: {{ realtime_dev or 0 }},
+				},
+			};
+		</script>
+		<script type="module" src="/assets/mypos/pos/pos.js"></script>
+	</body>
+</html>
