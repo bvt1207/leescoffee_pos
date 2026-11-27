@@ -3,6 +3,9 @@
 > Cập nhật 2026-11-25 (giảm tải poll giai đoạn 1 + 2). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0y. /pos/status hiện tên món (2026-11-27) — ĐÃ TEST PASS (`0ddff1f`)
+- `items_by_invoice` (1 truy vấn, chỉ {name, qty}, gộp cùng tên, ≤ 12 món); `StatusItems.tsx` 2 dòng + "+ N món"; 1080p tối đa trái 8 / phải 7 dòng.
+
 ## 0x. Toast xếp cột + Kitchen tab Đã hoàn thành gọn + dòng /pos/status cố định (2026-11-27) — ĐÃ TEST PASS (`f5bd875`)
 - Toast dùng chung `store/toasts.ts` + `ToastStack` (tối đa 3, chống trùng theo key); Pha chế mute đơn trước khi gửi "Đã làm" (`roles.md` §7b).
 

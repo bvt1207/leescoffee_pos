@@ -82,7 +82,7 @@ PROJECTPOS/                        # git repo
     │       ├── components/        # AppHeader, ToastStack (toast dùng chung), MenuGrid (tab Item Group), SizeModal + ItemModalFrame,
     │       │                      # CartPanel + OptionChips (chip tùy chọn), CustomerPicker, BuzzerPicker, QrModal,
     │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly), customer/BannerCarousel (màn khách),
-    │       │                      # status/StatusColumn (cột màn /pos/status)
+    │       │                      # status/StatusColumn + StatusItems (cột + dòng món màn /pos/status)
     │       ├── store/             # cart.ts, search.ts, menuFilter.ts, orderFilter.ts, serveQueue.ts (hàng chờ thông báo thu ngân),
     │       │                      # toasts.ts (toast dùng chung, tối đa 3) (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm), format.ts (ngày giờ, mã đơn),

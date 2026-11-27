@@ -46,7 +46,7 @@ Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện đ�
 
 - Mỗi dòng **chỉ** `{code, name, label, at, items, items_more}`. Không có tên hóa đơn đầy đủ, mã / tên đầy đủ / SĐT khách, tiền, giá,
   tùy chọn món, ghi chú.
-- `items` (2026-11-27): `[{name, qty}]` — CHỈ tên món (`POS Invoice Item.item_name`) + số lượng, `items_by_invoice` MỘT truy vấn cho cả
+- `items` (2026-11-27, ĐÃ TEST PASS `0ddff1f`): `[{name, qty}]` — CHỈ tên món (`POS Invoice Item.item_name`) + số lượng, `items_by_invoice` MỘT truy vấn cho cả
   danh sách (đi cùng response, không thêm request). Gộp các dòng cùng tên (khác tùy chọn → cộng số lượng), thứ tự dòng đầu; tối đa
   `ITEM_LIMIT = 12` món mỗi đơn, phần vượt = `items_more`.
 - `code` = `short_order_code`: cùng quy tắc `shortOrderNo` (cụm số cuối, "#00088") của tem ly / Pha chế / toast thu ngân.
