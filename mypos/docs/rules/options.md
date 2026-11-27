@@ -98,6 +98,10 @@ Desk → MYPOS Option Group → New:
   - Giá mỗi đơn vị sau giảm giống nhau trên mọi dòng cùng mã → tổng không lệch so với 1 dòng qty tổng.
   - Khi insert/save/submit, ERPNext chạy lại `set_missing_values(for_validate=True)`;
     dùng lại luật đã ghi trong `pricing_rules` — **đã test Pass trên bench (`5b17b6c`)**: tổng hóa đơn thật (sau tạo và sau `pay_cash`) khớp preview ở mọi ca.
+  - ⚠️ **ERPNext 16.61 (2026-11-27, `surcharge_check` B3 / F1 / F2 FAIL, CHƯA SỬA):** `pricing_rule.select_pricing_rules` chỉ dùng lại luật đã ghi
+    khi `_action == "submit"` và dòng không đổi (`is_row_unchanged_since_save`); mọi lần LƯU khác (insert ở `create_draft_order`, save trong
+    `pay_cash` / webhook SePay) chọn lại luật theo qty TỪNG dòng -> 2 + 2 ly cùng mã: preview 10%, đơn lưu 5% (vd. 170.400 / 178.200).
+    Phương án đang chờ duyệt: hook `validate` của POS Invoice áp lại kết quả `_apply_rules_on_total_qty` sau khi ERPNext chọn luật.
 - Đóng ca: `options` nằm trên POS Invoice Item; Sales Invoice gộp không có field này (giống đường/đá cũ).
 - Frontend cũ (trước giai đoạn 3) không gửi `options` → đi đường cũ.
 - Phụ thu topping: backend làm 2026-11-17 (§9); UI (chip "+giá", giỏ, hóa đơn) là giai đoạn 2.

@@ -54,7 +54,8 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
   - Manager (`_pos_roles` → POS MANAGER / System Manager / Administrator) mở/đóng thay; Cashier vẫn phải thuộc Applicable for Users;
     `on_submit` ghi comment "Mở ca thay / Đóng ca thay … bởi …" (đóng thay: comment cả trên ca).
   - KITCHEN / role khác: chặn.
-- `pos_api._ensure_opening_entry` (tự mở ca khi tạo đơn) đi qua cùng hook; lỗi giờ nối thêm lý do gốc. QR không tạo ca
+- `pos_api._ensure_opening_entry` (tự mở ca khi tạo đơn) đi qua cùng hook; lỗi giờ nối thêm lý do gốc. Từ 2026-11-27 điền
+  `balance_details` = mỗi Mode of Payment của POS Profile, tiền đầu ca 0 (ERPNext 16.61 bắt buộc; thiếu -> /pos không tự mở ca được). QR không tạo ca
   (`_as_user(shift.user)` → thấy ca sẵn có).
 - Form Desk: `public/js/pos_opening_entry.js` (`doctype_js`): Cashier tự điền = người đăng nhập, khóa với người không phải quản lý.
 - **Only If Creator** (`if_owner`) cho CASHIER trên 2 DocType (`mypos/setup/roles.py`):

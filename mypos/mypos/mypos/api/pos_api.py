@@ -372,6 +372,13 @@ def _ensure_opening_entry(profile):
 				"user": frappe.session.user,
 				"pos_profile": profile.name,
 				"company": profile.company,
+				# ERPNext 16.61: balance_details là trường bắt buộc (thiếu -> MandatoryError). Mỗi Mode of Payment của
+				# POS Profile một dòng, tiền đầu ca 0 (thu ngân chỉnh trên Desk nếu cần đếm tiền đầu ca).
+				"balance_details": [
+					{"mode_of_payment": p.mode_of_payment, "opening_amount": 0}
+					for p in (profile.get("payments") or [])
+					if p.mode_of_payment
+				],
 			}
 		)
 		opening.insert(ignore_permissions=True)
