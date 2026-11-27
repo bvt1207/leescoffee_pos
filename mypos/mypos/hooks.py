@@ -8,7 +8,8 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+# Branch, POS Invoice, POS Profile... đều thuộc ERPNext (Branch: erpnext/setup/doctype/branch). Không cần HRMS.
+required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -53,6 +54,14 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+# POS Opening Entry: tự điền Cashier = người đăng nhập, khóa với người không phải quản lý (server vẫn chặn).
+# POS Invoice: nút "Hủy đơn" (Draft) và "Xử lý đơn" (đã thu tiền, Chưa làm / Đã làm) cho quản lý.
+# POS Profile: Khách vãng lai chỉ cho chọn Customer đang bật.
+doctype_js = {
+	"POS Opening Entry": "public/js/pos_opening_entry.js",
+	"POS Invoice": "public/js/pos_invoice.js",
+	"POS Profile": "public/js/pos_profile.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_kanban_js = {"doctype" : "public/js/doctype_kanban.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -96,7 +105,10 @@ app_license = "mit"
 # ------------
 
 # before_install = "mypos.install.before_install"
-# after_install = "mypos.install.after_install"
+# Cài mới: install-app không chạy patch -> tạo Role POS + quyền ở đây (idempotent, mypos/setup/).
+after_install = "mypos.setup.install.after_install"
+# Mỗi lần migrate: bổ sung role / quyền còn thiếu theo PERMS (chỉ thêm, lỗi không làm migrate thất bại).
+after_migrate = "mypos.setup.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -159,16 +171,62 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"POS Invoice": {
+		"before_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_submit",
+		"on_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_submit",
+		"before_save": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.before_save",
+		"on_update_after_submit": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_update_after_submit",
+		"on_cancel": "mypos.mypos.doctype.pos_invoice_hooks.pos_invoice_hooks.on_cancel",
+		# Phiên bản thay đổi theo POS Profile (Redis, sau commit) -> màn POS chỉ tải lại khi đổi (change_feed.py).
+		"on_change": "mypos.mypos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
+	},
+	# Mở / đóng ca: chỉ ca của chính mình, MANAGER thao tác thay (pos_shift_hooks.py).
+	"POS Opening Entry": {
+		"before_validate": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_validate",
+		"before_submit": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.opening_before_submit",
+		"on_submit": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.opening_on_submit",
+		"on_change": "mypos.mypos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
+	},
+	"POS Closing Entry": {
+		"before_validate": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_validate",
+		"before_submit": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.closing_before_submit",
+		"on_submit": "mypos.mypos.doctype.pos_shift_hooks.pos_shift_hooks.closing_on_submit",
+		"on_change": "mypos.mypos.doctype.pos_invoice_hooks.change_feed.on_doc_change",
+	},
+	# Khách vãng lai, Branch bắt buộc, 1 profile đang bật / Branch (pos_profile_hooks.py).
+	"POS Profile": {
+		"validate": "mypos.mypos.doctype.pos_profile_hooks.pos_profile_hooks.validate",
+		# Cache POS Profile của user (get_pos_changes) -> xóa khi lưu / xóa profile.
+		"on_update": "mypos.mypos.doctype.pos_invoice_hooks.change_feed.clear_profile_cache",
+		"on_trash": "mypos.mypos.doctype.pos_invoice_hooks.change_feed.clear_profile_cache",
+	},
+	# MYPOS Buzzer: validate là native lifecycle method của Document -> Frappe tự gọi, không đăng ký ở đây.
+}
+
+# Website Route Rules
+# -------------------
+# /pos/* (orders, kitchen, customer, status) dùng chung www/pos.html, định tuyến còn lại do React Router.
+# "/pos" (không hậu tố) Frappe tự resolve tới www/pos.html.
+website_route_rules = [
+	{"from_route": "/pos/<path:app_path>", "to_route": "pos"},
+	# Web đặt món QR cho khách: /order/<token> -> www/mypos_order.html (React app riêng, không cần đăng nhập).
+	# KHÔNG đặt tên trang "order": ERPNext đã có templates/pages/order (/orders/<name>).
+	{"from_route": "/order/<path:app_path>", "to_route": "mypos_order"},
+]
 
 # Scheduled Tasks
 # ---------------
+
+# Tự hủy (chuyển Cancelled, lưu lý do) đơn Draft quá hạn: QR quá hạn thanh toán + đệm webhook, Draft kênh khác
+# quá 120 phút (mốc ở doctype/pos_invoice_hooks/order_cancel.py).
+scheduler_events = {
+	"cron": {
+		"*/5 * * * *": [
+			"mypos.mypos.doctype.pos_invoice_hooks.order_cancel.auto_cancel_stale_drafts",
+		],
+	},
+}
 
 # scheduler_events = {
 # 	"all": [
@@ -223,6 +281,21 @@ app_license = "mit"
 # -----------------------------------------------------------
 
 # ignore_links_on_delete = ["Communication", "ToDo"]
+
+# Fixtures
+# --------
+# Custom Field / Property Setter trên DocType chuẩn (module MYPOS) và 3 Role.
+# Quyền (Custom DocPerm) KHÔNG dùng fixture: đặt qua mypos/setup/roles.py (PERMS).
+fixtures = [
+	{"dt": "Custom Field", "filters": [["dt", "=", "POS Invoice"]]},
+	{"dt": "Custom Field", "filters": [["dt", "=", "POS Profile"]]},
+	{"dt": "Custom Field", "filters": [["dt", "=", "Branch"]]},
+	{"dt": "Custom Field", "filters": [["dt", "=", "Customer"], ["fieldname", "=", "mobile_number"]]},
+	{"dt": "Custom Field", "filters": [["dt", "=", "POS Invoice Item"]]},
+	# Bộ lọc chuẩn POS Profile trên danh sách POS Invoice, CHỈ đúng 1 dòng.
+	{"dt": "Property Setter", "filters": [["name", "in", ["POS Invoice-pos_profile-in_standard_filter"]]]},
+	{"dt": "Role", "filters": [["name", "in", ["POS CASHIER", "POS KITCHEN", "POS MANAGER"]]]},
+]
 
 # Request Events
 # ----------------
