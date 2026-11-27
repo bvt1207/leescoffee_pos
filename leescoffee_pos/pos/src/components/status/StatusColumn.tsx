@@ -108,7 +108,8 @@ export default function StatusColumn({
 					>
 						<span className="pos-sb-row__code">{entry.code}</span>
 						<span className="pos-sb-row__info">
-							{entry.name ? <span className="pos-sb-row__name">{entry.name}</span> : null}
+							{/* Luôn có ô tên (trống khi không có tên) để mọi dòng cùng bố cục: tên trên, loại đơn dưới. */}
+							<span className="pos-sb-row__name">{entry.name}</span>
 							<span className="pos-sb-row__label">{entry.label}</span>
 						</span>
 					</li>

@@ -1,10 +1,9 @@
-import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import AppHeader from "./components/AppHeader";
+import ToastStack from "./components/ToastStack";
 import { navOf, usePos } from "./lib/pos-context";
 import { useChangeFeedPoller } from "./lib/changes";
 import { useServeQueuePoller } from "./lib/serve";
-import { useServeQueue } from "./store/serveQueue";
 import type { NavKey } from "./types";
 
 // Đường dẫn (trong basename /pos) -> mục điều hướng cần quyền.
@@ -36,15 +35,6 @@ export default function App() {
 	useServeQueuePoller(!loading && !!config?.roles?.cashier && nav.includes("orders"));
 	// Phiên bản thay đổi theo POS Profile (lib/changes.ts): chỉ poll khi có màn đăng ký (Pha chế, Orders, hàng chờ, chọn thẻ bàn).
 	useChangeFeedPoller(!loading && !!config && nav.length > 0);
-	const toast = useServeQueue((s) => s.toast);
-	const setToast = useServeQueue((s) => s.setToast);
-
-	// Toast tự tắt sau 8 giây; thông báo bền là chấm đỏ ở "Pha chế" (tab Đã làm có nút Đã hoàn thành).
-	useEffect(() => {
-		if (!toast) return;
-		const t = window.setTimeout(() => setToast(null), 8000);
-		return () => window.clearTimeout(t);
-	}, [toast, setToast]);
 
 	return (
 		<div className="pos-app">
@@ -73,11 +63,8 @@ export default function App() {
 				)}
 			</main>
 
-			{toast ? (
-				<div className="pos-toast pos-toast--serve" role="status" aria-live="polite">
-					{toast}
-				</div>
-			) : null}
+			{/* Toast dùng chung mọi màn (hàng chờ thu ngân + xác nhận màn Pha chế): xếp cột, tối đa 3 (store/toasts.ts). */}
+			<ToastStack />
 		</div>
 	);
 }

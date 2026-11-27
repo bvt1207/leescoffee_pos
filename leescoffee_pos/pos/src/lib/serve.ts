@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { usePosRefresh } from "./changes";
 import { notifyReady, unlockAudio } from "../order/alert";
 import { useServeQueue } from "../store/serveQueue";
+import { pushToast } from "../store/toasts";
 import type { ServeQueueItem } from "../types";
 import { shortOrderNo } from "./format";
 
@@ -26,6 +27,9 @@ function toastText(items: ServeQueueItem[], fresh: string[]): string {
 	return isDineIn(o) ? `${serveTarget(o)} sẵn sàng phục vụ` : `${serveTarget(o)} · Gọi khách lấy món`;
 }
 
+/** Toast hàng chờ hiển thị lâu hơn toast xác nhận (thông báo bền là chấm đỏ ở "Pha chế"). */
+export const SERVE_TOAST_MS = 8000;
+
 /** Sau một lần refresh: có đơn mới -> toast + bíp (âm thanh chỉ phát sau lần chạm đầu, xem order/alert.ts). */
 export async function refreshServeQueue(quiet: string[] = []): Promise<void> {
 	const store = useServeQueue.getState();
@@ -34,7 +38,8 @@ export async function refreshServeQueue(quiet: string[] = []): Promise<void> {
 	if (fresh.length === 0) return;
 	const text = toastText(useServeQueue.getState().items, fresh);
 	if (!text) return;
-	useServeQueue.getState().setToast(text);
+	// Khóa theo danh sách đơn: cùng sự kiện tới từ cả realtime lẫn poll chỉ ra MỘT toast (store/toasts.ts).
+	pushToast(text, { key: `serve:${[...fresh].sort().join(",")}`, ms: SERVE_TOAST_MS });
 	notifyReady();
 }
 

@@ -1877,6 +1877,20 @@ button.pos-cart-line__main:hover {
 	color: var(--pos-text);
 }
 
+/* Tab Đã hoàn thành: món tóm tắt một dòng, tối đa 2 dòng (2026-11-27). */
+.pos-kcard__summary {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--pos-text-muted);
+}
+
 .pos-kcard__note {
 	padding: 10px 12px;
 	border-radius: 10px;
@@ -1955,33 +1969,60 @@ button.pos-cart-line__main:hover {
 	font-size: 16px;
 }
 
-.pos-toast {
+/* Toast dùng chung (components/ToastStack.tsx, store/toasts.ts — 2026-11-27): MỘT cột cố định, toast xếp dọc có khoảng cách,
+   tự xuống dòng, không cắt chữ, không đè nhau (trước đây 2 nguồn toast cùng vị trí tuyệt đối). Tối đa 3 toast. */
+.pos-toasts {
 	position: fixed;
 	top: 84px;
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 100;
-	max-width: min(560px, 92vw);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	width: min(560px, 92vw);
+	pointer-events: none; /* chỉ toast bấm-để-tắt nhận chuột, phần trống giữa các toast không chặn màn bên dưới */
+}
+
+.pos-toast {
+	max-width: 100%;
 	padding: 14px 22px;
+	border: 0;
 	border-radius: 12px;
 	background: var(--pos-text);
 	color: var(--pos-on-solid);
+	font: inherit;
 	font-size: 18px;
 	font-weight: 700;
+	line-height: 1.35;
+	text-align: center;
+	white-space: normal;
+	overflow-wrap: anywhere;
 	box-shadow: var(--pos-shadow-toast);
-	cursor: pointer;
 	animation: pos-toast-in 0.2s ease-out;
+}
+
+.pos-toast--dismiss {
+	pointer-events: auto;
+	cursor: pointer;
 }
 
 @keyframes pos-toast-in {
 	from {
 		opacity: 0;
-		transform: translate(-50%, -8px);
+		transform: translateY(-8px);
 	}
 
 	to {
 		opacity: 1;
-		transform: translate(-50%, 0);
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pos-toast {
+		animation: none;
 	}
 }
 
@@ -2701,13 +2742,6 @@ button.pos-cart-line__main:hover {
 	font-size: 12px;
 	font-weight: 700;
 	line-height: 1;
-}
-
-/* Toast thông báo đơn "Đã làm" cho thu ngân: chỉ hiển thị, không bấm được */
-.pos-toast--serve {
-	text-align: center;
-	cursor: default;
-	pointer-events: none;
 }
 
 /* ===== Màn hình khách /pos/customer (2026-11-24): chỉ hiển thị, đọc được từ 1–2 m ===== */

@@ -124,24 +124,24 @@
 	color: var(--pos-primary-contrast);
 }
 
+/* Tiêu đề hai cột: cùng chiều cao, cùng cỡ chữ, cùng đường kẻ -> thẳng hàng (2026-11-27). */
 .pos-sb-col__head {
+	flex: none;
+	box-sizing: border-box;
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	justify-content: space-between;
 	gap: 1vw;
-	padding-bottom: 1.6vh;
+	height: 7vh;
 	border-bottom: 0.3vh solid currentColor;
 }
 
 .pos-sb-col__title {
 	margin: 0;
-	font-size: 4.2vh;
+	font-size: 4.4vh;
 	font-weight: 800;
+	line-height: 1;
 	letter-spacing: -0.01em;
-}
-
-.pos-sb-col--ready .pos-sb-col__title {
-	font-size: 4.8vh;
 }
 
 .pos-sb-col__count {
@@ -189,14 +189,17 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* Bố cục cố định cho mọi dòng: hàng 1 = tên gọi (trống vẫn giữ chỗ), hàng 2 = loại đơn. */
 .pos-sb-row__info {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-rows: auto auto;
+	align-content: center;
 	min-width: 0;
 	line-height: 1.15;
 }
 
 .pos-sb-row__name {
+	min-height: 1.15em;
 	font-size: var(--sb-name);
 	font-weight: 700;
 	white-space: nowrap;

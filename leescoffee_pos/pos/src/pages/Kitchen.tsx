@@ -11,6 +11,7 @@ import { kitchenTabsOf, kitchenTransitionsOf, usePos } from "../lib/pos-context"
 import { cssVar, printWithPage } from "../lib/print";
 import { refreshServeQueue } from "../lib/serve";
 import { useServeQueue } from "../store/serveQueue";
+import { pushToast } from "../store/toasts";
 import { customerLabel, shortOrderNo } from "../lib/format";
 import type { KitchenOrder, KitchenStep, OrderDetail } from "../types";
 
@@ -43,7 +44,6 @@ export default function Kitchen() {
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [now, setNow] = useState(Date.now());
-	const [toast, setToast] = useState<string | null>(null);
 	const [labelJob, setLabelJob] = useState<LabelJob | null>(null);
 	// Phiếu pha chế tổng đang xem trước (modal)
 	const [ticket, setTicket] = useState<OrderDetail | null>(null);
@@ -72,13 +72,6 @@ export default function Kitchen() {
 		const c = window.setInterval(() => setNow(Date.now()), 30000);
 		return () => window.clearInterval(c);
 	}, []);
-
-	// Toast tự tắt sau 5 giây
-	useEffect(() => {
-		if (!toast) return;
-		const t = window.setTimeout(() => setToast(null), 5000);
-		return () => window.clearTimeout(t);
-	}, [toast]);
 
 	// Tab đang chọn không còn được phép (đổi user / tải lại config) -> về tab đầu tiên được phép.
 	useEffect(() => {
@@ -112,6 +105,8 @@ export default function Kitchen() {
 		const step = nextOf(o.kitchen_status);
 		if (!step) return;
 		setBusy(o.name);
+		// Tắt toast hàng chờ cho đơn này TRƯỚC khi gửi: sự kiện realtime có thể về trước khi API trả (toast trùng / đè).
+		if (step.to === "Đã làm") useServeQueue.getState().mute([o.name]);
 		try {
 			await api.setKitchenStatus(o.name, step.to);
 			// Chấm đỏ "Pha chế" (hàng chờ của thu ngân): đơn rời "Đã làm" -> bỏ khỏi store ngay, không đợi poll, không thêm request.
@@ -119,13 +114,14 @@ export default function Kitchen() {
 			// Chưa làm -> Đã làm: thu ngân nhận thông báo (hàng chờ phục vụ, poll ở máy quầy). Màn này chỉ xác nhận đã báo.
 			// Đơn QR: khách tự nhận thông báo trên điện thoại và tới quầy (luồng QR không đổi).
 			if (step.to === "Đã làm") {
-				setToast(
+				pushToast(
 					o.order_channel === "QR"
 						? `Đã báo khách ${o.customer_name} (đặt QR) tới quầy nhận món`
 						: o.order_type === "Dine In" && o.buzzer_number
 							? `Đã báo quầy phục vụ bàn ${o.buzzer_number} (${shortOrderNo(o.name)})`
 							: // Mang đi (và Tại quán thiếu thẻ — dữ liệu cũ): khách vãng lai theo cờ is_walk_in của server.
-								`Đã báo quầy gọi khách ${o.is_walk_in ? "khách lẻ" : o.customer_name} (${shortOrderNo(o.name)})`
+								`Đã báo quầy gọi khách ${o.is_walk_in ? "khách lẻ" : o.customer_name} (${shortOrderNo(o.name)})`,
+					{ key: `made:${o.name}`, dismissible: true }
 				);
 				// Máy có role CASHIER -> cập nhật chấm đỏ ngay, KHÔNG bật toast thứ hai cho chính đơn này (đã có toast ở trên).
 				// KITCHEN-only: store tắt, không gọi API.
@@ -133,6 +129,7 @@ export default function Kitchen() {
 			}
 			await load();
 		} catch (err) {
+			useServeQueue.getState().unmute([o.name]);
 			setError(err instanceof Error ? err.message : String(err));
 		} finally {
 			setBusy(null);
@@ -241,6 +238,13 @@ export default function Kitchen() {
 									</div>
 								</header>
 
+								{/* Đã hoàn thành: chỉ để tra lại -> một dòng tóm tắt (tối đa 2 dòng), không tùy chọn / tem / ghi chú.
+								    Chưa làm / Đã làm: đủ chi tiết để pha chế (món, số lượng, tùy chọn, ghi chú đơn). */}
+								{o.kitchen_status === "Đã hoàn thành" ? (
+									<p className="pos-kcard__summary" title={o.items.map((it) => `${it.qty}× ${it.item_name}`).join(", ")}>
+										{o.items.map((it) => `${it.qty}× ${it.item_name}`).join(", ")}
+									</p>
+								) : (
 								<ul className="pos-kcard__items">
 									{o.items.map((it, i) => (
 										<li key={`${it.item_code}-${i}`}>
@@ -276,8 +280,11 @@ export default function Kitchen() {
 										</li>
 									))}
 								</ul>
+								)}
 
-								{o.order_note ? <div className="pos-kcard__note">{o.order_note}</div> : null}
+								{o.order_note && o.kitchen_status !== "Đã hoàn thành" ? (
+									<div className="pos-kcard__note">{o.order_note}</div>
+								) : null}
 
 								<footer className="pos-kcard__foot">
 									<span className={`pos-kcard__wait pos-kcard__wait--${w.level}`}>
@@ -314,12 +321,6 @@ export default function Kitchen() {
 					})}
 				</div>
 			)}
-
-			{toast ? (
-				<div className="pos-toast" role="status" onClick={() => setToast(null)}>
-					{toast}
-				</div>
-			) : null}
 
 			<CupLabels job={labelJob} />
 			<ReceiptModal
