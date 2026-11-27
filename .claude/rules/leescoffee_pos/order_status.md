@@ -3,7 +3,7 @@
 > Paths: `leescoffee_pos/leescoffee_pos/api/order_status_api.py`, `pos/src/pages/OrderStatus.tsx`,
 > `pos/src/components/status/StatusColumn.tsx`, `pos/src/styles/status-board.css`, `pos/src/main.tsx` (render độc lập),
 > `pos/src/lib/api.ts` (`getOrderStatus*`), `pos/src/lib/changes.ts` (export `REALTIME_EVENT`).
-> Làm 2026-11-27 — **CHỜ TEST** trên bench DEV. Kiểm tra: `.claude/docs/order_status_check.py` (`check_order_status(...)`).
+> Làm 2026-11-27 — **ĐÃ TEST PASS trên bench DEV** (`c4ee619`). Kiểm tra: `.claude/docs/order_status_check.py` (`check_order_status(...)`).
 > Treo TV: `.claude/docs/deploy.md` §4.
 
 ## 1. Quy tắc

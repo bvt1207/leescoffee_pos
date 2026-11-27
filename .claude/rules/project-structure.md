@@ -34,12 +34,14 @@ PROJECTPOS/                        # git repo
 │   │   ├── poll_load_check.py  # phiên bản thay đổi theo POS Profile, Pha chế theo profile (D1), get_orders_shift, đo SQL / ms
 │   │   ├── deploy.md          # triển khai thật: socket.io, nginx, gunicorn, Redis
 │   │   ├── payment_status_check.py  # payment_status: tiền mặt / Desk / QR Đang chờ / hủy / trả hàng / webhook / patch
+│   │   ├── order_status_check.py  # màn theo dõi đơn /pos/status: 2 cột, rút gọn tên, quyền theo profile, không lộ dữ liệu
 │   │   ├── branch_profile_check.py  # POS Profile bắt buộc Branch, 1 profile đang bật / Branch, chọn profile, Error Log SePay, ảnh /order
 │   │   └── reference/             # ảnh tham khảo UI (URY POS, website)
 │   ├── rules/
 │   │   ├── code-standards.md, project-structure.md, session-management.md
 │   │   └── leescoffee_pos/        # branch.md, menu.md, options.md, order-qr.md, pos_invoice_hooks.md,
-│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md, customer_display.md, realtime.md
+│   │                              # pos_profile.md, roles.md, sepay.md, workspace.md, customer_display.md, realtime.md,
+│   │                              # order_status.md
 │   └── skills/
 │       ├── frontend-design/
 │       └── pos-ui/                # SKILL.md, layout.md, states.md, references/, examples/
@@ -75,10 +77,12 @@ PROJECTPOS/                        # git repo
     │   ├── package.json, tsconfig.json, vite.config.ts, pos.html, README.md
     │   └── src/
     │       ├── main.tsx (/pos/customer render độc lập), App.tsx, types.ts
-    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub), CustomerDisplay.tsx (màn khách)
+    │       ├── pages/             # POS.tsx, Orders.tsx, Kitchen.tsx, Table.tsx (stub), CustomerDisplay.tsx (màn khách),
+    │       │                      # OrderStatus.tsx (màn theo dõi đơn /pos/status, treo TV)
     │       ├── components/        # AppHeader, MenuGrid (tab Item Group), SizeModal + ItemModalFrame,
     │       │                      # CartPanel + OptionChips (chip tùy chọn), CustomerPicker, BuzzerPicker, QrModal,
-    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly), customer/BannerCarousel (màn khách)
+    │       │                      # ReceiptModal (hóa đơn / phiếu pha chế), CupLabels (tem ly), customer/BannerCarousel (màn khách),
+    │       │                      # status/StatusColumn (cột màn /pos/status)
     │       ├── store/             # cart.ts, search.ts, menuFilter.ts, orderFilter.ts, serveQueue.ts (hàng chờ thông báo thu ngân) (zustand)
     │       ├── lib/               # api.ts, pos-context.tsx, print.ts (window.print + @page tạm), format.ts (ngày giờ, mã đơn),
     │       │                      # serve.ts (poll get_serve_queue 15 giây cho CASHIER, toast + bíp),
@@ -88,12 +92,13 @@ PROJECTPOS/                        # git repo
     │       │                      # cart.ts, session.ts, poll.ts, alert.ts, format.ts, types.ts, order.css (token --qo-*),
     │       │                      # components/ (LoginView, OrderTypePicker, MenuView, ItemSheet, CartSheet, PaymentView,
     │       │                      # MyOrdersPanel, ReadyBanner, Sheet, BrandHeader, OrderBanner (carousel), Skeleton, icons)
-    │       └── styles/global.css, tokens.css
+    │       └── styles/global.css, tokens.css, status-board.css (màn /pos/status)
     └── leescoffee_pos/            # module "Leescoffee POS"
         ├── api/
         │   ├── pos_api.py         # whitelisted API cho màn POS/Orders/Kitchen
         │   ├── customer_order_api.py  # API khách (allow_guest + token phiên) cho web đặt món QR + job dọn đơn
-        │   └── customer_display_api.py  # màn hình khách /pos/customer: trạng thái theo user (Redis) + banner
+        │   ├── customer_display_api.py  # màn hình khách /pos/customer: trạng thái theo user (Redis) + banner
+        │   └── order_status_api.py  # màn theo dõi đơn /pos/status (chỉ đọc, tên rút gọn ở server)
         ├── workspace/             # mypos_cashier/, mypos_kitchen/, mypos_manager/, mypos_admin/ (<tên>/<tên>.json)
         ├── sidebar/mypos/mypos.json   # Sidebar "MYPOS" (Frappe ≥ 16.50)
         └── doctype/

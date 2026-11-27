@@ -3,7 +3,7 @@
 > Cập nhật 2026-11-25 (giảm tải poll giai đoạn 1 + 2). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
-## 0w. Màn theo dõi đơn cho khách `/pos/status` (2026-11-27) — CHỜ TEST
+## 0w. Màn theo dõi đơn cho khách `/pos/status` (2026-11-27) — ĐÃ TEST PASS (`c4ee619`)
 - Chỉ đọc, treo TV: "Đang chuẩn bị" (Chưa làm) / "Sẵn sàng nhận món" (Đã làm). API `order_status_api.py` (rút gọn tên ở server),
   `pages/OrderStatus.tsx`. Chi tiết: `rules/leescoffee_pos/order_status.md`; treo TV: `deploy.md` §4. Kiểm: `.claude/docs/order_status_check.py`.
 - **Tồn đọng:** (1) role **POS DISPLAY** chỉ xem `/pos/status` (Van chọn Q2-a: tạm dùng tài khoản POS KITCHEN riêng; cần fixture role + patch

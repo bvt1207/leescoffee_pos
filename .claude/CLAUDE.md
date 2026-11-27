@@ -158,6 +158,10 @@ Quy tắc xuyên suốt (áp dụng cho cả 2 luồng hiện tại):
   Chỉ đổi giao diện: module `Leescoffee POS`, app, route `/pos` giữ nguyên. Chi tiết: `.claude/rules/leescoffee_pos/workspace.md` §7.
   2026-11-26 (đã test Pass, `6cf87db`): bỏ shortcut Draft / Unserved Orders, bỏ nút Lọc nhanh list POS Invoice; Workspace Sidebar
   "Leescoffee POS" **rỗng có chủ đích** chặn Frappe v16.30 tự sinh sidebar theo module — **xóa khi chuyển sang module MYPOS**.
+- **Màn theo dõi đơn cho khách `/pos/status`** (2026-11-27, đã test Pass, `c4ee619`): treo TV, chỉ đọc; "Đang chuẩn bị" (Chưa làm) /
+  "Sẵn sàng nhận món" (Đã làm), cùng điều kiện đơn với màn Pha chế; tên gọi rút gọn ở server (từ cuối, không SĐT / tiền / món); dùng lại
+  phiên bản thay đổi + realtime + lưới an toàn 60 giây. Tài khoản TV: POS KITCHEN riêng (role POS DISPLAY để sau). Chi tiết:
+  `.claude/rules/leescoffee_pos/order_status.md`; treo TV: `.claude/docs/deploy.md` §4.
 - **Giảm tải poll màn POS** (2026-11-25, giai đoạn 1 + 2 đã test Pass, `86b6cb2`): màn Pha chế / Orders / hàng chờ thu ngân / chọn thẻ bàn hỏi
   phiên bản thay đổi theo POS Profile (`get_pos_changes`, chỉ đọc Redis, 4 giây) và chỉ tải danh sách khi đổi. Code ghi POS Invoice bằng
   `set_value` / SQL phải gọi `change_feed.bump(pos_profile)`. Pha chế chỉ hiện đơn của POS Profile user thuộc về (tài khoản pha chế phải nằm
