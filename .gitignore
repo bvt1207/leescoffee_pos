@@ -44,3 +44,6 @@ sites/logs/
 
 # Claude Code local settings / secrets
 .claude/settings.local.json
+
+# Script WSL tạm (bước copy), không commit
+tools/_wsl/

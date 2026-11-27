@@ -3,6 +3,11 @@
 Quy trình copy được duyệt: **không rsync, không script tự động**. Mỗi khối dán vào CÙNG một terminal WSL, theo thứ tự,
 đọc kết quả rồi mới sang khối sau. Dòng `# DỪNG` = kiểm tra kết quả trước khi đi tiếp.
 
+Chạy từ Windows (Git Bash) qua `wsl.exe`: ghi khối lệnh vào `tools/_wsl/<bước>.sh` (LF, không commit) rồi
+`MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -- bash "/mnt/c/.../PROJECTPOS/tools/_wsl/<bước>.sh"` (không có `MSYS_NO_PATHCONV`, Git Bash
+đổi `/mnt/c/...` thành `C:/Program Files/Git/mnt/...`). Shell không đăng nhập không có `bench` trong PATH: thêm
+`export PATH="$HOME/.local/bin:$PATH"`.
+
 Kỳ vọng ở thời điểm viết (branch `mypos-port`): SRC có **203 file** (không tính `node_modules`, `__pycache__`, output build
 `mypos/public/{pos,order}`), 9 nhóm: gốc app 9, docs 18, pos 77, package gốc 4, setup/fixtures/selfcheck/patches/config/templates 30,
 desktop_icon 4, public/www 10, module api/doctype 46, workspace/sidebar 5.
@@ -144,7 +149,7 @@ while IFS= read -r f; do cmp -s "$SRC/$f" "$DST/$f" || echo "KHÁC: $f"; done < 
 
 # diff -rq toàn cây, bỏ .git / node_modules / __pycache__ / build (kỳ vọng: chỉ còn các dòng "Only in $DST" đã thấy ở bước 3)
 diff -rq --exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude='*.pyc' --exclude='*.egg-info' "$SRC" "$DST" \
-  | grep -Ev '/mypos/public(/(pos|order)(/| |$)|: (pos|order)$)'
+  | grep -Ev "/mypos/public('?)(/(pos|order)(/| |'|\$)|: (pos|order)\$)"   # diff bọc đường có dấu cách trong '...'
 
 # Đếm
 mypos_files "$DST" > "$W/dst_after.txt"
@@ -165,27 +170,27 @@ find "$DST" \( -path "$DST/.git" -o -name node_modules \) -prune -o -type f -exe
 
 ## Bước 6 — Lệnh tiếp theo (theo thứ tự)
 
-> ⛔ **ĐIỂM DỪNG — CHƯA MIGRATE cho tới khi xác nhận Desktop Icon.** Ba điểm chưa đối chiếu mã: `get_app_level_files("desktop_icon", app)`
-> trỏ vào đâu, điều kiện của `is_desktop_icons_page()`, và icon mẫu của ERPNext 16.61. Chạy các lệnh chỉ đọc dưới đây, gửi output,
-> chờ xác nhận rồi mới chạy 6.4 trở đi (6.1–6.3 làm trước được).
+### 6.0 Desktop Icon — đã đối chiếu trên Frappe 16.61 (2026-11-27)
+
+Kết quả (chi tiết: `docs/rules/workspace.md` §2): thư mục `apps/mypos/mypos/desktop_icon/` đúng (`get_app_level_directory_path` =
+`get_app_path(app)/desktop_icon`); 4 icon "App" + External, không trỏ Workspace Sidebar → **không phải sửa file icon**. Icon chỉ được nạp khi
+Desktop Settings → Desktop Page = "Desktop Icons" (mặc định "Apps": không có dòng icon nào). Đã sửa `desktop_icon_check` (SKIP phần DB ở chế độ
+Apps) và docs → copy lại đúng 3 file (lần copy thứ hai, chỉ chạy sau khi được duyệt):
 
 ```bash
-cd ~/frappe-bench/apps/frappe
-grep -rn "def get_app_level_files\|def get_app_level_directory_path" -A15 frappe --include=*.py
-grep -rn "def is_desktop_icons_page" -A25 frappe --include=*.py
-cd ~/frappe-bench/apps/erpnext
-ls erpnext/desktop_icon | head -20
-python3 - <<'EOF'
-import json, glob, collections
-c = collections.Counter()
-for f in glob.glob("erpnext/desktop_icon/*.json"):
-    d = json.load(open(f))
-    c[(d.get("icon_type"), d.get("link_type"), bool(d.get("link")), bool(d.get("link_to")), bool(d.get("sidebar")), bool(d.get("parent_icon")))] += 1
-for k, v in c.most_common(): print(v, "icon_type, link_type, link?, link_to?, sidebar?, parent_icon? =", k)
-f = sorted(glob.glob("erpnext/desktop_icon/*.json"))[0]; print(f); print(open(f).read())
-EOF
-cd ~/frappe-bench
+SRC="/mnt/c/Users/ADMIN/OneDrive/Pictures/Năm 4 UIT/ERPNEXT/PROJECTPOS/mypos"
+DST="$HOME/frappe-bench/apps/mypos"
+for f in mypos/selfcheck/desktop_icon_check.py docs/rules/workspace.md docs/checklist.md; do
+  diff -u --label "DST/$f" --label "SRC/$f" "$DST/$f" "$SRC/$f" | head -5          # xem trước
+  cp --no-preserve=mode,ownership "$SRC/$f" "$DST/$f" && chmod 644 "$DST/$f"
+  cmp -s "$SRC/$f" "$DST/$f" && echo "OK $f" || echo "KHÁC $f"
+done
 ```
+
+Chế độ desktop của site (chỉ đọc): `bench --site local.com execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page`
+
+Lưu ý: app mypos ĐÃ cài sẵn trên `local.com` (khung trắng) → 6.5 không `install-app`; `after_install` không chạy lại, role + quyền
+được tạo ở `after_migrate` khi migrate (6.6).
 
 ```bash
 cd ~/frappe-bench
@@ -199,12 +204,10 @@ bench setup requirements
 cd "$DST/pos" && npm install && npm run build && cd ~/frappe-bench
 ls -l "$DST/mypos/public/pos/pos.js" "$DST/mypos/public/order/order.js"
 
-# ⛔ DỪNG — chờ xác nhận Desktop Icon (khối trên) trước khi chạy tiếp
-
 # 6.4 Build asset Frappe
 bench build --app mypos
 
-# 6.5 App đã cài trên site? Không thấy "mypos" -> install-app (after_install tạo role + quyền)
+# 6.5 App đã cài trên site? (local.com: ĐÃ cài) Không thấy "mypos" -> install-app (after_install tạo role + quyền)
 bench --site local.com list-apps
 #   bench --site local.com install-app mypos
 
@@ -224,7 +227,7 @@ bench start
 Chỉ đọc (chạy ngay):
 
 ```bash
-bench --site local.com execute frappe.desk.doctype.desktop_icon.desktop_icon.is_desktop_icons_page
+bench --site local.com execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page   # "Apps" | "Desktop Icons"
 bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
 bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
 bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
