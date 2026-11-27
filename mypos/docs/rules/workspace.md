@@ -56,12 +56,28 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
   - Mục tiêu: sidebar MYPOS chỉ có 4 mục workspace (thấy theo role), không có mục DocType lẻ (MYPOS Option Group / Order QR / Menu).
     Kiểm: `mypos.selfcheck.sidebar_check.check_sidebar` + kiểm tay 4 tài khoản (`deploy.md` §5). Dự phòng khi 16.61 vẫn sinh mục thừa
     hoặc không nạp Sidebar: `deploy.md` §5.2.
-- **Desktop Icon** (`mypos/desktop_icon/mypos_*.json`, cấp package, cùng chỗ với bản cũ): nạp bằng hàm riêng
-  `frappe.desk.doctype.desktop_icon.desktop_icon.import_desktop_icon_fixtures(app_name)` (gọi từ `frappe/model/sync.py`), KHÔNG qua
-  `IMPORTABLE_DOCTYPES`. [Unverified] Thư mục / quy ước tên file mà hàm này đọc ở 16.61 chưa đối chiếu mã; bản cũ (bench DEV) đã test Pass với file ở
-  `<package>/desktop_icon/<scrub(name)>.json`. Mỗi icon: `app` "mypos", `icon_type` App, `link_type` External, `roles` = role chính + System Manager,
-  logo `/assets/mypos/images/logo.svg`: MYPOS Cashier → `/desk/mypos-cashier`, MYPOS Kitchen → `/pos/kitchen`,
-  MYPOS Manager → `/desk/mypos-manager`, MYPOS Admin → `/desk/mypos-admin` (chỉ System Manager).
+- **Desktop Icon** — file `mypos/desktop_icon/<scrub(label)>.json` (cấp package, `apps/mypos/mypos/desktop_icon/`), 4 file:
+
+  | name = label | icon_type | link_type | link | roles |
+  |---|---|---|---|---|
+  | MYPOS Cashier | App | External | `/desk/mypos-cashier` | POS CASHIER, System Manager |
+  | MYPOS Kitchen | App | External | `/pos/kitchen` | POS KITCHEN, System Manager |
+  | MYPOS Manager | App | External | `/desk/mypos-manager` | POS MANAGER, System Manager |
+  | MYPOS Admin | App | External | `/desk/mypos-admin` | System Manager |
+
+  Chung: `app` "mypos", `standard` 1, `bg_color` gray, `restrict_removal` 0, `hidden` 0, `logo_url` `/assets/mypos/images/logo.svg`.
+  Không dùng `sidebar` / `link_to` / `parent_icon` (không trỏ tới bản ghi `Workspace Sidebar` nào — DocType đó ở 16.61 chỉ còn là kho
+  lưu cho bước chuyển đổi sidebar). Desktop Icon không có field `module`.
+  - Nạp (Frappe 16.61, đã đối chiếu mã): `frappe/model/sync.py` gọi `import_desktop_icon_fixtures(app_name, force)` (KHÔNG qua
+    `IMPORTABLE_DOCTYPES`), hàm này duyệt `get_app_level_files("desktop_icon", app)` và `import_file_by_path` từng file.
+  - **Chỉ nạp khi site ở chế độ lưới icon**: hàm thoát ngay nếu `is_desktop_icons_page()` sai ("an Apps-mode site holds no icon rows at
+    all ... Switching to the grid is what imports them"). Site ở chế độ Apps: không có dòng Desktop Icon nào (kể cả của MYPOS) cho tới khi
+    chuyển sang lưới icon.
+  - [Unverified] Chưa đọc mã `is_desktop_icons_page()` (điều kiện chính xác, nơi bật) và `get_app_level_files()` (thư mục chính xác);
+    chưa so với icon mẫu của ERPNext 16.61. Kiểm (chỉ đọc): `bench --site <site> execute frappe.desk.doctype.desktop_icon.desktop_icon.is_desktop_icons_page`
+    và `mypos.selfcheck.desktop_icon_check.check_desktop_icons` (in INFO chế độ + kiểm từng icon).
+  - Thấy icon trên site mới: bảo đảm chế độ lưới icon (trả `True` ở lệnh trên), `bench --site <site> migrate` (nạp lại icon), clear-cache,
+    đăng nhập lại `/desk`.
 
 ## 3. Quy tắc khi sửa JSON workspace
 

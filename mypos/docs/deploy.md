@@ -122,6 +122,7 @@ Màn chỉ đọc cho khách nhìn: "Đang chuẩn bị" / "Sẵn sàng nhận m
 
 ```bash
 bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
+bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
 bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
 ```
 
