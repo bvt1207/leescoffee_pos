@@ -3,6 +3,13 @@
 > Cập nhật 2026-11-25 (giảm tải poll giai đoạn 1 + 2). Mục nào không ghi "đã test" là **chưa xác minh trên bench**.
 > Đọc file này đầu phiên mới.
 
+## 0w. Màn theo dõi đơn cho khách `/pos/status` (2026-11-27) — CHỜ TEST
+- Chỉ đọc, treo TV: "Đang chuẩn bị" (Chưa làm) / "Sẵn sàng nhận món" (Đã làm). API `order_status_api.py` (rút gọn tên ở server),
+  `pages/OrderStatus.tsx`. Chi tiết: `rules/leescoffee_pos/order_status.md`; treo TV: `deploy.md` §4. Kiểm: `.claude/docs/order_status_check.py`.
+- **Tồn đọng:** (1) role **POS DISPLAY** chỉ xem `/pos/status` (Van chọn Q2-a: tạm dùng tài khoản POS KITCHEN riêng; cần fixture role + patch
+  quyền + migrate khi làm); (2) API cũ `pos_api.get_status_board` / `pos_invoice_hooks.get_status_board_orders` trả tên khách đầy đủ, không lọc
+  POS Profile — nên bỏ hoặc chuyển sang `order_status_api`.
+
 ## 0v. Giảm tải poll màn POS — giai đoạn 1 + 2 (2026-11-25) — ĐÃ TEST PASS trên bench DEV (`86b6cb2`)
 - Phiên bản thay đổi theo POS Profile (Redis `mypos_chg:<profile>`, tăng sau commit ở `on_change` POS Invoice / Opening / Closing + `cancel_draft`);
   `pos_api.get_pos_changes` (chỉ đọc Redis); Pha chế / Orders / chi tiết đơn / hàng chờ thu ngân / chọn thẻ bàn chỉ tải lại khi phiên bản đổi

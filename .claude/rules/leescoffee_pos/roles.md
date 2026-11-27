@@ -176,6 +176,13 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
   tiên được phép (KITCHEN mở `/pos`, `/pos/orders` → `/pos/kitchen`); `Kitchen.tsx` tab theo
   `kitchen_tabs`, nút chỉ hiện khi bước nằm trong `kitchen_transitions`, tab mặc định = tab đầu tiên được phép.
 
+### 7a. Màn theo dõi đơn `/pos/status` (treo TV, 2026-11-27 — chờ test)
+
+- Mọi role POS xem được, KHÔNG nằm trong `NAV_BY_ROLE` (không có mục menu; mở thẳng URL trên TV). Không có thao tác.
+- Cashier / Kitchen: profile mình thuộc (cùng lỗi màn Pha chế). MANAGER / System Manager / Administrator: chọn profile đang bật.
+- Tài khoản TV: POS KITCHEN riêng (quyết định Van 2026-11-27); vẫn gọi được API "Chưa làm → Đã làm" → chưa chỉ đọc tuyệt đối. Role POS DISPLAY
+  để sau. Chi tiết: `order_status.md`, `.claude/docs/deploy.md` §4.
+
 ### 7b. Thông báo thu ngân khi đơn "Đã làm" (thẻ bàn, 2026-11-23) — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `3736f85`, `4712d68`)
 
 - API `pos_api.get_serve_queue()`: `_require_sale_role` (KITCHEN bị chặn); đơn của `resolve_pos_profile_name()` của người gọi (không gửi chéo chi nhánh),
@@ -229,5 +236,6 @@ API hiện dùng `frappe.get_all` / `ignore_permissions=True` nên role chưa ch
 | `sepay.sepay_webhook` | Guest (giữ) — đã xác thực API key Branch (2026-11-14, `order-qr.md` §3) |
 | `customer_display_api.*` | **ĐÃ LÀM** (2026-11-24): `_require_sale_role`, chỉ trạng thái của chính user + POS Profile của người gọi (`customer_display.md`) |
 | `customer_order_api.*` | Guest — kiểm tra token phiên khách, không dùng role (`order-qr.md`) |
+| `order_status_api.*` (màn theo dõi đơn `/pos/status`) | **ĐÃ LÀM** (2026-11-27, chờ test): `_require_pos_role` (KITCHEN, CASHIER, MANAGER); Cashier / Kitchen chỉ profile mình thuộc (`require_membership`), quản lý chọn profile; chỉ đọc, dữ liệu rút gọn (`order_status.md`) |
 
 `get_pos_config` được gọi lúc tải mọi màn /pos kể cả Kitchen, nên phải cho KITCHEN.

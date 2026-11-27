@@ -87,3 +87,31 @@ location /socket.io {
 - Đổi `host_name` xong: `bench --site <site> clear-cache` → mở từng `MYPOS Order QR` → **Save** (cập nhật `order_url`) và **In mã QR lại**,
   dán lại mã mới tại quán. Mã đã in theo host cũ vẫn trỏ host cũ (token không đổi, chỉ đổi phần địa chỉ).
 - Không đổi token khi chỉ đổi host; muốn thu hồi mã: bỏ chọn `enabled` và tạo mã mới.
+
+## 4. Treo TV màn theo dõi đơn (`/pos/status`, 2026-11-27)
+
+Màn chỉ đọc cho khách nhìn: "Đang chuẩn bị" / "Sẵn sàng nhận món" (`rules/leescoffee_pos/order_status.md`).
+
+**Tài khoản**
+- Tạo User riêng cho TV (vd. "TV quầy <chi nhánh>"), role **chỉ** `POS KITCHEN`, thêm vào **Applicable for Users** của POS Profile chi nhánh
+  (`default = 1`). Không gán role khác.
+- Mật khẩu mạnh; chỉ đăng nhập trên trình duyệt của TV; không dùng chung cho người pha chế / thu ngân.
+- Lưu ý: về kỹ thuật tài khoản POS KITCHEN vẫn gọi được API chuyển trạng thái "Chưa làm → Đã làm" (màn TV không có nút nào, nhưng ai có
+  mật khẩu vẫn mở được `/pos/kitchen`). Đây **chưa phải tài khoản chỉ đọc tuyệt đối**; role POS DISPLAY chỉ xem là việc tồn đọng.
+
+**Trình duyệt (Chrome / Edge trên mini PC / TV box)**
+1. Đăng nhập Desk bằng tài khoản TV một lần (cookie phiên được nhớ), mở `https://<tên miền>/pos/status`.
+   DEV: `http://localhost:8001/pos/status` (không dùng `127.0.0.1`, `realtime.md` §6).
+2. Toàn màn hình: nhấn **F11** (thoát: F11). Con trỏ tự ẩn sau 3 giây không di chuột.
+3. Hoặc chế độ kiosk (tự toàn màn hình, không thanh địa chỉ; thoát bằng Alt+F4):
+   `chrome.exe --kiosk --noerrdialogs --disable-session-crashed-bubble https://<tên miền>/pos/status`
+4. Tự mở lại khi khởi động máy:
+   - Windows: tạo shortcut với lệnh ở bước 3, đặt vào `shell:startup` (Win+R → `shell:startup`).
+   - Linux (mini PC): file `~/.config/autostart/pos-status.desktop` với `Exec=chromium --kiosk https://<tên miền>/pos/status`.
+   - Tắt chế độ ngủ / tắt màn hình của hệ điều hành; tắt cập nhật tự khởi động lại giờ mở cửa.
+5. Phiên đăng nhập Frappe hết hạn (mặc định theo "Session Expiry" của System Settings) → màn hiện lỗi đăng nhập: đăng nhập lại.
+   [Unverified] Nếu hay hết hạn, tăng Session Expiry cho site hoặc đăng nhập lại mỗi sáng.
+
+**Kiểm**
+- Chấm góc phải: xanh = cập nhật trực tiếp (socket), vàng = cập nhật định kỳ 4 giây (không có socket) hoặc lỗi tạm, đỏ = mất kết nối ≥ 30 giây
+  (danh sách vẫn giữ bản cuối). Đổi trạng thái ở màn Pha chế → TV đổi trong ≤ 1 giây khi có socket, ≤ 5 giây khi không.

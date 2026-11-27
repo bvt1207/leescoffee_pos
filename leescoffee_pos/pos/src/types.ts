@@ -255,6 +255,34 @@ export interface StatusBoardRow {
 	last_updated: string;
 }
 
+/** Một dòng màn theo dõi đơn /pos/status (server đã rút gọn; không có tên đầy đủ / SĐT / tiền / món). */
+export interface OrderStatusEntry {
+	/** Mã gọi khách, cùng quy tắc shortOrderNo: "#00088". */
+	code: string;
+	/** Tên gọi rút gọn (từ cuối, ≤ 12 ký tự); "" = chỉ hiện mã. */
+	name: string;
+	/** "Mang đi" | "Tại quán" | "Thẻ bàn 12". */
+	label: string;
+	/** Thời điểm sắp xếp (cột trái: creation; cột phải: kitchen_done_at hoặc creation). */
+	at: string;
+}
+
+export interface OrderStatusBoard {
+	profile: string;
+	v: string;
+	preparing: OrderStatusEntry[];
+	ready: OrderStatusEntry[];
+	/** Số đơn vượt giới hạn server (không trả chi tiết). */
+	more: { preparing: number; ready: number };
+}
+
+export interface OrderStatusConfig {
+	profile: string;
+	/** Chỉ quản lý: POS Profile đang bật để chọn. */
+	profiles: string[];
+	brand: { name: string; logo: string };
+}
+
 export interface CartLine {
 	item_code: string;
 	item_name: string;

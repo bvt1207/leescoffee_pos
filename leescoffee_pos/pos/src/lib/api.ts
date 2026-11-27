@@ -9,6 +9,8 @@ import type {
 	PosConfig,
 	QrInfo,
 	StatusBoardRow,
+	OrderStatusBoard,
+	OrderStatusConfig,
 	KitchenOrder,
 	KitchenStep,
 	BuzzerOption,
@@ -25,6 +27,8 @@ const API_BASE =
 
 // Màn khách (/pos/customer): module API riêng cùng package (customer_display_api.py).
 const DISPLAY_API_BASE = API_BASE.replace(/\.pos_api$/, ".customer_display_api");
+// Màn theo dõi đơn (/pos/status): order_status_api.py, chỉ đọc.
+const STATUS_API_BASE = API_BASE.replace(/\.pos_api$/, ".order_status_api");
 
 function csrfToken(): string {
 	const meta = document.querySelector('meta[name="csrf-token"]');
@@ -174,6 +178,12 @@ export const api = {
 	setKitchenStatus: (invoice_name: string, status: KitchenStep) =>
 		call<{ invoice_name: string; kitchen_status: string }>("set_kitchen_status", { invoice_name, status }),
 	// Màn khách (/pos/customer) — chỉ hiển thị, server lọc theo user + POS Profile của người gọi.
+	getOrderStatusConfig: (pos_profile?: string) =>
+		call<OrderStatusConfig>("get_order_status_config", { pos_profile }, { base: STATUS_API_BASE }),
+	getOrderStatusChanges: (pos_profile?: string, signal?: AbortSignal) =>
+		call<{ profile: string; v: string }>("get_order_status_changes", { pos_profile }, { base: STATUS_API_BASE, signal }),
+	getOrderStatusBoard: (pos_profile?: string, signal?: AbortSignal) =>
+		call<OrderStatusBoard>("get_order_status_board", { pos_profile }, { base: STATUS_API_BASE, signal }),
 	getCustomerDisplayConfig: () =>
 		call<CustomerDisplayConfig>("get_customer_display_config", {}, { base: DISPLAY_API_BASE }),
 	getCustomerDisplayState: (since: number, signal?: AbortSignal) =>

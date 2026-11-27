@@ -1,0 +1,281 @@
+/* ------------------------------------------------------------------
+   Màn theo dõi đơn /pos/status (treo TV 16:9, tối ưu 1080p) — chỉ đọc.
+   Mọi kích thước theo vh để TV 1080p và laptop 768p cùng tỉ lệ. Màu chỉ từ token --pos-* (tokens.css):
+   cột "Sẵn sàng nhận món" nền --pos-primary. Không gradient, không trang trí.
+   Cỡ chữ theo bậc .pos-sb-col--t0/1/2 (khớp ROW_VH trong components/status/StatusColumn.tsx).
+   ------------------------------------------------------------------ */
+
+.pos-sb {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	grid-template-rows: 10vh minmax(0, 1fr);
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	overflow: hidden;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.pos-sb--idle,
+.pos-sb--idle * {
+	cursor: none !important;
+}
+
+/* ===== Thanh đầu ===== */
+
+.pos-sb__top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2vw;
+	padding: 0 2.5vw;
+	border-bottom: 1px solid var(--pos-border);
+}
+
+.pos-sb__brand {
+	display: flex;
+	align-items: center;
+	gap: 1.2vw;
+	min-width: 0;
+}
+
+.pos-sb__logo {
+	height: 6.5vh;
+	max-width: 14vw;
+	object-fit: contain;
+}
+
+.pos-sb__name {
+	font-size: 3.6vh;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pos-sb__right {
+	display: flex;
+	align-items: center;
+	gap: 1.6vw;
+}
+
+.pos-sb__clock {
+	font-size: 4.4vh;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Chấm trạng thái cho nhân viên: xanh = trực tiếp, vàng = định kỳ / lỗi tạm, đỏ = lỗi kéo dài. */
+.pos-sb__health {
+	width: 1.3vh;
+	height: 1.3vh;
+	border-radius: 999px;
+	background: var(--pos-success);
+}
+
+.pos-sb__health--warn {
+	background: var(--pos-warning);
+}
+
+.pos-sb__health--bad {
+	background: var(--pos-error);
+}
+
+/* Chỉ quản lý có nhiều POS Profile mới thấy; ẩn cùng con trỏ. */
+.pos-sb__profile {
+	min-height: 4.4vh;
+	padding: 0 0.8vw;
+	border: 1px solid var(--pos-border);
+	border-radius: 0.8vh;
+	background: var(--pos-bg);
+	color: var(--pos-text);
+	font-size: 1.8vh;
+	transition: opacity 200ms;
+}
+
+.pos-sb--idle .pos-sb__profile {
+	opacity: 0;
+}
+
+/* ===== Hai cột ===== */
+
+.pos-sb__cols {
+	display: grid;
+	grid-template-columns: 45fr 55fr;
+	min-height: 0;
+}
+
+.pos-sb-col {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	padding: 2.6vh 2.2vw 2.2vh;
+}
+
+.pos-sb-col--preparing {
+	background: var(--pos-surface);
+}
+
+.pos-sb-col--ready {
+	background: var(--pos-primary);
+	color: var(--pos-primary-contrast);
+}
+
+.pos-sb-col__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1vw;
+	padding-bottom: 1.6vh;
+	border-bottom: 0.3vh solid currentColor;
+}
+
+.pos-sb-col__title {
+	margin: 0;
+	font-size: 4.2vh;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+}
+
+.pos-sb-col--ready .pos-sb-col__title {
+	font-size: 4.8vh;
+}
+
+.pos-sb-col__count {
+	font-size: 3.4vh;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	opacity: 0.7;
+}
+
+.pos-sb-col__list {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.8vh; /* = GAP_VH trong StatusColumn.tsx */
+	min-height: 0;
+	margin: 1.8vh 0 0;
+	padding: 0;
+	list-style: none;
+	overflow: hidden; /* không cuộn: dòng thừa thay bằng "+ N đơn nữa" */
+}
+
+/* ===== Dòng đơn ===== */
+
+.pos-sb-row {
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 1.6vw;
+	height: var(--sb-row);
+	padding: 0 1.4vw;
+	border-radius: 1vh;
+	background: var(--pos-bg);
+}
+
+.pos-sb-col--ready .pos-sb-row {
+	background: rgba(255, 255, 255, 0.14);
+}
+
+.pos-sb-row__code {
+	flex: none;
+	font-size: var(--sb-code);
+	font-weight: 800;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+}
+
+.pos-sb-row__info {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.15;
+}
+
+.pos-sb-row__name {
+	font-size: var(--sb-name);
+	font-weight: 700;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pos-sb-row__label {
+	font-size: var(--sb-label);
+	font-weight: 600;
+	color: var(--pos-text-muted);
+	white-space: nowrap;
+}
+
+.pos-sb-col--ready .pos-sb-row__label {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.pos-sb-row.is-leaving {
+	animation: pos-sb-leave 260ms ease-in forwards; /* = LEAVE_MS */
+}
+
+@keyframes pos-sb-leave {
+	to {
+		opacity: 0;
+		transform: scale(0.96);
+	}
+}
+
+.pos-sb-more {
+	flex: none;
+	display: flex;
+	align-items: center;
+	height: var(--sb-row);
+	padding: 0 1.4vw;
+	font-size: var(--sb-name);
+	font-weight: 700;
+	opacity: 0.75;
+}
+
+.pos-sb-empty {
+	padding-top: 4vh;
+	font-size: 3vh;
+	font-weight: 600;
+	opacity: 0.55;
+}
+
+/* ===== Bậc cỡ chữ (chiều cao dòng = ROW_VH) ===== */
+
+.pos-sb-col--preparing.pos-sb-col--t0 { --sb-row: 9vh; --sb-code: 5.6vh; --sb-name: 3.2vh; --sb-label: 2.3vh; }
+.pos-sb-col--preparing.pos-sb-col--t1 { --sb-row: 7vh; --sb-code: 4.4vh; --sb-name: 2.6vh; --sb-label: 2vh; }
+.pos-sb-col--preparing.pos-sb-col--t2 { --sb-row: 5.6vh; --sb-code: 3.7vh; --sb-name: 2.2vh; --sb-label: 1.8vh; }
+.pos-sb-col--ready.pos-sb-col--t0 { --sb-row: 11vh; --sb-code: 7vh; --sb-name: 3.8vh; --sb-label: 2.6vh; }
+.pos-sb-col--ready.pos-sb-col--t1 { --sb-row: 8.5vh; --sb-code: 5.4vh; --sb-name: 3.1vh; --sb-label: 2.2vh; }
+.pos-sb-col--ready.pos-sb-col--t2 { --sb-row: 6.5vh; --sb-code: 4vh; --sb-name: 2.5vh; --sb-label: 1.9vh; }
+
+/* ===== Thông báo lỗi (chưa thuộc POS Profile...) ===== */
+
+.pos-sb--message {
+	display: grid;
+	place-items: center;
+	grid-template-rows: none;
+	padding: 6vh 8vw;
+}
+
+.pos-sb__message {
+	max-width: 70vw;
+	font-size: 3vh;
+	font-weight: 600;
+	line-height: 1.45;
+	text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pos-sb-row.is-leaving {
+		animation: none;
+	}
+
+	.pos-sb__profile {
+		transition: none;
+	}
+}

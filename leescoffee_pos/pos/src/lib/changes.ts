@@ -21,7 +21,8 @@ export const CHANGE_POLL_MS = 4000;
 export const SAFETY_REFRESH_MS = 60000;
 /** Chu kỳ poll phiên bản khi socket đang kết nối (sự kiện realtime là đường chính). */
 export const REALTIME_POLL_MS = 30000;
-const REALTIME_EVENT = "mypos_pos_changed";
+/** Sự kiện realtime phiên bản thay đổi (change_feed.REALTIME_EVENT); màn /pos/status dùng lại. */
+export const REALTIME_EVENT = "mypos_pos_changed";
 
 type ChangeState = {
 	/** "<profile>|<phiên bản>" lần đọc gần nhất (null = chưa đọc). */
