@@ -8,8 +8,8 @@ Chạy từ Windows (Git Bash) qua `wsl.exe`: ghi khối lệnh vào `tools/_wsl
 đổi `/mnt/c/...` thành `C:/Program Files/Git/mnt/...`). Shell không đăng nhập không có `bench` trong PATH: thêm
 `export PATH="$HOME/.local/bin:$PATH"`.
 
-Kỳ vọng ở thời điểm viết (branch `mypos-port`): SRC có **203 file** (không tính `node_modules`, `__pycache__`, output build
-`mypos/public/{pos,order}`), 9 nhóm: gốc app 9, docs 18, pos 77, package gốc 4, setup/fixtures/selfcheck/patches/config/templates 30,
+Kỳ vọng ở thời điểm viết (branch `mypos-port`): SRC có **205 file** (không tính `node_modules`, `__pycache__`, output build
+`mypos/public/{pos,order}`), 9 nhóm: gốc app 9, docs 18, pos 77, package gốc 5, setup/fixtures/selfcheck/patches/config/templates 31,
 desktop_icon 4, public/www 10, module api/doctype 46, workspace/sidebar 5.
 
 ---
@@ -36,7 +36,7 @@ ls -d "$DST/.git" 2>/dev/null && echo "DST/.git có sẵn — sẽ KHÔNG đụn
 
 # Đếm file
 mypos_files "$SRC" > "$W/src.txt"; mypos_files "$DST" > "$W/dst.txt"
-wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 203
+wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 205
 
 # Dò CRLF trong SRC (kỳ vọng: không in gì)
 (cd "$SRC" && tr '\n' '\0' < "$W/src.txt" | xargs -0 grep -Il $'\r') || echo "Không có file CRLF"
@@ -45,7 +45,7 @@ wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 203
 (cd "$SRC" && tr '\n' '\0' < "$W/src.txt" | xargs -0 grep -IliE 'lee[s]coffee') || echo "sạch"
 ```
 
-`# DỪNG`: SRC OK + DST OK; SRC = 203 file; không có file CRLF; "sạch". Sai bất kỳ ý nào → không đi tiếp, gửi output.
+`# DỪNG`: SRC OK + DST OK; SRC = 205 file; không có file CRLF; "sạch". Sai bất kỳ ý nào → không đi tiếp, gửi output.
 
 ---
 
@@ -137,7 +137,7 @@ copy_group "8 module api/doctype"     '^mypos/mypos/([^/]+$|api/|doctype/)'
 copy_group "9 workspace/sidebar"      '^mypos/mypos/(workspace|sidebar)/'
 ```
 
-Kỳ vọng: 9 / 18 / 77 / 4 / 30 / 4 / 10 / 46 / 5 (tổng 203). Có dòng `cp: ...` lỗi → dừng, gửi output.
+Kỳ vọng: 9 / 18 / 77 / 5 / 31 / 4 / 10 / 46 / 5 (tổng 205). Có dòng `cp: ...` lỗi → dừng, gửi output.
 
 ---
 
@@ -154,7 +154,7 @@ diff -rq --exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude='
 # Đếm
 mypos_files "$DST" > "$W/dst_after.txt"
 LC_ALL=C comm -23 "$W/src.txt" "$W/dst_after.txt" | wc -l             # kỳ vọng 0 (không thiếu file)
-wc -l "$W/src.txt" "$W/dst_after.txt"                                # DST = 203 + số dòng only_dst
+wc -l "$W/src.txt" "$W/dst_after.txt"                                # DST = 205 + số dòng only_dst
 
 # Chuẩn hóa quyền (bỏ qua .git và node_modules): thư mục 755, file 644
 find "$DST" \( -path "$DST/.git" -o -name node_modules \) -prune -o -type d -exec chmod 755 {} +
@@ -228,6 +228,7 @@ Chỉ đọc (chạy ngay):
 
 ```bash
 bench --site local.com execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page   # "Apps" | "Desktop Icons"
+bench --site local.com execute mypos.selfcheck.apps_screen_check.check_apps_screen
 bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
 bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
 bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
@@ -260,9 +261,9 @@ Bảng đầy đủ: `$DST/docs/checklist.md` (`less "$DST/docs/checklist.md"`).
 | # | Hạng mục | PASS / FAIL |
 |---|---|---|
 | A1–A4 | Workspace + sidebar theo role (Administrator, Manager, Cashier, Kitchen) | |
-| A5 | Mở `/desk` thấy icon MYPOS đúng role (site ở chế độ lưới icon) | |
-| A6 | Bấm icon mở đúng workspace / `/pos/kitchen`, sidebar MYPOS đúng | |
-| A7 | User không có role POS không thấy icon / workspace MYPOS | |
+| A5 | Màn Apps `/desk`: đúng 1 ô MYPOS cho user có role POS | |
+| A6 | Bấm ô MYPOS vào đúng workspace theo role, sidebar MYPOS đúng | |
+| A7 | User không có role POS: không có ô MYPOS | |
 | B1–B6 | Bán món, tiền mặt, Kitchen, kết thúc đơn, thẻ bàn, hủy đơn | |
 | C1–C4 | Chuyển khoản + SePay giả lập (curl) | |
 | D1–D5 | Web đặt món QR `/order/<token>` | |
