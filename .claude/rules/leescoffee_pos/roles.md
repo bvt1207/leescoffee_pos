@@ -178,7 +178,9 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
 
 ### 7a. Màn theo dõi đơn `/pos/status` (treo TV, 2026-11-27) — ĐÃ TEST PASS (`c4ee619`)
 
-- Mọi role POS xem được, KHÔNG nằm trong `NAV_BY_ROLE` (không có mục menu; mở thẳng URL trên TV). Không có thao tác.
+- Mọi role POS xem được, KHÔNG nằm trong `NAV_BY_ROLE` (không có mục menu màn /pos; mở thẳng URL trên TV). Không có thao tác.
+  Lối tắt Desk (2026-11-27): shortcut "Order Status" ở cả 4 workspace MYPOS (Cashier / Kitchen / Manager / Admin), hiển thị theo `roles` có sẵn
+  của workspace, không đổi quyền (`workspace.md` §7).
 - Cashier / Kitchen: profile mình thuộc (cùng lỗi màn Pha chế). MANAGER / System Manager / Administrator: chọn profile đang bật.
 - Tài khoản TV: POS KITCHEN riêng (quyết định Van 2026-11-27); vẫn gọi được API "Chưa làm → Đã làm" → chưa chỉ đọc tuyệt đối. Role POS DISPLAY
   để sau. Chi tiết: `order_status.md`, `.claude/docs/deploy.md` §4.

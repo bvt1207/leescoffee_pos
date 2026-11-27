@@ -1,7 +1,7 @@
 {
  "app": "leescoffee_pos",
  "charts": [],
- "content": "[{\"id\":\"mypos_kiS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"MYPOS Kitchen Screen\",\"col\":3}}]",
+ "content": "[{\"id\":\"mypos_kiS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Kitchen Screen\",\"col\":3}},{\"id\":\"mypos_kiS02\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Order Status\",\"col\":3}}]",
  "creation": "2026-11-25 10:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "MYPOS Kitchen",
  "links": [],
- "modified": "2026-11-25 10:00:00.000000",
+ "modified": "2026-11-27 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Leescoffee POS",
  "name": "MYPOS Kitchen",
@@ -34,9 +34,15 @@
  "shortcuts": [
   {
    "color": "Orange",
-   "label": "MYPOS Kitchen Screen",
+   "label": "Kitchen Screen",
    "type": "URL",
    "url": "/pos/kitchen"
+  },
+  {
+   "color": "Green",
+   "label": "Order Status",
+   "type": "URL",
+   "url": "/pos/status"
   }
  ],
  "standard": 1,

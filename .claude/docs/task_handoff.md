@@ -66,7 +66,7 @@
 
 ### Chuẩn bị chuyển sang module MYPOS (CHƯA làm — task sau)
 - **Đã mang tên MYPOS (chỉ giao diện):** Workspace MYPOS Cashier / Kitchen / Manager / Admin; Desktop Icon cùng 4 tên; Sidebar / Workspace Sidebar "MYPOS";
-  nhãn shortcut "Open MYPOS", "MYPOS Customer Display", "MYPOS Kitchen Screen"; DocType có sẵn tiền tố MYPOS (Menu, Menu Item, Buzzer, Option Group/Value/Target,
+  nhãn shortcut "Open MYPOS", "Customer Display", "Kitchen Screen", "Order Status" (bỏ tiền tố MYPOS 2026-11-27); DocType có sẵn tiền tố MYPOS (Menu, Menu Item, Buzzer, Option Group/Value/Target,
   Order QR, Banner).
 - **Còn gắn module `Leescoffee POS` (phải đổi khi chuyển):** `module` của 4 workspace + Sidebar / Workspace Sidebar; `module` của mọi DocType app
   (thư mục `leescoffee_pos/leescoffee_pos/doctype/*`), Custom Field / Property Setter fixtures (`module` nếu có), `modules.txt`, Module Def;

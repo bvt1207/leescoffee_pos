@@ -101,17 +101,22 @@ Bốn workspace, module vẫn `Leescoffee POS`, mỗi file `leescoffee_pos/leesc
 
 | Workspace → route | `roles` | Shortcuts | Cards (Card Break → link) |
 |---|---|---|---|
-| MYPOS Cashier → `/desk/mypos-cashier` | POS CASHIER, System Manager | Open MYPOS (`/pos`), MYPOS Customer Display (`/pos/customer`) | Shift: POS Opening Entry, POS Closing Entry |
-| MYPOS Kitchen → `/desk/mypos-kitchen` | POS KITCHEN, System Manager | MYPOS Kitchen Screen (`/pos/kitchen`) | — |
-| MYPOS Manager → `/desk/mypos-manager` | POS MANAGER, System Manager | Open MYPOS | Shift & Cash (Opening, Closing, POS Invoice Merge Log); Order Handling (POS Invoice, MYPOS Buzzer); Menu & Promotions (MYPOS Menu, MYPOS Option Group, Pricing Rule, Promotional Scheme); QR & Display (MYPOS Order QR, MYPOS Banner) |
-| MYPOS Admin → `/desk/mypos-admin` | System Manager | Open MYPOS, MYPOS Kitchen Screen, MYPOS Customer Display | Branch Setup (Branch, POS Profile, Customer, User Permission); Shift & Cash; Order Handling; Menu & Promotions (+ Loyalty Program); QR & Display; Troubleshooting (Error Log, Notification Log) |
+| MYPOS Cashier → `/desk/mypos-cashier` | POS CASHIER, System Manager | Open MYPOS (`/pos`), Customer Display (`/pos/customer`), Order Status (`/pos/status`) | Shift: POS Opening Entry, POS Closing Entry |
+| MYPOS Kitchen → `/desk/mypos-kitchen` | POS KITCHEN, System Manager | Kitchen Screen (`/pos/kitchen`), Order Status (`/pos/status`) | — |
+| MYPOS Manager → `/desk/mypos-manager` | POS MANAGER, System Manager | Open MYPOS, Order Status | Shift & Cash (Opening, Closing, POS Invoice Merge Log); Order Handling (POS Invoice, MYPOS Buzzer); Menu & Promotions (MYPOS Menu, MYPOS Option Group, Pricing Rule, Promotional Scheme); QR & Display (MYPOS Order QR, MYPOS Banner) |
+| MYPOS Admin → `/desk/mypos-admin` | System Manager | Open MYPOS, Kitchen Screen, Customer Display, Order Status | Branch Setup (Branch, POS Profile, Customer, User Permission); Shift & Cash; Order Handling; Menu & Promotions (+ Loyalty Program); QR & Display; Troubleshooting (Error Log, Notification Log) |
 
-Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admin 24; Workspace Shortcut 2 / 1 / 1 / 3 (2026-11-26: bỏ Draft Orders, Unserved Orders ở Manager / Admin); Has Role 2 / 2 / 2 / 1.
+Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admin 24; Workspace Shortcut 3 / 2 / 2 / 4 (2026-11-26: bỏ Draft Orders, Unserved Orders ở Manager / Admin;
+2026-11-27: thêm "Order Status" ở cả 4, bỏ tiền tố "MYPOS" ở nhãn shortcut — chỉ "Open MYPOS" giữ nguyên); Has Role 2 / 2 / 2 / 1.
 
 - **Quy tắc hiển thị (đã đọc mã Frappe v16.49 / v16.61):** workspace hiện khi module hiển thị với user (Read ít nhất 1 DocType module,
   roles.md §4) VÀ user có một role trong `roles`. Mọi workspace giới hạn role đều kèm `System Manager` (Administrator có mọi role).
   User có role `Workspace Manager` thấy MỌI workspace (không dùng user đó để test). Link DocType trong card ẩn khi thiếu quyền Read
   (vd. Pricing Rule / Promotional Scheme chỉ hiện cho MANAGER có thêm Sales Manager; Loyalty Program chỉ ở Admin, quyết định Van D4).
+- **Shortcut màn hình (2026-11-27, chờ test):** "Order Status" → `/pos/status` (màn theo dõi đơn treo TV, `order_status.md`) đứng cuối nhóm shortcut
+  ở mọi workspace MYPOS. Nhãn shortcut không lặp tiền tố "MYPOS" (đã nằm trong workspace MYPOS; nhãn dài bị Desk cắt chữ): "Kitchen Screen",
+  "Customer Display", "Order Status"; "Open MYPOS" giữ nguyên. Patch `v1_mypos_workspaces` so cả nhãn + URL shortcut với file (không chỉ số dòng),
+  lệch → import lại (force). Kiểm: `.claude/docs/workspace_shortcut_check.py` (`check_workspace_shortcuts()`, chỉ đọc).
 - **Shortcut URL** luôn mở tab mới (`shortcut_widget.js`). **Shortcut DocType** luôn đếm `frappe.db.count` theo `stats_filter` và
   dùng nó làm bộ lọc danh sách (`frappe.route_options`). Hiện không còn shortcut DocType nào (Draft Orders / Unserved Orders đã bỏ
   2026-11-26, Van quyết định; xem đơn qua card Order Handling → POS Invoice + bộ lọc chuẩn).

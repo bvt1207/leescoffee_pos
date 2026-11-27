@@ -3,8 +3,9 @@
 Chạy ở [post_model_sync]: lúc này `sync_all` đã import các file workspace / sidebar mới.
 Idempotent, chạy lại không đổi gì nếu DB đã khớp file.
 
-1. Mỗi workspace MYPOS: so số dòng Workspace Link / Workspace Shortcut / Has Role trong DB với file JSON.
-   Thiếu workspace hoặc lệch số (gồm dòng trùng) -> import lại file với force=True (Frappe xóa doc cũ
+1. Mỗi workspace MYPOS: so số dòng Workspace Link / Workspace Shortcut / Has Role trong DB với file JSON, và (2026-11-27)
+   danh sách shortcut (nhãn + URL) — đổi nhãn / thêm shortcut mà số dòng không đổi vẫn được phát hiện.
+   Thiếu workspace hoặc lệch (gồm dòng trùng) -> import lại file với force=True (Frappe xóa doc cũ
    cùng mọi dòng con rồi insert lại, `import_file.import_doc`). KHÔNG xóa Workspace Link bằng SQL ở đây:
    patch chạy SAU khi file đã nạp, xóa sẽ mất dữ liệu vừa nạp.
 2. Đủ 4 workspace mới -> xóa workspace cũ `leescoffee_pos` (đã thay bằng "MYPOS Admin"), Desktop Icon cũ
@@ -42,11 +43,20 @@ def _load(path):
 
 
 def _expected(data):
-	return {dt: len(data.get(field) or []) for field, dt in CHILD_TABLES.items()}
+	out = {dt: len(data.get(field) or []) for field, dt in CHILD_TABLES.items()}
+	out["shortcuts"] = sorted((s.get("label") or "", s.get("url") or "") for s in data.get("shortcuts") or [])
+	return out
 
 
 def _actual(name):
-	return {dt: frappe.db.count(dt, {"parent": name, "parenttype": "Workspace"}) for dt in CHILD_TABLES.values()}
+	out = {dt: frappe.db.count(dt, {"parent": name, "parenttype": "Workspace"}) for dt in CHILD_TABLES.values()}
+	out["shortcuts"] = sorted(
+		(r.label or "", r.url or "")
+		for r in frappe.get_all(
+			"Workspace Shortcut", filters={"parent": name, "parenttype": "Workspace"}, fields=["label", "url"]
+		)
+	)
+	return out
 
 
 def _sync_workspaces():

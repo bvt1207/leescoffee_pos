@@ -1,7 +1,7 @@
 {
  "app": "leescoffee_pos",
  "charts": [],
- "content": "[{\"id\":\"mypos_adS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_adS04\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"MYPOS Kitchen Screen\",\"col\":3}},{\"id\":\"mypos_adS05\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"MYPOS Customer Display\",\"col\":3}},{\"id\":\"mypos_adSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_adC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Branch Setup\",\"col\":4}},{\"id\":\"mypos_adC02\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift & Cash\",\"col\":4}},{\"id\":\"mypos_adC03\",\"type\":\"card\",\"data\":{\"card_name\":\"Order Handling\",\"col\":4}},{\"id\":\"mypos_adC04\",\"type\":\"card\",\"data\":{\"card_name\":\"Menu & Promotions\",\"col\":4}},{\"id\":\"mypos_adC05\",\"type\":\"card\",\"data\":{\"card_name\":\"QR & Display\",\"col\":4}},{\"id\":\"mypos_adC06\",\"type\":\"card\",\"data\":{\"card_name\":\"Troubleshooting\",\"col\":4}}]",
+ "content": "[{\"id\":\"mypos_adS01\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open MYPOS\",\"col\":3}},{\"id\":\"mypos_adS04\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Kitchen Screen\",\"col\":3}},{\"id\":\"mypos_adS05\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Customer Display\",\"col\":3}},{\"id\":\"mypos_adS06\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Order Status\",\"col\":3}},{\"id\":\"mypos_adSP1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mypos_adC01\",\"type\":\"card\",\"data\":{\"card_name\":\"Branch Setup\",\"col\":4}},{\"id\":\"mypos_adC02\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift & Cash\",\"col\":4}},{\"id\":\"mypos_adC03\",\"type\":\"card\",\"data\":{\"card_name\":\"Order Handling\",\"col\":4}},{\"id\":\"mypos_adC04\",\"type\":\"card\",\"data\":{\"card_name\":\"Menu & Promotions\",\"col\":4}},{\"id\":\"mypos_adC05\",\"type\":\"card\",\"data\":{\"card_name\":\"QR & Display\",\"col\":4}},{\"id\":\"mypos_adC06\",\"type\":\"card\",\"data\":{\"card_name\":\"Troubleshooting\",\"col\":4}}]",
  "creation": "2026-11-25 10:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -254,7 +254,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-11-26 10:00:00.000000",
+ "modified": "2026-11-27 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Leescoffee POS",
  "name": "MYPOS Admin",
@@ -278,15 +278,21 @@
   },
   {
    "color": "Orange",
-   "label": "MYPOS Kitchen Screen",
+   "label": "Kitchen Screen",
    "type": "URL",
    "url": "/pos/kitchen"
   },
   {
    "color": "Grey",
-   "label": "MYPOS Customer Display",
+   "label": "Customer Display",
    "type": "URL",
    "url": "/pos/customer"
+  },
+  {
+   "color": "Green",
+   "label": "Order Status",
+   "type": "URL",
+   "url": "/pos/status"
   }
  ],
  "standard": 1,
