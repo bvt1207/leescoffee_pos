@@ -1,0 +1,2 @@
+# Script chạy trong WSL: luôn LF (repo có core.autocrlf=true trên Windows).
+* text=auto eol=lf
