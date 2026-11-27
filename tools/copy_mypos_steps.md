@@ -8,8 +8,8 @@ Chạy từ Windows (Git Bash) qua `wsl.exe`: ghi khối lệnh vào `tools/_wsl
 đổi `/mnt/c/...` thành `C:/Program Files/Git/mnt/...`). Shell không đăng nhập không có `bench` trong PATH: thêm
 `export PATH="$HOME/.local/bin:$PATH"`.
 
-Kỳ vọng ở thời điểm viết (branch `mypos-port`): SRC có **205 file** (không tính `node_modules`, `__pycache__`, output build
-`mypos/public/{pos,order}`), 9 nhóm: gốc app 9, docs 18, pos 77, package gốc 5, setup/fixtures/selfcheck/patches/config/templates 31,
+Kỳ vọng ở thời điểm viết (branch `mypos-port`): SRC có **209 file** (không tính `node_modules`, `__pycache__`, output build
+`mypos/public/{pos,order}`), 9 nhóm: gốc app 9, docs 18, pos 77, package gốc 5, setup/fixtures/selfcheck/patches/config/templates 35,
 desktop_icon 4, public/www 10, module api/doctype 46, workspace/sidebar 5.
 
 ---
@@ -36,7 +36,7 @@ ls -d "$DST/.git" 2>/dev/null && echo "DST/.git có sẵn — sẽ KHÔNG đụn
 
 # Đếm file
 mypos_files "$SRC" > "$W/src.txt"; mypos_files "$DST" > "$W/dst.txt"
-wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 205
+wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 209
 
 # Dò CRLF trong SRC (kỳ vọng: không in gì)
 (cd "$SRC" && tr '\n' '\0' < "$W/src.txt" | xargs -0 grep -Il $'\r') || echo "Không có file CRLF"
@@ -45,7 +45,7 @@ wc -l "$W/src.txt" "$W/dst.txt"                           # SRC kỳ vọng 205
 (cd "$SRC" && tr '\n' '\0' < "$W/src.txt" | xargs -0 grep -IliE 'lee[s]coffee') || echo "sạch"
 ```
 
-`# DỪNG`: SRC OK + DST OK; SRC = 205 file; không có file CRLF; "sạch". Sai bất kỳ ý nào → không đi tiếp, gửi output.
+`# DỪNG`: SRC OK + DST OK; SRC = 209 file; không có file CRLF; "sạch". Sai bất kỳ ý nào → không đi tiếp, gửi output.
 
 ---
 
@@ -137,7 +137,7 @@ copy_group "8 module api/doctype"     '^mypos/mypos/([^/]+$|api/|doctype/)'
 copy_group "9 workspace/sidebar"      '^mypos/mypos/(workspace|sidebar)/'
 ```
 
-Kỳ vọng: 9 / 18 / 77 / 5 / 31 / 4 / 10 / 46 / 5 (tổng 205). Có dòng `cp: ...` lỗi → dừng, gửi output.
+Kỳ vọng: 9 / 18 / 77 / 5 / 35 / 4 / 10 / 46 / 5 (tổng 209). Có dòng `cp: ...` lỗi → dừng, gửi output.
 
 ---
 
@@ -154,7 +154,7 @@ diff -rq --exclude=.git --exclude=node_modules --exclude=__pycache__ --exclude='
 # Đếm
 mypos_files "$DST" > "$W/dst_after.txt"
 LC_ALL=C comm -23 "$W/src.txt" "$W/dst_after.txt" | wc -l             # kỳ vọng 0 (không thiếu file)
-wc -l "$W/src.txt" "$W/dst_after.txt"                                # DST = 205 + số dòng only_dst
+wc -l "$W/src.txt" "$W/dst_after.txt"                                # DST = 209 + số dòng only_dst
 
 # Chuẩn hóa quyền (bỏ qua .git và node_modules): thư mục 755, file 644
 find "$DST" \( -path "$DST/.git" -o -name node_modules \) -prune -o -type d -exec chmod 755 {} +
@@ -224,34 +224,19 @@ bench start
 
 ### Selfcheck sau migrate
 
-Chỉ đọc (chạy ngay):
+Hướng dẫn đầy đủ: `$DST/docs/testing.md`; trình tự trên site chưa có dữ liệu: `tools/test_without_data.md`.
 
 ```bash
-bench --site local.com execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page   # "Apps" | "Desktop Icons"
-bench --site local.com execute mypos.selfcheck.apps_screen_check.check_apps_screen
-bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
-bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
-bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
-bench --site local.com execute mypos.setup.roles.setup_roles_and_permissions        # lần 2+: mọi số 0, lỗi 0
-bench --site local.com execute frappe.db.count --args "['Custom Field', {'module': 'MYPOS'}]"   # 35
-bench --site local.com scheduler status                                             # disabled -> enable-scheduler
-```
-
-Sau khi cấu hình tay (`$DST/docs/install.md` §3) — có ghi dữ liệu thử, đọc docstring từng hàm (`$DST/docs/testing.md`):
-
-```bash
-P="<POS Profile>"; I="<mã món VARIANT>"; M="<Mode of Payment tiền mặt>"; L="<Price List của MYPOS Menu>"
-for c in walk_in_customer_check.check_walk_in_customer table_card_check.check_table_card \
-         draft_cancel_check.check_draft_cancel open_orders_check.check_open_orders \
-         shift_owner_check.check_shift_owner payment_status_check.check_payment_status \
-         customer_display_check.check_customer_display order_status_check.check_order_status \
-         poll_load_check.check_poll_load; do
-  bench --site local.com execute mypos.selfcheck.$c --kwargs "{'pos_profile': '$P', 'item_code': '$I', 'mode_of_payment': '$M', 'price_list': '$L'}"
-done
-bench --site local.com execute mypos.selfcheck.branch_profile_check.check_branch_profile --kwargs "{'pos_profile': '$P'}"
-bench --site local.com execute mypos.selfcheck.kitchen_desk_check.check_kitchen_desk
-bench --site local.com execute mypos.selfcheck.order_history_selftest.run_order_history_selftest     # gồm order_qr_selftest
-# Tham số riêng (docs/testing.md): orders_shift_check, legacy_options_check, surcharge_check
+cd ~/frappe-bench
+bench --site local.com execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page   # "Apps" (mặc định)
+bench --site local.com execute frappe.db.count --args "['Custom Field', {'module': 'MYPOS'}]"         # 35
+bench --site local.com execute mypos.setup.roles.setup_roles_and_permissions                          # lần 2+: mọi số 0, lỗi 0
+# điều kiện nền cho test ghi dữ liệu (in cách tạo từng mục THIẾU)
+bench --site local.com execute mypos.selfcheck.prereq_check.check_prereq
+# chạy gộp: prereq -> 4 test chỉ đọc -> 2 test user tạm -> 15 test quán thử (tự SKIP nếu prereq THIẾU), bảng PASS / FAIL / SKIP cuối
+bench --site local.com execute mypos.selfcheck.check_everything.check_everything 2>&1 | tee ~/mypos_selfcheck_$(date +%Y%m%d-%H%M).log
+# dữ liệu thử còn sót (chỉ đọc) / dọn
+bench --site local.com execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'list'}"
 ```
 
 ### Checklist kiểm tay (PASS / FAIL)
