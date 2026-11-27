@@ -274,7 +274,11 @@ def check_shift_owner(pos_profile=None, item_code=None, mode_of_payment=None, pr
 			_r, err = as_user("A", close_shift, shift_b.name)
 			blocked("6a A đóng ca của B -> chặn", err, "chỉ được đóng ca của chính mình")
 			_r, err = as_user("K", close_shift, shift_b.name)
-			blocked("6b KITCHEN đóng ca -> chặn", err, "không có quyền mở/đóng ca")
+			# KITCHEN không có quyền DocType trên POS Opening / Closing Entry (rules/roles.md §2): ERPNext 16.61 chặn ở tầng quyền
+			# Frappe (PermissionError, có thể không kèm thông báo) TRƯỚC hook của app -> chấp nhận PermissionError từ tầng nào cũng được.
+			ok("6b KITCHEN đóng ca -> chặn (PermissionError)",
+				isinstance(err, frappe.PermissionError) or (err is not None and "không có quyền mở/đóng ca" in str(err).lower()),
+				f"-> {type(err).__name__}: {str(err)[:110]}" if err else "-> KHÔNG bị chặn")
 
 		print("== 7. Quyền Only If Creator (sau migrate) ==")
 		for dt in ("POS Opening Entry", "POS Closing Entry"):
