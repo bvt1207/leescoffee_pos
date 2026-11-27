@@ -1,0 +1,46 @@
+import frappe
+from frappe import _
+from frappe.model.document import Document
+
+
+class MYPOSBuzzer(Document):
+	"""Thẻ bàn (đổi từ thẻ rung 2026-11-23; tên kỹ thuật giữ MYPOS Buzzer) cho khách Dine In tại quầy.
+
+	Trạng thái "đang dùng" thật tính theo đơn còn giữ (pos_api._held_buzzers); field status chỉ để hiện trên Desk.
+
+	Mỗi thẻ có một số duy nhất trong 1 chi nhánh (branch).
+	Trạng thái: Sẵn sàng / Đang dùng (khi đã được gán cho đơn POS Invoice hiện tại).
+	"""
+
+	def validate(self):
+		"""Kiểm tra tính duy nhất của (buzzer_number, branch) trong DB."""
+		self._validate_unique_buzzer_per_branch()
+
+	def _validate_unique_buzzer_per_branch(self):
+		"""Đảm bảo không có 2 buzzer có cùng số trong 1 branch."""
+		existing = frappe.db.exists(
+			"MYPOS Buzzer",
+			{
+				"buzzer_number": self.buzzer_number,
+				"branch": self.branch,
+				"name": {"!=": self.name},
+			},
+		)
+		if existing:
+			frappe.throw(
+				_("Thẻ bàn số {0} đã tồn tại trong chi nhánh {1}."),
+				params=[self.buzzer_number, self.branch],
+			)
+
+	@staticmethod
+	def set_busy(buzzer_name, pos_invoice_name):
+		"""Đánh dấu buzzer là 'Đang dùng' và gán cho POS Invoice."""
+		buzzer = frappe.get_doc("MYPOS Buzzer", buzzer_name)
+		if buzzer.status != "Sẵn sàng":
+			frappe.throw(
+				_("Thẻ bàn {0} không ở trạng thái Sẵn sàng.").format(buzzer_name)
+			)
+		buzzer.status = "Đang dùng"
+		buzzer.save(ignore_permissions=True)
+
+	# Nhả thẻ: pos_invoice_hooks (on_update_after_submit, on_cancel, release_buzzer) — không có hàm nhả thủ công.
