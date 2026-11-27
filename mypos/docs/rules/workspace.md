@@ -68,16 +68,30 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
   Chung: `app` "mypos", `standard` 1, `bg_color` gray, `restrict_removal` 0, `hidden` 0, `logo_url` `/assets/mypos/images/logo.svg`.
   Không dùng `sidebar` / `link_to` / `parent_icon` (không trỏ tới bản ghi `Workspace Sidebar` nào — DocType đó ở 16.61 chỉ còn là kho
   lưu cho bước chuyển đổi sidebar). Desktop Icon không có field `module`.
-  - Nạp (Frappe 16.61, đã đối chiếu mã): `frappe/model/sync.py` gọi `import_desktop_icon_fixtures(app_name, force)` (KHÔNG qua
-    `IMPORTABLE_DOCTYPES`), hàm này duyệt `get_app_level_files("desktop_icon", app)` và `import_file_by_path` từng file.
-  - **Chỉ nạp khi site ở chế độ lưới icon**: hàm thoát ngay nếu `is_desktop_icons_page()` sai ("an Apps-mode site holds no icon rows at
-    all ... Switching to the grid is what imports them"). Site ở chế độ Apps: không có dòng Desktop Icon nào (kể cả của MYPOS) cho tới khi
-    chuyển sang lưới icon.
-  - [Unverified] Chưa đọc mã `is_desktop_icons_page()` (điều kiện chính xác, nơi bật) và `get_app_level_files()` (thư mục chính xác);
-    chưa so với icon mẫu của ERPNext 16.61. Kiểm (chỉ đọc): `bench --site <site> execute frappe.desk.doctype.desktop_icon.desktop_icon.is_desktop_icons_page`
-    và `mypos.selfcheck.desktop_icon_check.check_desktop_icons` (in INFO chế độ + kiểm từng icon).
-  - Thấy icon trên site mới: bảo đảm chế độ lưới icon (trả `True` ở lệnh trên), `bench --site <site> migrate` (nạp lại icon), clear-cache,
-    đăng nhập lại `/desk`.
+  - **Nạp (Frappe 16.61, đã đối chiếu mã trên bench mới):** `frappe/model/sync.py` gọi `import_desktop_icon_fixtures(app_name, force)` khi
+    migrate (KHÔNG qua `IMPORTABLE_DOCTYPES`); hàm đọc `get_app_level_files("desktop_icon", app)` =
+    `frappe.get_app_path(app) + "/desktop_icon"` = `apps/mypos/mypos/desktop_icon/` (đúng chỗ app đang để) và `import_file_by_path`
+    từng file (`import_doc` đặt `ignore_links`).
+  - **Chỉ nạp ở chế độ lưới icon:** `is_desktop_icons_page()` = `Desktop Settings.desktop_page == "Desktop Icons"`
+    (`frappe/desk/doctype/desktop_settings/desktop_settings.py`, Single DocType; mặc định **"Apps"** khi cài mới). Site ở chế độ Apps
+    không có dòng Desktop Icon nào (kể cả của MYPOS); `/desk` vẽ màn Apps từ hook `add_to_apps_screen` (`frappe/apps.py::get_apps`).
+    - Kiểm (chỉ đọc): `bench --site <site> execute frappe.desk.doctype.desktop_settings.desktop_settings.get_desktop_page`.
+    - Bật lưới icon: Desk → **Desktop Settings** → Desktop Page = "Desktop Icons" → Save. `on_update` xóa cache và enqueue
+      `seed_desktop_icons` (sinh icon cho app + mọi workspace public, rồi `import_desktop_icon_fixtures()`), cần worker chạy.
+      Nạp lại icon của app bất kỳ lúc nào ở chế độ này: `bench --site <site> sync-desktop-icons`. Chuyển về "Apps" không xóa dòng icon nào.
+    - Frappe ghi chế độ lưới icon là bề mặt **đang bị loại bỏ** (`frappe/desk/RETIRING.md`): khi bỏ, Desktop Icon, `desktop_icon/` cấp
+      app và Workspace Sidebar bị xóa cùng đợt; mọi site về màn Apps.
+  - **Quy tắc hiển thị ở chế độ lưới (`is_icon_permitted`)**: module của icon phải hiển thị; icon có `roles` → user phải có ít nhất một role;
+    `icon_type` "App" → `_has_app_permission` (app không khai `add_to_apps_screen` → True). Vì vậy 4 icon "App" của MYPOS lọc đúng theo
+    `roles`. Mẫu của ERPNext 16.61: 1 icon "App" / app (`erpnext.json`: External `/app/home`, hidden), 1 icon "Folder", còn lại icon "Link"
+    (`link_type` Workspace Sidebar, `link_to` = tên workspace, `parent_icon` = Folder). MYPOS giữ 4 icon "App" + External (role riêng
+    từng icon, Kitchen mở thẳng `/pos/kitchen`); không trỏ Workspace Sidebar.
+  - Icon tự sinh khi bật lưới icon (`create_desktop_icons_from_workspace`): mỗi workspace public một icon "Link" tên = tên workspace, chỉ khi chưa
+    có icon "Link" cùng nhãn. Tên trùng 4 icon của app → `seed_desktop_icons` sinh trước rồi `import_desktop_icon_fixtures` nạp file của app
+    (`import_doc` xóa bản cũ cùng tên rồi chèn) → kết quả là icon của app. [Inference, đọc mã; chưa chạy thử ở chế độ lưới]
+  - **Màn Apps (mặc định):** app chưa khai `add_to_apps_screen` nên MYPOS **không có ô trên màn Apps**; workspace MYPOS mở qua sidebar /
+    URL `/desk/mypos-*`. Thêm ô MYPOS trên màn Apps = thêm hook `add_to_apps_screen` (chưa làm, chờ quyết định).
+  - Kiểm: `mypos.selfcheck.desktop_icon_check.check_desktop_icons` (in chế độ; ở chế độ Apps chỉ kiểm file, SKIP phần DB).
 
 ## 3. Quy tắc khi sửa JSON workspace
 
