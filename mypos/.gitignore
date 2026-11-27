@@ -32,6 +32,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Output build Vite (dựng lại bằng `cd pos && npm run build`)
+mypos/public/pos/
+mypos/public/order/
+
 # Dependency directories
 node_modules/
 jspm_packages/

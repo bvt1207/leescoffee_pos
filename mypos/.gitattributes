@@ -1,0 +1,5 @@
+# Giữ LF cho mọi file văn bản (repo được sửa trên Windows, chạy trên Linux / WSL).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text eol=lf
