@@ -10,13 +10,13 @@ Chi tiết: `deploy.md` §5. User test KHÔNG có role `Workspace Manager`.
 
 | # | Tài khoản | Mong đợi | PASS / FAIL |
 |---|---|---|---|
-| A1 | Administrator | 4 Desktop Icon MYPOS (Cashier, Kitchen, Manager, Admin); sidebar MYPOS 4 mục, không có mục DocType lẻ | |
+| A1 | Administrator | Ô MYPOS trên màn Apps; sidebar MYPOS 4 mục (Cashier, Kitchen, Manager, Admin), không có mục DocType lẻ | |
 | A2 | POS MANAGER | Chỉ icon / workspace Manager; card Shift & Cash, Order Handling, Menu & Promotions, QR & Display | |
 | A3 | POS CASHIER | Chỉ icon / workspace Cashier (Open MYPOS, Customer Display, Order Status, Shift) | |
 | A4 | POS KITCHEN | Chỉ icon Kitchen → mở `/pos/kitchen`; mở `/pos` tự chuyển `/pos/kitchen` | |
-| A5 | Mọi tài khoản trên | (i) CHỈ khi Desktop Settings → Desktop Page = "Desktop Icons": mở `/desk` thấy icon MYPOS đúng role. Chế độ "Apps" (mặc định): ghi N/A — không có icon (`rules/workspace.md`) | |
-| A6 | Mọi tài khoản trên | (ii) Bấm icon (chế độ lưới) hoặc mở URL (chế độ Apps) mở đúng: Cashier → `/desk/mypos-cashier`, Kitchen → `/pos/kitchen`, Manager → `/desk/mypos-manager`, Admin → `/desk/mypos-admin`; sidebar MYPOS hiện đúng mục | |
-| A7 | User chỉ có role ERPNext (vd. Sales User), không role POS | (iii) Không thấy icon / workspace MYPOS nào | |
+| A5 | Mọi tài khoản trên | (i) Mở `/desk` (màn Apps): thấy đúng MỘT ô "MYPOS" (logo app) | |
+| A6 | Mọi tài khoản trên | (ii) Bấm ô MYPOS: Cashier → `/desk/mypos-cashier`, Kitchen → `/desk/mypos-kitchen`, Manager → `/desk/mypos-manager`, Administrator / System Manager → workspace đầu tiên của Sidebar (`/desk/mypos-cashier`); sidebar MYPOS hiện đúng mục theo role | |
+| A7 | User chỉ có role ERPNext (vd. Sales User), không role POS | (iii) Không có ô MYPOS trên màn Apps, không vào được workspace MYPOS | |
 
 ## B. Bán hàng tại quầy
 

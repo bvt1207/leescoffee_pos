@@ -89,8 +89,20 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
   - Icon tự sinh khi bật lưới icon (`create_desktop_icons_from_workspace`): mỗi workspace public một icon "Link" tên = tên workspace, chỉ khi chưa
     có icon "Link" cùng nhãn. Tên trùng 4 icon của app → `seed_desktop_icons` sinh trước rồi `import_desktop_icon_fixtures` nạp file của app
     (`import_doc` xóa bản cũ cùng tên rồi chèn) → kết quả là icon của app. [Inference, đọc mã; chưa chạy thử ở chế độ lưới]
-  - **Màn Apps (mặc định):** app chưa khai `add_to_apps_screen` nên MYPOS **không có ô trên màn Apps**; workspace MYPOS mở qua sidebar /
-    URL `/desk/mypos-*`. Thêm ô MYPOS trên màn Apps = thêm hook `add_to_apps_screen` (chưa làm, chờ quyết định).
+- **Ô MYPOS trên màn Apps (chế độ mặc định, cách hiển thị chính)** — hook `add_to_apps_screen` trong `mypos/hooks.py`:
+  `name` "mypos", `title` "MYPOS", `logo` `/assets/mypos/images/logo.svg` (file `mypos/public/images/logo.svg`),
+  `has_permission` `mypos.permissions.has_app_permission` (True khi user có POS CASHIER / POS KITCHEN / POS MANAGER / System Manager,
+  hoặc là Administrator; Guest → False). **Không khai `route`** (đã đối chiếu mã Frappe 16.61):
+  - `frappe.apps.get_apps` / `frappe.boot.get_app_data` chỉ chép `route` tĩnh của hook (một giá trị cho mọi user).
+  - Màn Apps (`desk/page/desktop/desktop.js`) tính điểm đến bằng `sidebar.app_landing_route(app)`: route ngoài `/desk` → mở route đó;
+    không có → mục Dock đầu tiên (app không ship Dock) → `module_landing_route` của Sidebar đầu tiên của app = mục đầu tiên của Sidebar
+    "MYPOS" **đã lọc theo quyền** (`resolve_sidebar` → `filter_sidebar_items` → `is_item_allowed`).
+  - Kết quả: POS CASHIER → `/desk/mypos-cashier`, POS KITCHEN → `/desk/mypos-kitchen`, POS MANAGER → `/desk/mypos-manager`.
+    User nhiều role / System Manager / Administrator → workspace đầu tiên theo thứ tự Sidebar mà họ được xem (System Manager thấy cả 4
+    → **MYPOS Cashier**, vì Sidebar xếp Cashier, Kitchen, Manager, Admin). Muốn System Manager vào MYPOS Admin: đổi thứ tự mục Sidebar
+    (Admin, Manager, Cashier, Kitchen) — chưa làm, cần quyết định.
+  - Ô chỉ hiện khi `has_permission` đúng (`on_apps_screen`); app không có setup wizard nên không bị lọc theo setup wizard.
+  - Kiểm: `mypos.selfcheck.apps_screen_check.check_apps_screen` (đúng 1 ô cho user có role, 0 ô cho user không role / Guest, điểm đến).
   - Kiểm: `mypos.selfcheck.desktop_icon_check.check_desktop_icons` (in chế độ; ở chế độ Apps chỉ kiểm file, SKIP phần DB).
 
 ## 3. Quy tắc khi sửa JSON workspace

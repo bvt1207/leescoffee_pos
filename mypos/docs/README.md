@@ -17,7 +17,7 @@ mypos/                      gốc app (gốc repo GitHub)
 ├── docs/                   tài liệu (file này)
 ├── pos/                    frontend React + Vite (build ra mypos/public/pos, mypos/public/order)
 └── mypos/                  package Python
-    ├── hooks.py, modules.txt ("MYPOS"), patches.txt
+    ├── hooks.py, modules.txt ("MYPOS"), patches.txt, permissions.py (ô MYPOS trên màn Apps)
     ├── setup/              install.py (after_install, after_migrate), roles.py (PERMS: nguồn chuẩn quyền)
     ├── fixtures/           custom_field.json, property_setter.json, role.json
     ├── desktop_icon/       4 Desktop Icon

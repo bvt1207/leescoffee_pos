@@ -12,15 +12,18 @@ app_license = "mit"
 required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "mypos",
-# 		"logo": "/assets/mypos/logo.png",
-# 		"title": "MYPOS",
-# 		"route": "/mypos",
-# 		"has_permission": "mypos.api.permission.has_app_permission",
-# 	}
-# ]
+# Ô MYPOS trên màn Apps của Desk (chế độ mặc định "Apps"; không dùng lưới Desktop Icon đang bị Frappe loại bỏ).
+# KHÔNG khai "route": Frappe 16.61 chỉ có route tĩnh; bỏ trống thì client đi theo "landing ladder"
+# (`sidebar.js::app_landing_route`): app không có Dock -> mục đầu tiên của Sidebar "MYPOS" ĐÃ LỌC theo quyền user
+# -> Cashier vào MYPOS Cashier, Kitchen vào MYPOS Kitchen, Manager vào MYPOS Manager (docs/rules/workspace.md).
+add_to_apps_screen = [
+	{
+		"name": "mypos",
+		"logo": "/assets/mypos/images/logo.svg",
+		"title": "MYPOS",
+		"has_permission": "mypos.permissions.has_app_permission",
+	}
+]
 
 # The dock, the rail down the left of the desk, is a document rather than a hook. Author it in
 # Manage Dock on a developer-mode site and press Export to App, and it is written to

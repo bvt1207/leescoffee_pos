@@ -45,6 +45,7 @@ bench --site local.com execute mypos.selfcheck.<file>.<hàm> --kwargs "{'tham_so
 | `order_qr_selftest.run_order_qr_selftest` | `branch=None` | Web đặt món QR (backend) |
 | `order_history_selftest.run_order_history_selftest` | `branch=None, run_old=True` | "Đơn của tôi" theo khách + giỏ (gọi lại bộ QR) |
 | `workspace_shortcut_check.check_workspace_shortcuts` | — | 4 workspace MYPOS: shortcut, roles (chỉ đọc) |
+| `apps_screen_check.check_apps_screen` | — | Ô MYPOS trên màn Apps: hook, `has_app_permission`, 1 ô cho user có role / 0 ô cho user không role, điểm đến theo Sidebar (chỉ đọc, dùng user có sẵn) |
 | `desktop_icon_check.check_desktop_icons` | — | 4 Desktop Icon: tồn tại (cần chế độ lưới icon), app, roles, link trỏ Workspace / route có thật (chỉ đọc) |
 | `sidebar_check.check_sidebar` | — | Sidebar "MYPOS": module / app / standard, 4 mục Workspace có thật, không mục thừa, không trùng (chỉ đọc) |
 
