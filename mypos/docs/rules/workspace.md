@@ -45,10 +45,13 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
 
     | idx | label | link_to | icon |
     |---|---|---|---|
-    | 1 | Cashier | MYPOS Cashier | receipt |
-    | 2 | Kitchen | MYPOS Kitchen | computer |
-    | 3 | Manager | MYPOS Manager | chart |
-    | 4 | Admin | MYPOS Admin | settings |
+    | 1 | Admin | MYPOS Admin | settings |
+    | 2 | Manager | MYPOS Manager | chart |
+    | 3 | Cashier | MYPOS Cashier | receipt |
+    | 4 | Kitchen | MYPOS Kitchen | computer |
+
+    Thứ tự Admin, Manager, Cashier, Kitchen (quyết định chủ dự án 2026-11-27) quyết định điểm đến của ô MYPOS trên màn Apps (mục đầu tiên
+    user được xem, xem dưới). Kiểm thứ tự: `sidebar_check`.
 
   - Mục có `route_options` (trừ Page / URL) phải chuyển thành `filters` (`sidebar.options_as_filters`); 4 mục hiện tại không có.
   - **Không còn** `workspace_sidebar/` (Workspace Sidebar cấp app: bản 16.61 đã bỏ nạp) và **không còn mẹo "sidebar rỗng trùng tên
@@ -97,12 +100,23 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
   - Màn Apps (`desk/page/desktop/desktop.js`) tính điểm đến bằng `sidebar.app_landing_route(app)`: route ngoài `/desk` → mở route đó;
     không có → mục Dock đầu tiên (app không ship Dock) → `module_landing_route` của Sidebar đầu tiên của app = mục đầu tiên của Sidebar
     "MYPOS" **đã lọc theo quyền** (`resolve_sidebar` → `filter_sidebar_items` → `is_item_allowed`).
-  - Kết quả: POS CASHIER → `/desk/mypos-cashier`, POS KITCHEN → `/desk/mypos-kitchen`, POS MANAGER → `/desk/mypos-manager`.
-    User nhiều role / System Manager / Administrator → workspace đầu tiên theo thứ tự Sidebar mà họ được xem (System Manager thấy cả 4
-    → **MYPOS Cashier**, vì Sidebar xếp Cashier, Kitchen, Manager, Admin). Muốn System Manager vào MYPOS Admin: đổi thứ tự mục Sidebar
-    (Admin, Manager, Cashier, Kitchen) — chưa làm, cần quyết định.
+  - Lọc mục Workspace (đã đọc mã 16.61): `frappe/desk/utils.py::is_item_allowed` → mục Workspace hiện khi tên nằm trong
+    `allowed_workspaces` = `get_workspaces()` → `Workspace.is_permitted`: module MYPOS hiển thị với user VÀ (workspace không có `roles`
+    hoặc user có một role của workspace). User có role `Workspace Manager` thấy mọi workspace (đừng dùng để test).
+  - Kết quả với Sidebar Admin, Manager, Cashier, Kitchen (roles workspace: Admin = System Manager; Manager = POS MANAGER + System Manager;
+    Cashier = POS CASHIER + System Manager; Kitchen = POS KITCHEN + System Manager):
+
+    | User | Mục Sidebar thấy | Bấm ô MYPOS → |
+    |---|---|---|
+    | System Manager / Administrator | Admin, Manager, Cashier, Kitchen | `/desk/mypos-admin` |
+    | Chỉ POS MANAGER | Manager (Admin chỉ System Manager → ẩn) | `/desk/mypos-manager` |
+    | Chỉ POS CASHIER | Cashier | `/desk/mypos-cashier` |
+    | Chỉ POS KITCHEN | Kitchen | `/desk/mypos-kitchen` |
+    | POS CASHIER + POS MANAGER | Manager, Cashier | `/desk/mypos-manager` (mục đầu sau lọc) |
+    | Không role POS / Guest | — | không có ô MYPOS |
   - Ô chỉ hiện khi `has_permission` đúng (`on_apps_screen`); app không có setup wizard nên không bị lọc theo setup wizard.
-  - Kiểm: `mypos.selfcheck.apps_screen_check.check_apps_screen` (đúng 1 ô cho user có role, 0 ô cho user không role / Guest, điểm đến).
+  - Kiểm: `apps_screen_check.check_apps_screen` (chỉ đọc, user có sẵn) và `apps_screen_roles_check.check_apps_screen_roles`
+    (user tạm từng role, đúng bảng trên).
   - Kiểm: `mypos.selfcheck.desktop_icon_check.check_desktop_icons` (in chế độ; ở chế độ Apps chỉ kiểm file, SKIP phần DB).
 
 ## 3. Quy tắc khi sửa JSON workspace

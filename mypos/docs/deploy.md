@@ -123,18 +123,20 @@ Màn chỉ đọc cho khách nhìn: "Đang chuẩn bị" / "Sẵn sàng nhận m
 ```bash
 bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
 bench --site local.com execute mypos.selfcheck.apps_screen_check.check_apps_screen
+bench --site local.com execute mypos.selfcheck.apps_screen_roles_check.check_apps_screen_roles
 bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
 bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
 ```
 
 Kiểm tay (mỗi tài khoản: cửa sổ ẩn danh, đăng nhập lại; user test KHÔNG có role `Workspace Manager`):
 
-| Tài khoản | Thấy workspace / Desktop Icon | Sidebar MYPOS | PASS / FAIL |
+| Tài khoản | Màn Apps: ô MYPOS → điểm đến | Sidebar MYPOS | PASS / FAIL |
 |---|---|---|---|
-| Administrator | Cashier, Kitchen, Manager, Admin | 4 mục, không có mục DocType lẻ | |
-| POS MANAGER | Manager | chỉ Manager | |
-| POS CASHIER | Cashier | chỉ Cashier | |
-| POS KITCHEN | Kitchen (icon mở `/pos/kitchen`) | chỉ Kitchen | |
+| Administrator | Ô MYPOS → `/desk/mypos-admin` | 4 mục: Admin, Manager, Cashier, Kitchen; không có mục DocType lẻ | |
+| POS MANAGER | `/desk/mypos-manager` | chỉ Manager | |
+| POS CASHIER | `/desk/mypos-cashier` | chỉ Cashier | |
+| POS KITCHEN | `/desk/mypos-kitchen` | chỉ Kitchen | |
+| Không role POS | không có ô MYPOS | không thấy sidebar MYPOS | |
 
 Mục thừa cần để ý: MYPOS Option Group, MYPOS Order QR, MYPOS Menu (hoặc DocType bất kỳ) xuất hiện trực tiếp trong sidebar MYPOS.
 

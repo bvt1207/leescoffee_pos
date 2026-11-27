@@ -5,7 +5,8 @@ def check_sidebar():
 	    bench --site <site> execute mypos.selfcheck.sidebar_check.check_sidebar
 	Kiểm: Sidebar "MYPOS" tồn tại; module = MYPOS; app = mypos; standard = 1; mọi mục là Workspace đang tồn tại;
 	không có mục DocType MYPOS Option Group / Order QR / Menu; số mục = số workspace app đang ship; không trùng link_to;
-	không có Sidebar nào khác của module MYPOS (sidebar tự sinh / bản chuyển đổi).
+	không có Sidebar nào khác của module MYPOS (sidebar tự sinh / bản chuyển đổi); thứ tự mục Admin, Manager, Cashier, Kitchen
+	(thay cho sidebar_order_check riêng).
 	"""
 	import os
 
@@ -15,6 +16,8 @@ def check_sidebar():
 	MODULE = "MYPOS"
 	APP = "mypos"
 	FORBIDDEN = {"MYPOS Option Group", "MYPOS Order QR", "MYPOS Menu"}
+	# Thứ tự = điểm đến của ô MYPOS trên màn Apps (mục đầu tiên user được xem): quyết định chủ dự án 2026-11-27.
+	EXPECTED_ORDER = ["MYPOS Admin", "MYPOS Manager", "MYPOS Cashier", "MYPOS Kitchen"]
 
 	results = []
 
@@ -43,6 +46,8 @@ def check_sidebar():
 		bad = [r.link_to for r in links if r.link_to in FORBIDDEN]
 		ok(not bad, "không có mục MYPOS Option Group / Order QR / Menu", f"có: {bad}")
 		targets = [r.link_to for r in links]
+		ordered = [r.link_to for r in sorted(links, key=lambda r: r.idx)]
+		ok(ordered == EXPECTED_ORDER, "thứ tự mục: Admin, Manager, Cashier, Kitchen", f"thực tế {ordered}")
 		dups = sorted({t for t in targets if targets.count(t) > 1})
 		ok(not dups, "không trùng link_to", f"trùng: {dups}")
 

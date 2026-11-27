@@ -15,7 +15,8 @@ required_apps = ["erpnext"]
 # Ô MYPOS trên màn Apps của Desk (chế độ mặc định "Apps"; không dùng lưới Desktop Icon đang bị Frappe loại bỏ).
 # KHÔNG khai "route": Frappe 16.61 chỉ có route tĩnh; bỏ trống thì client đi theo "landing ladder"
 # (`sidebar.js::app_landing_route`): app không có Dock -> mục đầu tiên của Sidebar "MYPOS" ĐÃ LỌC theo quyền user
-# -> Cashier vào MYPOS Cashier, Kitchen vào MYPOS Kitchen, Manager vào MYPOS Manager (docs/rules/workspace.md).
+# Sidebar xếp Admin, Manager, Cashier, Kitchen -> System Manager / Administrator vào MYPOS Admin, POS MANAGER vào MYPOS Manager,
+# POS CASHIER vào MYPOS Cashier, POS KITCHEN vào MYPOS Kitchen (docs/rules/workspace.md).
 add_to_apps_screen = [
 	{
 		"name": "mypos",

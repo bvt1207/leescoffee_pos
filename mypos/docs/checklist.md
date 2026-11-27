@@ -10,12 +10,12 @@ Chi tiết: `deploy.md` §5. User test KHÔNG có role `Workspace Manager`.
 
 | # | Tài khoản | Mong đợi | PASS / FAIL |
 |---|---|---|---|
-| A1 | Administrator | Ô MYPOS trên màn Apps; sidebar MYPOS 4 mục (Cashier, Kitchen, Manager, Admin), không có mục DocType lẻ | |
+| A1 | Administrator | Ô MYPOS trên màn Apps; sidebar MYPOS 4 mục theo thứ tự Admin, Manager, Cashier, Kitchen, không có mục DocType lẻ | |
 | A2 | POS MANAGER | Chỉ icon / workspace Manager; card Shift & Cash, Order Handling, Menu & Promotions, QR & Display | |
 | A3 | POS CASHIER | Chỉ icon / workspace Cashier (Open MYPOS, Customer Display, Order Status, Shift) | |
 | A4 | POS KITCHEN | Chỉ icon Kitchen → mở `/pos/kitchen`; mở `/pos` tự chuyển `/pos/kitchen` | |
 | A5 | Mọi tài khoản trên | (i) Mở `/desk` (màn Apps): thấy đúng MỘT ô "MYPOS" (logo app) | |
-| A6 | Mọi tài khoản trên | (ii) Bấm ô MYPOS: Cashier → `/desk/mypos-cashier`, Kitchen → `/desk/mypos-kitchen`, Manager → `/desk/mypos-manager`, Administrator / System Manager → workspace đầu tiên của Sidebar (`/desk/mypos-cashier`); sidebar MYPOS hiện đúng mục theo role | |
+| A6 | Mọi tài khoản trên | (ii) Bấm ô MYPOS: Administrator / System Manager → `/desk/mypos-admin`, Manager → `/desk/mypos-manager`, Cashier → `/desk/mypos-cashier`, Kitchen → `/desk/mypos-kitchen`, Cashier + Manager → `/desk/mypos-manager`; sidebar MYPOS hiện đúng mục theo role | |
 | A7 | User chỉ có role ERPNext (vd. Sales User), không role POS | (iii) Không có ô MYPOS trên màn Apps, không vào được workspace MYPOS | |
 
 ## B. Bán hàng tại quầy
