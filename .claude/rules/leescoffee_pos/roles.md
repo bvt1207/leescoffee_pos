@@ -194,6 +194,11 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
   dừng khi tab ẩn; store `store/serveQueue.ts`.
   - Đơn mới vào hàng chờ → toast "Bàn 07 sẵn sàng phục vụ" / "#00066 · Gọi khách lấy món" + 2 tiếng bíp (`order/alert.ts`). Toast **chỉ hiển thị**
     (không bấm, không điều hướng), tự tắt 8 giây.
+  - **Toast dùng chung (2026-11-27, ĐÃ TEST PASS `f5bd875`)**: `store/toasts.ts` + `components/ToastStack.tsx` (gắn một lần ở App) cho Bán món /
+    Đơn hàng / Pha chế: một cột, tối đa 3 (cũ nhất tắt trước), cùng `key` → thay nội dung (một sự kiện một toast), tự xuống dòng. Trước đó toast
+    Pha chế + toast hàng chờ cùng vị trí cố định → đè / cắt chữ; và sự kiện realtime về trước khi `refreshServeQueue([đơn])` loại trừ đơn của chính
+    máy → toast trùng. Màn Pha chế gọi `useServeQueue.mute([đơn])` TRƯỚC khi gửi "Đã làm" (`unmute` nếu lỗi; hạn 60 giây).
+  - Màn Pha chế tab "Đã hoàn thành": món tóm tắt 1–2 dòng (không tùy chọn / tem / ghi chú); Chưa làm / Đã làm đủ chi tiết.
   - Chấm đỏ + số cạnh mục **"Pha chế"** = số đơn "Đã làm" kênh tại quầy (Mang đi + Tại quán, **không tính QR** → có thể nhỏ hơn số ở tab "Đã làm"
     của màn Pha chế khi có đơn QR).
   - Kết thúc đơn = nút "Đã hoàn thành" ở màn Pha chế (tab Đã làm) như luồng chuẩn; **không có bước "Đã phục vụ" riêng** (đã bỏ tab "Chờ phục vụ"
