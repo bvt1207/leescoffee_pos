@@ -160,6 +160,8 @@ def check_walk_in_customer(pos_profile=None, item_code=None, mode_of_payment=Non
 		try:
 			doc = frappe.get_doc("POS Profile", profile)
 			doc.set(FIELD, customer)
+			# Profile tạm cùng Branch với quán thử / profile khác (quy tắc 1 profile đang bật / Branch, 2026-11-25) -> cờ self-test.
+			doc.flags.mypos_allow_shared_branch = True
 			doc.save(ignore_permissions=True)
 			frappe.db.commit()
 			return None
@@ -214,7 +216,8 @@ def check_walk_in_customer(pos_profile=None, item_code=None, mode_of_payment=Non
 			ctx["profiles"].append(prof.name)
 			return prof.name
 
-		p1 = make_profile(("A",), w1)
+		# K (POS KITCHEN) thuộc P1: từ 2026-11-25 (quy tắc D1, rules/realtime.md §4) Pha chế chỉ thấy đơn của profile mình thuộc về.
+		p1 = make_profile(("A", "K"), w1)
 		p2 = make_profile(("B",), w2)
 		p0 = make_profile(("C",), None)
 		frappe.db.commit()
@@ -255,9 +258,9 @@ def check_walk_in_customer(pos_profile=None, item_code=None, mode_of_payment=Non
 		ok("4b get_order_detail: True / False", det_a and det_a["is_walk_in"] is True and det_r and det_r["is_walk_in"] is False)
 		kit, err = as_user("K", P.get_kitchen_orders, "Chưa làm")
 		kby = {o["name"]: o for o in kit or []}
-		ok("4c get_kitchen_orders (nhiều profile): P1 True, P2 True (theo profile của đơn), khách thật False",
-			kby.get(a1, {}).get("is_walk_in") is True and kby.get(b1, {}).get("is_walk_in") is True
-			and kby.get(r1, {}).get("is_walk_in") is False, f"({err})")
+		ok("4c get_kitchen_orders (K thuộc P1): khách vãng lai P1 True, khách thật False; đơn P2 KHÔNG hiện (D1)",
+			kby.get(a1, {}).get("is_walk_in") is True and kby.get(r1, {}).get("is_walk_in") is False and b1 not in kby,
+			f"({err or sorted(kby)})")
 		real_name = frappe.db.get_value("Customer", real, "customer_name")
 		ok("4c2 get_kitchen_orders: customer_name có cho khách vãng lai và khách thật (đúng tên khách thật)",
 			bool(kby.get(a1, {}).get("customer_name")) and kby.get(r1, {}).get("customer_name") == real_name,

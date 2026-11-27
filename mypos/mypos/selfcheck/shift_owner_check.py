@@ -247,6 +247,12 @@ def check_shift_owner(pos_profile=None, item_code=None, mode_of_payment=None, pr
 		ok("3c Không tạo thêm ca mới", frappe.db.count("POS Opening Entry", {"pos_profile": prof.name}) == n_open)
 		_r, err = as_user("B", P.create_draft_order, line, "Take Away", mode_of_payment=mode_of_payment, price_list=price_list)
 		blocked("3d B tạo đơn khi ca A mở -> báo rõ lý do", err, "chưa đóng")
+		# Từ 2026-11-20 (rules/roles.md §2c): còn đơn nháp -> chặn đóng ca. Hủy 2 đơn thử (Cancelled + lý do) trước mục 4.
+		for inv_name in list(made["invoices"]):
+			if frappe.db.get_value("POS Invoice", inv_name, "docstatus") == 0:
+				_r, err = as_user("A", P.cancel_draft_order, inv_name, 0, "Đặt nhầm")
+				ok(f"3e Hủy đơn nháp {inv_name} trước khi đóng ca", err is None,
+					f"({type(err).__name__}: {str(err)[:100]})" if err else "")
 
 		print("== 4. Đóng ca ==")
 		_r, err = as_user("B", close_shift, shift_a.name)
