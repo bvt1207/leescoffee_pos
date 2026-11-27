@@ -1,4 +1,4 @@
-def check_branch_profile(pos_profile):
+def check_branch_profile(pos_profile=None):
 	"""POS Profile phải có Branch + chọn profile xác định + /order lấy ảnh MYPOS Banner (2026-11-25).
 
 	Dán CẢ hàm vào `bench --site <site> console` (SAU khi migrate) rồi gọi:
@@ -18,6 +18,19 @@ def check_branch_profile(pos_profile):
 	  7  _get_pos_profile(branch) có 2 profile đang bật (dữ liệu cũ, tạo bằng cờ self-test): không ca -> A; C mở ca -> C
 	  8  /order _shop: banner public đầu tiên; ảnh private bị bỏ; get_brand_info không còn khóa "banner"
 	"""
+	if pos_profile is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=False)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_branch_profile(_shop["pos_profile"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import traceback
 
 	import frappe

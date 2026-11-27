@@ -1,4 +1,4 @@
-def check_poll_load(pos_profile, item_code, mode_of_payment, price_list=None, rounds=20):
+def check_poll_load(pos_profile=None, item_code=None, mode_of_payment=None, price_list=None, rounds=20):
 	"""Giảm tải poll (2026-11-25, giai đoạn 1 + 2 + realtime giai đoạn 3 mục 2d): phiên bản thay đổi theo POS Profile (change_feed.py + get_pos_changes),
 	Pha chế chỉ đơn của profile user thuộc về (D1), get_orders_shift, bỏ N+1 số thẻ bàn. In thêm số truy vấn SQL + thời gian
 	mỗi API để so trước / sau.
@@ -10,6 +10,19 @@ def check_poll_load(pos_profile, item_code, mode_of_payment, price_list=None, ro
 	user tạm A, B (POS CASHIER), K, K2 (POS KITCHEN; K2 không thuộc profile nào), M (POS MANAGER), 1 thẻ bàn tạm "ZZP-...".
 	Cuối hàm dọn mọi dữ liệu thử + khóa Redis phiên bản của profile tạm; dòng KẾT QUẢ luôn được in.
 	"""
+	if pos_profile is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=False)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_poll_load(_shop["pos_profile"], _shop["item"], _shop["mop_cash"], _shop["price_list"], rounds=rounds)
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import time
 	import traceback
 

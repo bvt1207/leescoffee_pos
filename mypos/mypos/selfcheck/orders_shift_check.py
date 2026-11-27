@@ -1,4 +1,4 @@
-def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=None, customer=None, cleanup=True):
+def check_orders_shift(item_code=None, mode_of_payment=None, branch_name=None, price_list=None, customer=None, cleanup=True):
 	"""Màn Orders: "Ca hiện tại" + "Lịch sử" (get_orders / get_orders_summary) và phân quyền.
 
 	Dán CẢ hàm vào `bench --site <site> console` rồi gọi, ví dụ:
@@ -14,6 +14,19 @@ def check_orders_shift(item_code, mode_of_payment, branch_name=None, price_list=
 	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
 	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
+	if item_code is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=True)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_orders_shift(_shop["item"], _shop["mop_cash"], branch_name=_shop["branch"], price_list=_shop["price_list"], customer=customer, cleanup=cleanup)
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import traceback
 
 	import frappe

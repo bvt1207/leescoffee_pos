@@ -1,9 +1,9 @@
 # Self-test web đặt món QR — giai đoạn 1 (backend).
 # Cách chạy: bench --site <site> console  -> dán TOÀN BỘ file này -> gọi:
-#     run_order_qr_selftest()            # tự chọn POS Profile đang bật có branch + Price List
-#     run_order_qr_selftest("Tên Branch")
+#     run_order_qr_selftest()            # tự dựng quán thử tạm ZZTEST-* (selfcheck/test_shop.py), dọn ở cuối
+#     run_order_qr_selftest("Tên Branch")  # dùng chi nhánh có sẵn
 #
-# Điều kiện trước (script chỉ kiểm tra, không tự tạo):
+# Điều kiện trước khi truyền Branch có sẵn (script chỉ kiểm tra, không tự tạo):
 #   - POS Profile đang bật có branch + selling_price_list; có MYPOS Menu cùng Price List, món có giá.
 #   - Có POS Opening Entry đang Open của POS Profile đó (mở ca trên /pos hoặc Desk).
 #   - Branch: sepay_enabled, sepay_va_account, sepay_bank_code, sepay_api_key đã điền.
@@ -13,6 +13,19 @@
 
 
 def run_order_qr_selftest(branch=None):
+	if branch is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=True)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return run_order_qr_selftest(_shop["branch"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import json
 	import random
 	import time

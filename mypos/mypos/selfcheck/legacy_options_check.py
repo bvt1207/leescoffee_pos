@@ -1,4 +1,4 @@
-def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_name=None, price_list=None):
+def check_legacy_options(item_plain=None, item_with_options=None, mode_of_payment=None, branch_name=None, price_list=None):
 	"""Món không có Option Group không còn hiện "Đường 100% · Đá 100%"; đơn cũ vẫn dựng từ cột cũ.
 
 	Dán CẢ hàm vào `bench --site <site> console` (SAU khi migrate) rồi gọi, ví dụ:
@@ -12,6 +12,19 @@ def check_legacy_options(item_plain, item_with_options, mode_of_payment, branch_
 	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
 	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
+	if item_plain is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=True)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_legacy_options(_shop["item"], _shop["item_options"], _shop["mop_cash"], branch_name=_shop["branch"], price_list=_shop["price_list"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import json
 	import traceback
 

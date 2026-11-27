@@ -1,4 +1,4 @@
-def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None):
+def check_order_status(pos_profile=None, item_code=None, mode_of_payment=None, price_list=None):
 	"""Màn theo dõi đơn /pos/status (order_status_api.py, 2026-11-27).
 
 	Dán CẢ hàm vào `bench --site <site> console` MỚI rồi gọi, ví dụ:
@@ -9,6 +9,19 @@ def check_order_status(pos_profile, item_code, mode_of_payment, price_list=None)
 	X (POS KITCHEN, không thuộc profile nào); 1 thẻ bàn tạm; 2 Customer tạm (khách vãng lai + khách có tên đầy đủ).
 	Cuối hàm (finally) dọn mọi dữ liệu thử; dòng KẾT QUẢ luôn được in.
 	"""
+	if pos_profile is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=False)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_order_status(_shop["pos_profile"], _shop["item"], _shop["mop_cash"], _shop["price_list"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import json
 	import time
 	import traceback

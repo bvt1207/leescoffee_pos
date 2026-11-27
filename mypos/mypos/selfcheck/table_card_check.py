@@ -1,4 +1,4 @@
-def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
+def check_table_card(pos_profile=None, item_code=None, mode_of_payment=None, price_list=None):
 	"""Thẻ bàn (đổi từ thẻ rung, 2026-11-23) + hàng chờ phục vụ của thu ngân (pos_api.get_serve_queue).
 
 	Dán CẢ hàm vào `bench --site <site> console` MỚI (SAU khi migrate) rồi gọi, ví dụ:
@@ -12,6 +12,19 @@ def check_table_card(pos_profile, item_code, mode_of_payment, price_list=None):
 	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
 	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
+	if pos_profile is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=False)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_table_card(_shop["pos_profile"], _shop["item"], _shop["mop_cash"], _shop["price_list"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import time
 	import traceback
 

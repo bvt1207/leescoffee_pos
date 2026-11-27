@@ -1,16 +1,29 @@
 # Self-test "Đơn của tôi" lưu theo khách (get_my_orders theo Customer + chi nhánh, không theo sid),
 # cart_key, giới hạn tần suất, hồi quy webhook SePay.
-# Cách chạy: bench --site <site> console -> dán file order_qr_selftest.py RỒI dán file này -> gọi:
-#     run_order_history_selftest()             # chạy bộ mới, xong tự gọi run_order_qr_selftest() (bộ cũ)
+# Cách chạy: bench --site <site> execute mypos.selfcheck.order_history_selftest.run_order_history_selftest (hoặc dán vào console) -> gọi:
+#     run_order_history_selftest()             # tự dựng quán thử tạm ZZTEST-* (test_shop.py), chạy bộ mới + bộ cũ, dọn ở cuối
 #     run_order_history_selftest(run_old=False)
 #     run_order_history_selftest("Tên Branch")
 #
-# Điều kiện trước: giống order_qr_selftest.py (POS Profile có branch + Price List, ca POS đang mở,
+# Điều kiện trước (chỉ khi truyền Branch có sẵn): giống order_qr_selftest.py (POS Profile có branch + Price List, ca POS đang mở,
 # Branch đủ cấu hình SePay + API key, Mode of Payment loại Bank).
 # Script tự tạo mã QR, Branch tạm, khách, đơn thử và tự dọn ở cuối (kể cả khi lỗi giữa chừng).
 
 
 def run_order_history_selftest(branch=None, run_old=True):
+	if branch is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=True)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return run_order_history_selftest(_shop["branch"], run_old=run_old)
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import json
 	import random
 	import traceback

@@ -1,4 +1,4 @@
-def check_option_surcharge(mode_of_payment, price_list, esp1,
+def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
                            branch_name=None, customer=None, free_item_code=None):
 	"""Phụ thu tùy chọn món (topping) — cộng SAU CTKM qua một dòng Taxes and Charges kiểu Actual.
 
@@ -14,6 +14,19 @@ def check_option_surcharge(mode_of_payment, price_list, esp1,
 	Khách vãng lai (2026-11-24): đơn thử dùng Customer TẠM "ZZTEST WI ..." do script tự tạo và tự xóa — không cần POS Profile
 	thật đã cấu hình Khách vãng lai, không dùng Customer thật nào.
 	"""
+	if mode_of_payment is None:  # không truyền dữ liệu -> tự dựng quán thử tạm (selfcheck/test_shop.py), dọn ở cuối
+		from mypos.selfcheck.test_shop import zz_test_shop
+
+		_shop = zz_test_shop("create", open_shift=True)
+		if not _shop.get("ok"):
+			print(f"SKIP: {_shop.get('reason')}")
+			print("KẾT QUẢ: SKIP")
+			return None
+		try:
+			return check_option_surcharge(_shop["mop_bank"], _shop["price_list"], _shop["item_promo"], branch_name=_shop["branch"], customer=customer, free_item_code=_shop["item_free"])
+		finally:
+			zz_test_shop("drop", _shop["tag"])
+
 	import json
 	import traceback
 
