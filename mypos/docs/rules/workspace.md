@@ -92,7 +92,8 @@ Số dòng sau migrate: Workspace Link Cashier 3 / Kitchen 0 / Manager 15 / Admi
   - Icon tự sinh khi bật lưới icon (`create_desktop_icons_from_workspace`): mỗi workspace public một icon "Link" tên = tên workspace, chỉ khi chưa
     có icon "Link" cùng nhãn. Tên trùng 4 icon của app → `seed_desktop_icons` sinh trước rồi `import_desktop_icon_fixtures` nạp file của app
     (`import_doc` xóa bản cũ cùng tên rồi chèn) → kết quả là icon của app. [Inference, đọc mã; chưa chạy thử ở chế độ lưới]
-- **Ô MYPOS trên màn Apps (chế độ mặc định, cách hiển thị chính)** — hook `add_to_apps_screen` trong `mypos/hooks.py`:
+- **Ô MYPOS trên màn Apps (chế độ mặc định, cách hiển thị chính)** — ĐÃ TEST PASS 2026-11-27 (`apps_screen_check`, `apps_screen_roles_check`,
+  `sidebar_check`) — hook `add_to_apps_screen` trong `mypos/hooks.py`:
   `name` "mypos", `title` "MYPOS", `logo` `/assets/mypos/images/logo.svg` (file `mypos/public/images/logo.svg`),
   `has_permission` `mypos.permissions.has_app_permission` (True khi user có POS CASHIER / POS KITCHEN / POS MANAGER / System Manager,
   hoặc là Administrator; Guest → False). **Không khai `route`** (đã đối chiếu mã Frappe 16.61):

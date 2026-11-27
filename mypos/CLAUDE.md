@@ -19,3 +19,22 @@ Nguyên tắc không được vi phạm:
 5. Thay đổi cần chạy trên site đang có dữ liệu → viết patch mới trong `mypos/patches/` + `patches.txt`; thiết lập cho site cài mới →
    `mypos/setup/install.py` (`install-app` không chạy patch).
 6. Không commit secret (API key SePay, `site_config.json`), không commit output build (`mypos/public/pos`, `mypos/public/order`).
+7. Desk dùng màn **Apps** (mặc định Frappe 16.61): ô MYPOS qua hook `add_to_apps_screen` (không khai `route`; điểm đến = mục đầu tiên của
+   Sidebar "MYPOS" sau lọc quyền, Sidebar xếp Admin, Manager, Cashier, Kitchen). Không dựa vào lưới Desktop Icon (Frappe đang loại bỏ).
+
+## Trạng thái (2026-11-27)
+
+- Chạy trên frappe / erpnext **16.61.0** (yêu cầu `>=16.50, <17`, không cần HRMS). Bộ selfcheck **22/22 PASS** trên site mới
+  (`mypos.selfcheck.check_everything.check_everything`), gồm 15 test ghi dữ liệu chạy trên "quán thử" `ZZTEST-*` tự dựng / tự dọn.
+- Sửa cho ERPNext 16.61: tự mở ca điền `balance_details` (`docs/rules/roles.md` §2b); giữ CTKM theo tổng qty mỗi mã khi lưu đơn bằng hook
+  `validate` của POS Invoice (`docs/rules/options.md` §7).
+- Tồn đọng đã biết: MYPOS Menu tra giá cố định VND (`docs/rules/menu.md` §2); role POS DISPLAY cho TV `/pos/status` (`docs/rules/order_status.md` §6);
+  sửa dòng rồi Submit thẳng trên Desk (không Save) có thể bị ERPNext tính CTKM theo dòng (`docs/rules/options.md` §7).
+
+## Sau mỗi thay đổi
+
+1. `python -m py_compile` các file sửa; JSON hợp lệ; frontend: `cd pos && npx tsc --noEmit -p . && npm run build`.
+2. Trên bench: `bench --site <site> migrate` nếu đổi DocType / fixtures / workspace / sidebar; khởi động lại bench nếu đổi Python / hooks.
+3. `bench --site <site> execute mypos.selfcheck.check_everything.check_everything` → bảng PASS / FAIL / SKIP; dọn dữ liệu thử còn sót:
+   `zz_test_shop` (`docs/testing.md` §7). Kiểm tay: `docs/checklist.md`.
+4. Thêm quy tắc nghiệp vụ mới → cập nhật `docs/rules/*.md` và selfcheck tương ứng (test cũ lệch quy tắc mới phải sửa cùng lúc).

@@ -120,8 +120,13 @@ Dữ liệu ghi trong console không tự commit; các script tự commit / roll
 | `check_kitchen_desk` | PASS | PASS |
 | 15 test quán thử | SKIP: "Thiếu điều kiện nền: ..." | PASS (mục cần SePay / Loyalty có thể in SKIP riêng) |
 
-[Unverified] Quán thử chưa chạy trên site thật lúc viết tài liệu: lần chạy đầu có thể gặp ràng buộc ERPNext chưa tính tới; lỗi in rõ ở dòng
-"LỖI dựng quán thử ..." và quán thử tự dọn phần đã tạo.
+**Đã chạy trên bench thật (2026-11-27):** frappe / erpnext 16.61.0, site `local.com` mới (Setup Wizard Vietnam / VND, POS Settings
+Invoice Type = POS Invoice), `check_everything` → **22/22 PASS, 0 SKIP**; quán thử dựng và dọn sạch ở cả 15 test (`zz_test_shop("list")`
+cuối log không còn dữ liệu thử). Lỗi quán thử (nếu có) in ở dòng "LỖI dựng quán thử ..." và quán thử tự dọn phần đã tạo.
+
+Lần chạy đó tìm ra 2 lỗi app trên ERPNext 16.61 (đã sửa: tự mở ca thiếu `balance_details` — `rules/roles.md` §2b; CTKM theo tổng qty mất
+khi lưu đơn — `rules/options.md` §7) và cập nhật các test viết trước quy tắc D1 (Pha chế theo POS Profile), chặn đóng ca khi còn
+Draft / đơn chưa pha chế, 1 profile đang bật / Branch.
 
 ## 6. Lỗi thường gặp
 
