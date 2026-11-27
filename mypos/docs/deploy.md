@@ -79,8 +79,8 @@ location /socket.io {
 
 | Môi trường | Lệnh đặt `host_name` | Ghi chú |
 |---|---|---|
-| DEV, chỉ test trên máy | `bench --site local.com set-config host_name "http://localhost:8001"` | Ghi cả cổng |
-| DEV, quét bằng điện thoại cùng wifi | `bench --site local.com set-config host_name "http://<IP LAN của máy Windows>:8001"` | [Unverified] WSL2 chế độ NAT: điện thoại vào IP LAN của Windows cần `netsh interface portproxy` tới IP WSL + mở firewall cổng 8001 (hoặc `networkingMode=mirrored`). IP LAN đổi → đặt lại |
+| DEV, chỉ test trên máy | `bench --site <site> set-config host_name "http://localhost:8001"` | Ghi cả cổng |
+| DEV, quét bằng điện thoại cùng wifi | `bench --site <site> set-config host_name "http://<IP LAN của máy Windows>:8001"` | [Unverified] WSL2 chế độ NAT: điện thoại vào IP LAN của Windows cần `netsh interface portproxy` tới IP WSL + mở firewall cổng 8001 (hoặc `networkingMode=mirrored`). IP LAN đổi → đặt lại |
 | UAT | `bench --site <site> set-config host_name "https://uat.<tên miền>"` | |
 | Production | `bench --site <site> set-config host_name "https://<tên miền>"` | HTTPS + tên miền thật (nginx, `bench setup lets-encrypt`) |
 
@@ -121,11 +121,11 @@ Màn chỉ đọc cho khách nhìn: "Đang chuẩn bị" / "Sẵn sàng nhận m
 ### 5.1 Kiểm
 
 ```bash
-bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
-bench --site local.com execute mypos.selfcheck.apps_screen_check.check_apps_screen
-bench --site local.com execute mypos.selfcheck.apps_screen_roles_check.check_apps_screen_roles
-bench --site local.com execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
-bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
+bench --site <site> execute mypos.selfcheck.sidebar_check.check_sidebar
+bench --site <site> execute mypos.selfcheck.apps_screen_check.check_apps_screen
+bench --site <site> execute mypos.selfcheck.apps_screen_roles_check.check_apps_screen_roles
+bench --site <site> execute mypos.selfcheck.desktop_icon_check.check_desktop_icons
+bench --site <site> execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
 ```
 
 Kiểm tay (mỗi tài khoản: cửa sổ ẩn danh, đăng nhập lại; user test KHÔNG có role `Workspace Manager`):
@@ -144,14 +144,14 @@ Mục thừa cần để ý: MYPOS Option Group, MYPOS Order QR, MYPOS Menu (ho�
 
 Cho Frappe tự xuất file chuẩn rồi lấy file đó làm bản chuẩn của repo:
 
-1. `bench --site local.com set-config developer_mode 1` → `bench --site local.com clear-cache` → khởi động lại bench.
+1. `bench --site <site> set-config developer_mode 1` → `bench --site <site> clear-cache` → khởi động lại bench.
 2. Desk → Sidebar (`/desk/sidebar`): nếu đã có "MYPOS" thì mở, không thì New: Title `MYPOS`, Module `MYPOS`, Header Icon `milestone`,
    Standard bật, 4 dòng Link → Workspace: Cashier / MYPOS Cashier / receipt, Kitchen / MYPOS Kitchen / computer,
    Manager / MYPOS Manager / chart, Admin / MYPOS Admin / settings. Save.
    Xóa (hoặc ghi lại tên) mọi Sidebar khác có Module = MYPOS.
 3. Frappe ghi file vào `apps/mypos/mypos/mypos/sidebar/mypos/mypos.json` (developer_mode + standard). Kiểm: `git -C apps/mypos diff`.
 4. Copy file đó về repo phát triển (`<repo>/mypos/mypos/mypos/sidebar/mypos/mypos.json` nếu app nằm trong thư mục con `mypos/`), commit; ghi lại khác biệt so với bản cũ.
-5. Tắt lại: `bench --site local.com set-config developer_mode 0`, clear-cache, khởi động lại; chạy lại §5.1.
+5. Tắt lại: `bench --site <site> set-config developer_mode 0`, clear-cache, khởi động lại; chạy lại §5.1.
 
 ## 6. Phát hành lên GitHub (`bench get-app` cần app ở GỐC repo)
 

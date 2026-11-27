@@ -78,20 +78,20 @@ Kết quả in ra terminal (stdout). `bench execute` commit sau khi hàm xong; c
 ```bash
 cd ~/frappe-bench
 # điều kiện nền
-bench --site local.com execute mypos.selfcheck.prereq_check.check_prereq
+bench --site <site> execute mypos.selfcheck.prereq_check.check_prereq
 # chạy gộp (prereq -> chỉ đọc -> ghi user tạm -> ghi quán thử nếu prereq đạt), bảng PASS / FAIL / SKIP cuối
-bench --site local.com execute mypos.selfcheck.check_everything.check_everything
-bench --site local.com execute mypos.selfcheck.check_everything.check_everything --kwargs "{'include_write': False}"   # chỉ phần đọc
-bench --site local.com execute mypos.selfcheck.check_everything.check_everything --kwargs "{'only': ['table_card_check']}"
+bench --site <site> execute mypos.selfcheck.check_everything.check_everything
+bench --site <site> execute mypos.selfcheck.check_everything.check_everything --kwargs "{'include_write': False}"   # chỉ phần đọc
+bench --site <site> execute mypos.selfcheck.check_everything.check_everything --kwargs "{'only': ['table_card_check']}"
 # từng test (không tham số = quán thử tạm)
-bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
-bench --site local.com execute mypos.selfcheck.table_card_check.check_table_card
+bench --site <site> execute mypos.selfcheck.sidebar_check.check_sidebar
+bench --site <site> execute mypos.selfcheck.table_card_check.check_table_card
 # trên dữ liệu có sẵn
-bench --site local.com execute mypos.selfcheck.table_card_check.check_table_card \
+bench --site <site> execute mypos.selfcheck.table_card_check.check_table_card \
   --kwargs "{'pos_profile': 'POS A', 'item_code': 'MA-MON', 'mode_of_payment': 'Cash'}"
 ```
 
-Trong `bench --site local.com console`:
+Trong `bench --site <site> console`:
 
 ```python
 # Cách 1 — import (khuyến nghị)
@@ -120,7 +120,7 @@ Dữ liệu ghi trong console không tự commit; các script tự commit / roll
 | `check_kitchen_desk` | PASS | PASS |
 | 15 test quán thử | SKIP: "Thiếu điều kiện nền: ..." | PASS (mục cần SePay / Loyalty có thể in SKIP riêng) |
 
-**Đã chạy trên bench thật (2026-11-27):** frappe / erpnext 16.61.0, site `local.com` mới (Setup Wizard Vietnam / VND, POS Settings
+**Đã chạy trên bench thật (2026-11-27):** frappe / erpnext 16.61.0, một site mới (Setup Wizard Vietnam / VND, POS Settings
 Invoice Type = POS Invoice), `check_everything` → **22/22 PASS, 0 SKIP**; quán thử dựng và dọn sạch ở cả 15 test (`zz_test_shop("list")`
 cuối log không còn dữ liệu thử). Lỗi quán thử (nếu có) in ở dòng "LỖI dựng quán thử ..." và quán thử tự dọn phần đã tạo.
 
@@ -145,14 +145,14 @@ Draft / đơn chưa pha chế, 1 profile đang bật / Branch.
 
 ```bash
 # liệt kê dữ liệu thử còn sót (chỉ đọc)
-bench --site local.com execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'list'}"
+bench --site <site> execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'list'}"
 # xóa mọi quán thử ZZTEST-* (đơn, ca, POS Profile gắn Branch thử, món, giá, CTKM, Option Group, khách, Mode of Payment, Branch)
-bench --site local.com execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'drop'}"
-bench --site local.com execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'drop', 'tag': 'ZZTEST-1127130501ABC'}"
+bench --site <site> execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'drop'}"
+bench --site <site> execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'drop', 'tag': 'ZZTEST-1127130501ABC'}"
 ```
 
 Dữ liệu riêng của từng test (POS Profile "ZZTEST <tên test> ...", user `zz.test.*`) bình thường do chính test dọn. Còn sót thì trong
-`bench --site local.com console`:
+`bench --site <site> console`:
 
 ```python
 import frappe

@@ -10,12 +10,12 @@
 ```bash
 cd ~/frappe-bench
 bench get-app https://github.com/bvt1207/mypos.git --branch version-16
-bench --site local.com backup                     # site đang có dữ liệu thì sao lưu trước
-bench --site local.com install-app mypos
+bench --site <site> backup                     # site đang có dữ liệu thì sao lưu trước
+bench --site <site> install-app mypos
 cd apps/mypos/pos && npm install && npm run build && cd ~/frappe-bench
 bench build --app mypos
-bench --site local.com migrate
-bench --site local.com clear-cache
+bench --site <site> migrate
+bench --site <site> clear-cache
 # DEV: Ctrl+C rồi `bench start` lại. Production: `sudo supervisorctl restart all` (hoặc `bench restart`).
 ```
 
@@ -41,7 +41,7 @@ Rồi copy `package-lock.json` mới về repo và commit (lock sinh trên Linux
 | 35 Custom Field (POS Invoice, POS Invoice Item, POS Profile, Branch, Customer.mobile_number), 1 Property Setter, 3 Role | `mypos/fixtures/` |
 | Quyền DocType của 3 role | `after_install` → `mypos/setup/roles.py` (`PERMS`) |
 | 4 Workspace, Sidebar "MYPOS", 4 Desktop Icon | JSON trong app |
-| Cron 5 phút tự hủy Draft quá hạn | `hooks.scheduler_events` (cần `bench --site local.com enable-scheduler`) |
+| Cron 5 phút tự hủy Draft quá hạn | `hooks.scheduler_events` (cần `bench --site <site> enable-scheduler`) |
 
 Mỗi lần `bench migrate`: `after_migrate` bổ sung role / quyền còn thiếu theo `PERMS` (chỉ thêm, lỗi chỉ ghi Error Log).
 
@@ -63,9 +63,9 @@ Không có dữ liệu mẫu trong code. Mọi mục dưới đây nhập trên 
 8. [ ] **MYPOS Buzzer** (thẻ bàn) gắn Branch; **MYPOS Order QR** gắn Branch (in mã từ form); **MYPOS Banner** (ảnh public, 16:9).
 9. [ ] **POS Settings** (ERPNext): `invoice_type = POS Invoice` (đóng ca gộp POS Invoice).
 10. [ ] **host_name** của site (URL trong mã QR đặt món, `docs/deploy.md` §3):
-    `bench --site local.com set-config host_name "http://<host>:<port>"`. Đổi host thì in lại mã QR.
+    `bench --site <site> set-config host_name "http://<host>:<port>"`. Đổi host thì in lại mã QR.
 11. [ ] Webhook SePay: URL `https://<host>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook` (`docs/rules/sepay.md`, `order-qr.md` §3).
-12. [ ] Scheduler bật: `bench --site local.com scheduler status` (disabled → `bench --site local.com enable-scheduler`).
+12. [ ] Scheduler bật: `bench --site <site> scheduler status` (disabled → `bench --site <site> enable-scheduler`).
 
 Kiểm nhanh (bench console, chỉ đọc):
 
