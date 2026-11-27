@@ -7,7 +7,7 @@
 
 ## 1. Quy tắc
 
-- Màn khách **chỉ hiển thị**: không nút / input / link (chạm lần đầu chỉ để bật toàn màn hình). Quyết định Van: chạy trên
+- Màn khách **chỉ hiển thị**: không nút / input / link (chạm lần đầu chỉ để bật toàn màn hình). Quyết định chủ dự án: chạy trên
   **thiết bị riêng**, đăng nhập **cùng tài khoản thu ngân**; POS Profile theo `resolve_pos_profile_name()`.
 - Mỗi lúc một đơn: đơn mà thu ngân đang thao tác. Không hardcode thương hiệu: logo / tên từ Branch, ảnh từ `MYPOS Banner`.
 - **Tiền luôn do server tính**: giỏ = kết quả `_pricing_preview` (CTKM theo tổng qty, phụ thu topping, đổi điểm); đơn đã tạo =
@@ -46,7 +46,7 @@
 
 ## 4. MYPOS Banner
 
-- Field: `title`, `image` (Attach Image), `enabled`, `sort_order`, `pos_profile` (**trống = mọi POS Profile**, quyết định Van),
+- Field: `title`, `image` (Attach Image), `enabled`, `sort_order`, `pos_profile` (**trống = mọi POS Profile**, quyết định chủ dự án),
   `valid_from` / `valid_upto`, `description` (nội bộ). Lọc: enabled + profile + hiệu lực; sắp `sort_order`, rồi `creation`.
 - Bộ lọc ở MỘT nơi (2026-11-25): `doctype/mypos_banner/mypos_banner.py::active_banners(pos_profile, public_only, limit)`, dùng cho
   màn khách (mọi ảnh) và carousel đầu trang `/order` (`customer_order_api._shop` → `banners`, `public_only=True`, tối đa 8; thay

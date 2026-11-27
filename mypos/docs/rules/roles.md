@@ -11,7 +11,7 @@
 | `POS KITCHEN` | 1 | Pha chế: vào `/desk`, thấy icon "MYPOS Kitchen" → `/pos/kitchen` |
 | `POS MANAGER` | 1 | Quản lý cửa hàng |
 
-**KITCHEN `desk_access = 1` (quyết định Van, 2026-11-17):** để pha chế đăng nhập và vào màn Pha chế từ Desk
+**KITCHEN `desk_access = 1` (quyết định chủ dự án, 2026-11-17):** để pha chế đăng nhập và vào màn Pha chế từ Desk
 như các role khác. Quyền vẫn tối thiểu: chỉ Read `MYPOS Menu`, `MYPOS Buzzer`, `MYPOS Option Group` (§2); API bán
 hàng bị chặn ở backend (§8). `role.json` + `ROLES` đặt sẵn 1.
 
@@ -92,7 +92,7 @@ Nguồn sự thật là `PERMS` trong patch; sửa bảng này thì sửa cả p
 - Không còn Report "MYPOS Review Queue", cờ `needs_review`, job nhắc mỗi giờ. Quản lý dùng **list view chuẩn của POS Invoice**:
   - Bộ lọc chuẩn: POS Profile (Property Setter fixture `POS Invoice-pos_profile-in_standard_filter`), Trạng thái pha chế
     (`custom_kitchen_status`, `in_standard_filter`), "Có tiền về sau khi hủy" (`custom_late_payment`).
-  - 3 nút "Lọc nhanh" (`pos_invoice_list.js`, `doctype_list_js`) **đã bỏ 2026-11-26** (Van quyết định): dùng bộ lọc chuẩn ở trên.
+  - 3 nút "Lọc nhanh" (`pos_invoice_list.js`, `doctype_list_js`) **đã bỏ 2026-11-26** (chủ dự án quyết định): dùng bộ lọc chuẩn ở trên.
 - Form POS Invoice (`public/js/pos_invoice.js`, chỉ manager): Draft → nút **"Hủy đơn"** (lý do; "Khác" bắt buộc ghi chú; đơn "Đang chờ" QR phải tích
   xác nhận → `force=1`) → `pos_api.cancel_draft_order`. Đơn đã thu tiền đang rỗng / Chưa làm / Đã làm → nút **"Xử lý đơn"** (Đã hoàn thành /
   Không thực hiện được / Khách không nhận, lý do bắt buộc) → `pos_api.resolve_open_order`.
@@ -127,7 +127,7 @@ Chữ module phải khớp chính xác `MYPOS` (`docs/code-standards.md` §1).
 
 ## 5. Workspace / Desktop Icon / Workspace Sidebar
 
-**Đảo quyết định 2026-11-12 (`roles: []`) — Van duyệt 2026-11-25, ĐÃ TEST PASS (`8f2e389`):** mỗi vai trò có workspace riêng, giới hạn bằng
+**Đảo quyết định 2026-11-12 (`roles: []`) — chủ dự án duyệt 2026-11-25, ĐÃ TEST PASS (`8f2e389`):** mỗi vai trò có workspace riêng, giới hạn bằng
 `Workspace.roles`; mọi workspace giới hạn role kèm thêm `System Manager` để System Manager / Administrator luôn thấy tất cả mà không cần
 role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sidebar: `workspace.md` §7.
 
@@ -138,10 +138,10 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
 | MYPOS Manager | POS MANAGER, System Manager |
 | MYPOS Admin | System Manager |
 
-- Không cấp thêm quyền DocType nào (`PERMS` không đổi). Link thiếu quyền Read tự ẩn: MANAGER không có Loyalty Program (quyết định Van);
+- Không cấp thêm quyền DocType nào (`PERMS` không đổi). Link thiếu quyền Read tự ẩn: MANAGER không có Loyalty Program (quyết định chủ dự án);
   Pricing Rule / Promotional Scheme chỉ hiện khi user MANAGER được gán thêm `Sales Manager` (§1).
 - User có role `Workspace Manager` thấy mọi workspace (Frappe), kể cả workspace không thuộc vai trò.
-- Không đặt `Role.home_page` (quyết định Van 2026-11-25: dễ xung đột khi user nhiều role).
+- Không đặt `Role.home_page` (quyết định chủ dự án 2026-11-25: dễ xung đột khi user nhiều role).
 
 ## 6. Role đã tạo tay trên site
 
@@ -176,7 +176,7 @@ role POS. Desktop Icon cũng có `roles` tương ứng. Chi tiết, route, sideb
   Lối tắt Desk (2026-11-27): shortcut "Order Status" ở cả 4 workspace MYPOS (Cashier / Kitchen / Manager / Admin), hiển thị theo `roles` có sẵn
   của workspace, không đổi quyền (`workspace.md` §7).
 - Cashier / Kitchen: profile mình thuộc (cùng lỗi màn Pha chế). MANAGER / System Manager / Administrator: chọn profile đang bật.
-- Tài khoản TV: POS KITCHEN riêng (quyết định Van 2026-11-27); vẫn gọi được API "Chưa làm → Đã làm" → chưa chỉ đọc tuyệt đối. Role POS DISPLAY
+- Tài khoản TV: POS KITCHEN riêng (quyết định chủ dự án 2026-11-27); vẫn gọi được API "Chưa làm → Đã làm" → chưa chỉ đọc tuyệt đối. Role POS DISPLAY
   để sau. Chi tiết: `order_status.md`, `mypos/selfcheck/deploy.md` §4.
 
 ### 7b. Thông báo thu ngân khi đơn "Đã làm" (thẻ bàn, 2026-11-23) — ĐÃ TEST PASS trên bench DEV (`f2236b4`, `3736f85`, `4712d68`)

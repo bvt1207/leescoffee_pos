@@ -123,7 +123,7 @@ Desk → MYPOS Option Group → New:
 Phụ thu **không** bị CTKM giảm, **không** đếm vào qty của luật, **không** cộng cho dòng tặng (`is_free_item`).
 Topping là `MYPOS Option Value` có `extra_price` — không tạo Item, Price List hay dòng hóa đơn phụ.
 
-**Cách lưu (phương án C, Van duyệt):** `pos_api._apply_option_surcharge(invoice, profile)` (cuối `_build_invoice`,
+**Cách lưu (phương án C, chủ dự án duyệt):** `pos_api._apply_option_surcharge(invoice, profile)` (cuối `_build_invoice`,
 dùng chung `preview_pricing`, `create_draft_order`, `customer_order_api`) thêm/cập nhật **đúng một** dòng
 `Taxes and Charges`: `charge_type = "Actual"`, `description = "Phụ thu tùy chọn món"` (`SURCHARGE_DESCRIPTION`,
 dùng để nhận diện), `tax_amount` = tổng phụ thu, `account_head` = `POS Profile.income_account` → `Company.default_income_account`

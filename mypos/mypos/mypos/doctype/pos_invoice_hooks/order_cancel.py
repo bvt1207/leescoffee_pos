@@ -3,7 +3,7 @@
 Dùng bởi: pos_api.cancel_draft_order (hủy tay ở Orders / nút "Hủy đơn" trên Desk), kitchen_status.shift_open_orders
 (chặn đóng ca khi còn Draft), customer_order_api (hạn QR), job `auto_cancel_stale_drafts` (hooks.scheduler_events).
 
-Quy tắc (Van chốt 2026-11-20, đổi cách hủy 2026-11-23):
+Quy tắc (chủ dự án chốt 2026-11-20, đổi cách hủy 2026-11-23):
 - Hủy = đơn CHUYỂN Cancelled (docstatus 2, status "Cancelled"), KHÔNG xóa; lý do lưu ở `POS Invoice.custom_cancel_reason`
   với tiền tố nguồn ("Thủ công: …", "Tự động (QR hết hạn): …", "Tự động (quá 2 giờ): …") + Comment trên đơn.
 - Draft QR: khách trả trong QR_PAY_WINDOW_MINUTES; webhook còn khớp thêm QR_CLEANUP_GRACE_MINUTES; sau đó job tự hủy.

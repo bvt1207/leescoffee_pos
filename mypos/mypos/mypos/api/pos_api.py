@@ -1790,7 +1790,7 @@ def _resolve_consolidated(invoice, outcome, text):
 def _resolve_open_order(invoice_name, outcome, reason=None, note=None):
 	"""Kết thúc MỘT đơn dở (đã thanh toán, đang Chưa làm / Đã làm) với kết quả + lý do (kitchen_status.set_terminal).
 
-	Không có xử lý hàng loạt: mỗi đơn một lý do (Van chốt 2026-11-23).
+	Không có xử lý hàng loạt: mỗi đơn một lý do (chủ dự án chốt 2026-11-23).
 	"""
 	from ..doctype.pos_invoice_hooks import kitchen_status as KS
 

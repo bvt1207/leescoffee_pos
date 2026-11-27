@@ -33,7 +33,7 @@ ACC-PSINV-2026-00088). Hằng giá trị ở `pos_invoice_hooks.py` (`PAYMENT_UN
 | Submit, không phải trả hàng (Paid → Consolidated) | Đã thanh toán | hook **`before_submit`** (mọi đường: tiền mặt, webhook, Desk, QR `/order`); gán trên doc, hiện trong Version |
 | Hủy đơn đã submit | Hủy | hook `on_cancel` (`db_set`, `update_modified=False`) |
 | Hủy nháp (tay / job) | Hủy | `order_cancel.cancel_draft` (cùng `set_value` docstatus 2; đường này không chạy hook) |
-| Đơn trả hàng (`is_return`) | không đụng | quyết định Van (D2) — field không có nghĩa với đơn trả |
+| Đơn trả hàng (`is_return`) | không đụng | quyết định chủ dự án (D2) — field không có nghĩa với đơn trả |
 
 - Webhook không còn tự gán "Đã thanh toán" (hook bao phủ). Chống lặp vẫn: docstatus 1 + "Đã thanh toán" + `transaction_ref == id`;
   đơn trả tiền mặt (`transaction_ref` rỗng) vẫn đi `needs_review`.
@@ -66,7 +66,7 @@ ACC-PSINV-2026-00088). Hằng giá trị ở `pos_invoice_hooks.py` (`PAYMENT_UN
 > `buzzer_number`, API `get_buzzers`, CSS `.pos-buzzer*`. **Desk dùng tên kỹ thuật** (link workspace "MYPOS Buzzer", label field POS Invoice
 > "MYPOS Buzzer", `buzzer_number` "Số thẻ"); **POS và hóa đơn in dùng "Thẻ bàn" / "Bàn #"**.
 
-**Quy tắc (Van, 2026-10-27, giữ nguyên): mỗi thẻ chỉ giữ cho MỘT đơn chưa kết thúc, không dùng chung.**
+**Quy tắc (chủ dự án, 2026-10-27, giữ nguyên): mỗi thẻ chỉ giữ cho MỘT đơn chưa kết thúc, không dùng chung.**
 
 - **Take Away không dùng thẻ** — mọi logic thẻ chỉ chạy khi `order_type == "Dine In"`. Đơn QR không có thẻ.
 - **"Đang dùng" tính theo ĐƠN CÒN GIỮ** (`pos_api._held_buzzers`, nguồn duy nhất cho `get_buzzers` và `_assign_buzzer`): tồn tại POS Invoice

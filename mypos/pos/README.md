@@ -22,6 +22,8 @@ npm install
 npm run build          # build cả 2 bundle; build:pos / build:order để build riêng
 ```
 
+Linux báo thiếu gói nhị phân (esbuild / rollup) khi dùng lock sinh trên Windows: xem `../docs/install.md` §2.
+
 `mypos/public/pos/` và `mypos/public/order/` là **output build** (không commit, xem `.gitignore`), không sửa tay.
 
 ## Chạy dev

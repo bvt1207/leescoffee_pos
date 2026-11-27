@@ -49,7 +49,7 @@
 Số request khi KHÔNG có thay đổi: Pha chế 12 → 15/phút nhưng là request đọc Redis thay cho truy vấn DB; thu ngân ở màn Bán 4 → 4/phút
 (+ 0,5/phút lưới an toàn); Orders 18 → 15/phút (cũng chỉ đọc Redis). Có thay đổi: thêm đúng 1 request danh sách mỗi màn.
 
-## 4. D1 — Pha chế chỉ đơn của POS Profile user thuộc về (Van, 2026-11-25)
+## 4. D1 — Pha chế chỉ đơn của POS Profile user thuộc về (chủ dự án, 2026-11-25)
 
 - `get_kitchen_orders` lọc `pos_profile = resolve_pos_profile_name(require_membership=not manager)` (trước: mọi chi nhánh).
 - User **không phải quản lý** không thuộc "Applicable for Users" của POS Profile đang bật nào → lỗi `NO_PROFILE_MEMBERSHIP_MSG`

@@ -5,7 +5,7 @@ bằng `test_`) để `bench run-tests` không tự quét.
 
 Quy ước mỗi script:
 
-- Đúng **một hàm** cấp module; hằng số và import đặt trong hàm (dán được vào `bench console` nếu cần).
+- Đúng **một hàm** cấp module; hằng số, import và hàm phụ (vd. `retry_deadlock`) đặt trong hàm (dán được vào `bench console` nếu cần).
 - Dữ liệu thử có tiền tố `ZZTEST` / `zz.test.*`; dọn trong `finally`; lỗi dọn chỉ in `WARN` + cách xóa tay.
 - Không đặt tên hàm trùng magic của IPython (`run`, `time`, `load`...).
 - Dòng cuối luôn in `KẾT QUẢ: x/y PASS` (hoặc tương đương).
@@ -45,6 +45,7 @@ bench --site local.com execute mypos.selfcheck.<file>.<hàm> --kwargs "{'tham_so
 | `order_qr_selftest.run_order_qr_selftest` | `branch=None` | Web đặt món QR (backend) |
 | `order_history_selftest.run_order_history_selftest` | `branch=None, run_old=True` | "Đơn của tôi" theo khách + giỏ (gọi lại bộ QR) |
 | `workspace_shortcut_check.check_workspace_shortcuts` | — | 4 workspace MYPOS: shortcut, roles (chỉ đọc) |
+| `sidebar_check.check_sidebar` | — | Sidebar "MYPOS": module / app / standard, 4 mục Workspace có thật, không mục thừa, không trùng (chỉ đọc) |
 
 Ví dụ:
 
@@ -61,8 +62,8 @@ bench --site local.com execute mypos.selfcheck.table_card_check.check_table_card
 bench --site local.com execute mypos.setup.roles.setup_roles_and_permissions
 ```
 
-## Hạn chế đã biết
+## Dọn dữ liệu khi deadlock
 
-[Unverified] Một số script (`branch_profile_check`, `kitchen_desk_check`, `legacy_options_check`, `order_history_selftest`,
-`order_qr_selftest`, `orders_shift_check`, `surcharge_check`) dọn dữ liệu trong `finally` nhưng chưa có vòng thử lại khi
-`QueryDeadlockError`; gặp deadlock khi dọn thì xóa tay theo dòng `WARN` / thông báo in ra.
+Mọi script ghi dữ liệu thử dọn trong `finally`, mỗi lần xóa thử lại tối đa 3 lần khi `QueryDeadlockError` (rollback, chờ 1 giây) và commit
+ngay sau khi xóa được. Vẫn lỗi → in `WARN` + cách xóa tay; dòng `KẾT QUẢ` luôn được in.
+`order_history_selftest` (khi `run_old=True`) tự import và chạy tiếp `order_qr_selftest`.

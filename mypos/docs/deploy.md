@@ -115,3 +115,66 @@ Màn chỉ đọc cho khách nhìn: "Đang chuẩn bị" / "Sẵn sàng nhận m
 **Kiểm**
 - Chấm góc phải: xanh = cập nhật trực tiếp (socket), vàng = cập nhật định kỳ 4 giây (không có socket) hoặc lỗi tạm, đỏ = mất kết nối ≥ 30 giây
   (danh sách vẫn giữ bản cuối). Đổi trạng thái ở màn Pha chế → TV đổi trong ≤ 1 giây khi có socket, ≤ 5 giây khi không.
+
+## 5. Sidebar MYPOS và workspace theo role (kiểm sau cài / sau migrate)
+
+### 5.1 Kiểm
+
+```bash
+bench --site local.com execute mypos.selfcheck.sidebar_check.check_sidebar
+bench --site local.com execute mypos.selfcheck.workspace_shortcut_check.check_workspace_shortcuts
+```
+
+Kiểm tay (mỗi tài khoản: cửa sổ ẩn danh, đăng nhập lại; user test KHÔNG có role `Workspace Manager`):
+
+| Tài khoản | Thấy workspace / Desktop Icon | Sidebar MYPOS | PASS / FAIL |
+|---|---|---|---|
+| Administrator | Cashier, Kitchen, Manager, Admin | 4 mục, không có mục DocType lẻ | |
+| POS MANAGER | Manager | chỉ Manager | |
+| POS CASHIER | Cashier | chỉ Cashier | |
+| POS KITCHEN | Kitchen (icon mở `/pos/kitchen`) | chỉ Kitchen | |
+
+Mục thừa cần để ý: MYPOS Option Group, MYPOS Order QR, MYPOS Menu (hoặc DocType bất kỳ) xuất hiện trực tiếp trong sidebar MYPOS.
+
+### 5.2 Dự phòng: 16.61 vẫn sinh mục thừa hoặc không nạp Sidebar từ file
+
+Cho Frappe tự xuất file chuẩn rồi lấy file đó làm bản chuẩn của repo:
+
+1. `bench --site local.com set-config developer_mode 1` → `bench --site local.com clear-cache` → khởi động lại bench.
+2. Desk → Sidebar (`/desk/sidebar`): nếu đã có "MYPOS" thì mở, không thì New: Title `MYPOS`, Module `MYPOS`, Header Icon `milestone`,
+   Standard bật, 4 dòng Link → Workspace: Cashier / MYPOS Cashier / receipt, Kitchen / MYPOS Kitchen / computer,
+   Manager / MYPOS Manager / chart, Admin / MYPOS Admin / settings. Save.
+   Xóa (hoặc ghi lại tên) mọi Sidebar khác có Module = MYPOS.
+3. Frappe ghi file vào `apps/mypos/mypos/mypos/sidebar/mypos/mypos.json` (developer_mode + standard). Kiểm: `git -C apps/mypos diff`.
+4. Copy file đó về repo (`PROJECTPOS/mypos/mypos/mypos/sidebar/mypos/mypos.json`), commit; ghi lại khác biệt so với bản cũ.
+5. Tắt lại: `bench --site local.com set-config developer_mode 0`, clear-cache, khởi động lại; chạy lại §5.1.
+
+## 6. Phát hành lên GitHub (`bench get-app` cần app ở GỐC repo)
+
+Repo phát triển có app ở thư mục con `mypos/`. Tách lịch sử thư mục đó thành một nhánh riêng có app ở gốc:
+
+```bash
+cd <repo phát triển>
+git subtree split --prefix=mypos -b mypos-release     # nhánh mới, gốc = nội dung thư mục mypos/
+
+# Kiểm nhánh split trong thư mục tạm
+rm -rf /tmp/mypos-check && git clone --branch mypos-release --single-branch . /tmp/mypos-check
+ls /tmp/mypos-check                                   # có pyproject.toml, README.md, mypos/, pos/, docs/ ở GỐC
+grep -n '^name' /tmp/mypos-check/pyproject.toml       # name = "mypos"
+grep -n '^app_name\|^required_apps\|^after_install\|^after_migrate' /tmp/mypos-check/mypos/hooks.py
+cat /tmp/mypos-check/mypos/modules.txt                # MYPOS
+ls /tmp/mypos-check/mypos/mypos                       # api doctype sidebar workspace ...
+ls /tmp/mypos-check/mypos/{fixtures,setup,selfcheck,desktop_icon,www}
+grep -rliE 'lee[s]coffee' /tmp/mypos-check || echo "sạch"   # [s]: dòng này không tự khớp
+```
+
+Tạo repo GitHub (rỗng, không README / license / .gitignore) rồi đẩy nhánh split thành `main` (và `version-16` nếu dùng `--branch version-16`):
+
+```bash
+gh repo create <owner>/mypos --private          # hoặc tạo trên web
+git push git@github.com:<owner>/mypos.git mypos-release:main
+git push git@github.com:<owner>/mypos.git mypos-release:version-16
+```
+
+Lần sau: chạy lại `git subtree split --prefix=mypos -b mypos-release` (cập nhật nhánh) rồi push như trên.
+Bench: `bench get-app git@github.com:<owner>/mypos.git --branch main` (repo private cần SSH key / token trên máy bench).

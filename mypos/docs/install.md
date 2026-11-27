@@ -19,6 +19,20 @@ bench --site local.com clear-cache
 # DEV: Ctrl+C rồi `bench start` lại. Production: `sudo supervisorctl restart all` (hoặc `bench restart`).
 ```
 
+#### `npm install` trên Linux báo thiếu gói nhị phân
+
+`pos/package-lock.json` được sinh trên Windows (npm 10.9, node 22). Nếu `npm install` / `npm run build` trên Linux báo thiếu gói
+nhị phân theo nền tảng (vd. `@esbuild/linux-x64`, `@rollup/rollup-linux-x64-gnu`: "Cannot find module ..."), sinh lại lock trên Linux:
+
+```bash
+cd ~/frappe-bench/apps/mypos/pos
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
+Rồi copy `package-lock.json` mới về repo và commit (lock sinh trên Linux dùng cho cả hai nền tảng).
+
 `install-app` tự làm (không cần patch):
 
 | Thành phần | Nguồn |

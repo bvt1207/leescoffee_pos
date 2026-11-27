@@ -21,7 +21,7 @@
 | Cột | `custom_kitchen_status` | Sắp xếp (cũ nhất ở trên) |
 |---|---|---|
 | Trái "Đang chuẩn bị" | Chưa làm | `creation` (khớp thứ tự màn Pha chế) |
-| Phải "Sẵn sàng nhận món" | Đã làm | `kitchen_done_at` (lúc bấm "Đã làm"), thiếu → `creation` (quyết định Van Q1) |
+| Phải "Sẵn sàng nhận món" | Đã làm | `kitchen_done_at` (lúc bấm "Đã làm"), thiếu → `creation` (quyết định chủ dự án Q1) |
 
 Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện được, Cancelled (docstatus 2), Draft, trả hàng (`status = Return`),
 đơn đã gộp khi đóng ca (Consolidated — màn Pha chế cũng không hiện). Không thêm trường thời điểm thanh toán.
@@ -33,7 +33,7 @@ Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện đ�
 - Quản lý (`_pos_roles().manager`: POS MANAGER / System Manager / Administrator): gửi `pos_profile` → kiểm tồn tại + đang bật; không gửi →
   `resolve_pos_profile_name()`. Config trả `profiles` (mọi profile đang bật); giao diện hiện ô chọn khi ≥ 2 profile, nhớ ở
   `localStorage["mypos_status_profile"]`, ô ẩn cùng con trỏ.
-- Tài khoản treo TV: POS KITCHEN riêng (quyết định Van Q2-a). Về kỹ thuật vẫn gọi được API "Chưa làm → Đã làm" → chưa phải tài khoản chỉ đọc
+- Tài khoản treo TV: POS KITCHEN riêng (quyết định chủ dự án Q2-a). Về kỹ thuật vẫn gọi được API "Chưa làm → Đã làm" → chưa phải tài khoản chỉ đọc
   tuyệt đối; role POS DISPLAY ghi ở tồn đọng.
 
 ## 4. Dữ liệu trả (rút gọn ở SERVER)
@@ -61,7 +61,7 @@ Không hiện: Đã hoàn thành, Khách không nhận, Không thực hiện đ�
 
 - Dùng lại cơ chế phiên bản (`realtime.md`): nghe `mypos_pos_changed` {p, v} (lọc `p` = profile đang hiện), poll `get_order_status_changes`
   `CHANGE_POLL_MS` (4 giây) khi không có socket / `REALTIME_POLL_MS` (30 giây) khi có; tải danh sách chỉ khi `v` khác lần tải trước.
-- **Lưới an toàn** `STATUS_SAFETY_REFRESH_MS = 60000` (quyết định Van Q3, cấu hình ở đầu `OrderStatus.tsx`): tải lại dù `v` không đổi — bắt thay
+- **Lưới an toàn** `STATUS_SAFETY_REFRESH_MS = 60000` (quyết định chủ dự án Q3, cấu hình ở đầu `OrderStatus.tsx`): tải lại dù `v` không đổi — bắt thay
   đổi không đi qua hook (vd. [Inference] ERPNext gộp đơn khi đóng ca bằng SQL / `set_value`, không tăng phiên bản).
 - Tab hiện lại / có mạng lại (`online`) / socket nối lại → tải ngay một lần. Lỗi → giữ danh sách cuối, poll giãn tối đa 30 giây.
 - Chấm trạng thái góc phải: xanh = socket kết nối, lần gọi gần nhất OK; vàng = không socket (đang poll) hoặc lỗi < 30 giây; đỏ = lỗi liên tục

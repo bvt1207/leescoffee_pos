@@ -32,7 +32,7 @@
 5. Đơn đã hủy / hết hạn (2026-11-23): `_own_invoice` nhận docstatus 0/1/2 → `get_order` không lỗi "Không tìm thấy đơn", trả stage `expired`, nhãn
    "Đã hủy / hết hạn" (PaymentView / MyOrdersPanel: "Đơn đã hủy hoặc hết hạn thanh toán"); `create_payment_qr` → "Đơn đã hủy hoặc hết hạn. Vui lòng đặt lại."
 
-## 2. Quyết định đã chốt (Van, 2026-11-14)
+## 2. Quyết định đã chốt (chủ dự án, 2026-11-14)
 
 | Chủ đề | Quy tắc |
 |---|---|
