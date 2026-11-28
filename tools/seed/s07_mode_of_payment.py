@@ -1,4 +1,5 @@
-"""Bước 7: Mode of Payment mỗi chi nhánh (Cash / Transfer), mỗi cái gắn 1 tài khoản của Company (Q3).
+"""Bước 7: 6 Mode of Payment — mỗi chi nhánh "Cash - Chi nhánh LC ..." (Cash) + "QR Bank Transfer - Chi nhánh LC ..."
+(Bank), mỗi cái gắn 1 tài khoản của Company.
 
 ERPNext bắt buộc tài khoản lá loại Bank / Cash / Receivable cùng Company (mode_of_payment.validate_accounts).
 Tài khoản lấy từ sheet Account (bước 5); không tự tạo tài khoản khác. Dòng tài khoản đang gắn tài khoản khác

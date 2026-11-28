@@ -17,7 +17,7 @@ Company / abbr / gốc cây Cost Center, Warehouse / tài khoản Temporary đ�
 | s04_cost_center | Dưới Cost Center gốc của Company | 3 |
 | s05_account | Cash / Stock / Bank / Sales / COGS / Write Off mỗi chi nhánh | 18 |
 | s06_warehouse | 3 kho nhóm + 3 kho con gắn tài khoản Stock | 6 |
-| s07_mode_of_payment | Cash / Transfer / QR Bank Transfer mỗi chi nhánh | 9 |
+| s07_mode_of_payment | Mỗi chi nhánh: Cash (Cash) + QR Bank Transfer (Bank, tài khoản Bank chi nhánh) | 6 |
 | s08_attribute | Chỉ kiểm tra Size Small = S, Medium = M, Large = L | 3 kiểm |
 | s09_item | Ảnh = URL ngoài trong file; TP-002 giữ nhóm cha "Đồ uống" | 37 (8 template) |
 | s10_variant | `TP-xxx-S/M/L`, ảnh riêng từng dòng | 24 |
@@ -28,7 +28,12 @@ Company / abbr / gốc cây Cost Center, Warehouse / tài khoản Temporary đ�
 | s15_demo_customer | CHỈ khi `with_demo_customers=1`: khách mẫu @example.com + Contact | 14 |
 | s16_supplier | CHỈ khi `with_suppliers=1`: Supplier Group + Supplier | 3 + 7 |
 
-Giai đoạn 2 (sau khi Van duyệt): POS Profile x 3, MYPOS Menu. Giai đoạn 3: Product Bundle (`clean/product_bundle.csv`).
+File nguồn đã mang tên mới ("Chi nhánh LC ...", "QR Bank Transfer - ..."); `clean.py` vẫn nhận file cũ (A/B/C,
+"Transfer - ...") và đổi tên idempotent (`tests/t_rename.py`).
+
+Giai đoạn 2 (sau khi Van duyệt): POS Profile x 3 — Payment Methods mỗi chi nhánh gồm "Cash - Chi nhánh LC ..." (Default)
++ "QR Bank Transfer - Chi nhánh LC ..." của chính chi nhánh; MYPOS Menu. Sửa mypos để Mode of Payment đi theo POS Profile:
+để sau. Giai đoạn 3: Product Bundle (`clean/product_bundle.csv`).
 
 ## Chế độ chạy
 
@@ -66,7 +71,28 @@ Test (mỗi file một hàm loader, dữ liệu `ZZTEST-`, tự dọn trong fina
 for t in t_uom t_item_group t_item_variant t_price; do
   PYTHONPATH="$REPO/tools" bench --site local.com execute seed.tests.$t.run; done
 PYTHONPATH="$REPO/tools" bench --site local.com execute seed.tests._util.leftovers   # phải ra {}
+python -c "import sys; sys.path.insert(0, '$REPO/tools'); from seed.tests.t_rename import run; run()"  # không cần site
 ```
+
+## Kiểm tra sau apply
+
+| Bước | Kiểm tra |
+|---|---|
+| clean | `--check-urls`: 0 lỗi, 35/35 URL OK |
+| s01–s04 | UOM mới có Symbol; cây Item Group 3 cấp; 3 Branch có `company`; 3 Cost Center dưới Cost Center gốc của Company |
+| s05–s07 | 18 tài khoản chi nhánh; kho con có Account `Stock - Chi nhánh LC … - LC`; **6 Mode of Payment** (3 Cash + 3 QR Bank Transfer), mỗi cái 1 tài khoản đúng chi nhánh |
+| s09–s10 | Mọi Item / biến thể có ảnh (không còn ảnh hỏng); TP-006 có 3 biến thể S/M/L |
+| s11–s12 | Mỗi Price List bán 26 giá, mỗi Price List mua 29 giá; TP-006-L = 40.000 |
+| s13 | "Khách vãng lai": nhóm Khách lẻ, Territory Vietnam, không Loyalty Program |
+| s14 | Stock Balance mỗi kho 29 mã; giá trị 3.722.500 / 2.963.500 / 2.366.500 |
+
+Test case (Van chạy):
+
+- [TC1] dry-run rồi trial -> 14 bước không error; sau trial site không có Item mới
+- [TC2] apply -> Mode of Payment "QR Bank Transfer - Chi nhánh LC Thủ Đức": Type Bank, tài khoản "Bank - Chi nhánh LC Thủ Đức - LC"
+- [TC3] apply -> Item TP-003-M có field image là URL, ảnh hiện trên Desk
+- [TC4] dry-run lại sau apply -> mọi bước created = 0, updated = 0
+- [TC5] Stock Balance -> 3 kho x 29 mã, giá trị khớp bảng trên
 
 ## Rollback
 

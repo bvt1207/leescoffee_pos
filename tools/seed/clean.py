@@ -72,8 +72,16 @@ def base(name):
     return re.sub(config.SOURCE_SUFFIX_RE, "", s(name))
 
 
+_LABEL_RE = re.compile(r"(?i)\bchi nhánh\s+(" + "|".join(re.escape(v) for v in config.BRANCH_LABEL.values()) + r")\b")
+_KEY_BY_LABEL = {v.lower(): k for k, v in config.BRANCH_LABEL.items()}
+
+
 def rename(text):
-    """'Chi nhánh A' -> 'Chi nhánh LC Nguyễn Huệ' (Q5). Trả (tên mới, khóa chi nhánh hoặc '')."""
+    """'Chi nhánh A' -> 'Chi nhánh LC Nguyễn Huệ' (Q5). Trả (tên mới, khóa chi nhánh hoặc '').
+
+    Idempotent: tên đã mang nhãn mới giữ nguyên (token A/B/C chỉ khớp chữ cái đơn ngay sau "chi nhánh"),
+    khóa chi nhánh vẫn nhận ra từ nhãn mới. Chấp nhận cả file cũ (A/B/C) lẫn file đã đổi tên.
+    """
     keys = []
 
     def sub(m):
@@ -82,6 +90,10 @@ def rename(text):
         return f"{m.group(1)} {config.BRANCH_LABEL[k]}"
 
     out = re.sub(config.BRANCH_TOKEN_RE, sub, s(text))
+    if not keys:
+        m = _LABEL_RE.search(out)
+        if m:
+            keys.append(_KEY_BY_LABEL[m.group(1).lower()])
     return out, (keys[0] if keys else "")
 
 
@@ -214,6 +226,10 @@ def clean_mode_of_payment(wb, rep, accounts):
         name, key = rename(r.get("Mode of Payment"))
         account, _ = rename(base(r.get("Default Account (Accounts)")))
         mtype = s(r.get("Type"))
+        if mtype == "Bank" and name.startswith(config.LEGACY_BANK_MODE_PREFIX):
+            new = config.BANK_MODE_PREFIX + name[len(config.LEGACY_BANK_MODE_PREFIX):]
+            rep.info(f"Mode of Payment file cũ '{name}' -> '{new}'")
+            name = new
         where = f"Mode of payment dòng {r['_row']} ({name})"
         if mtype not in ("Cash", "Bank", "General", "Phone"):
             rep.error(f"{where}: Type '{mtype}' không hợp lệ")
@@ -226,18 +242,14 @@ def clean_mode_of_payment(wb, rep, accounts):
         if unique(rep, seen, name, where):
             out.append({"key": key, "mode_of_payment": name, "type": mtype,
                         "enabled": flag(r.get("Enabled")), "account": account})
-    # Quyết định 6: thêm "QR Bank Transfer - Chi nhánh LC ..." loại Bank, cùng tài khoản Bank của chi nhánh.
     for k in config.BRANCH_KEYS:
-        banks = [m for m in out if m["key"] == k and m["type"] == "Bank"]
-        if len(banks) != 1:
-            rep.error(f"Chi nhánh {k}: cần đúng 1 Mode of Payment loại Bank trong file để lấy tài khoản, có {len(banks)}")
-            continue
-        name = f"{config.EXTRA_BANK_MODE_LABEL} - Chi nhánh {config.BRANCH_LABEL[k]}"
-        if unique(rep, seen, name, "Mode of Payment thêm (quyết định 6)"):
-            out.append({"key": k, "mode_of_payment": name, "type": "Bank", "enabled": 1,
-                        "account": banks[0]["account"]})
-    rep.info(f"Mode of Payment: {len(out)} (file {len(out) - len(config.BRANCH_KEYS)} + "
-             f"{len(config.BRANCH_KEYS)} '{config.EXTRA_BANK_MODE_LABEL}')")
+        types = sorted(m["type"] for m in out if m["key"] == k)
+        if types != sorted(config.MODE_TYPES_PER_BRANCH):
+            rep.error(f"Chi nhánh {k}: cần đúng các Mode of Payment loại {list(config.MODE_TYPES_PER_BRANCH)}, có {types}")
+    for m in out:
+        if m["type"] == "Bank" and not m["mode_of_payment"].startswith(config.BANK_MODE_PREFIX):
+            rep.error(f"Mode of Payment loại Bank phải bắt đầu bằng '{config.BANK_MODE_PREFIX}': '{m['mode_of_payment']}'")
+    rep.info(f"Mode of Payment: {len(out)} ({', '.join(m['mode_of_payment'] for m in out)})")
     return out
 
 

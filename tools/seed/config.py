@@ -59,10 +59,12 @@ SIZE_ABBR = {"Small": "S", "Medium": "M", "Large": "L"}  # mã biến thể = <t
 WALK_IN_CUSTOMER_GROUP = "Khách lẻ"
 WALK_IN_TERRITORY = "Vietnam"
 
-# --- Thanh toán (quyết định 6) ----------------------------------------------------
-# Ngoài Cash / Transfer của file, mỗi chi nhánh thêm 1 Mode of Payment loại Bank, cùng tài khoản Bank của chi nhánh.
-# Tên = "<EXTRA_BANK_MODE_LABEL> - Chi nhánh LC ..." (lấy phần chi nhánh từ Mode of Payment Bank của file).
-EXTRA_BANK_MODE_LABEL = "QR Bank Transfer"
+# --- Thanh toán (cập nhật A, 2026-11-28) --------------------------------------------
+# Mỗi chi nhánh đúng 2 Mode of Payment: "Cash - Chi nhánh LC ..." (Cash) + "QR Bank Transfer - Chi nhánh LC ..." (Bank).
+# File cũ còn "Transfer - Chi nhánh ..." -> clean.py đổi tên thành "QR Bank Transfer - ..." (giữ tài khoản Bank).
+MODE_TYPES_PER_BRANCH = ("Cash", "Bank")
+BANK_MODE_PREFIX = "QR Bank Transfer - "
+LEGACY_BANK_MODE_PREFIX = "Transfer - "
 
 # --- Khách mẫu (cờ with_demo_customers) --------------------------------------------
 DEMO_EMAIL_DOMAIN = "example.com"  # chỉ nạp khách có email đúng tên miền này
