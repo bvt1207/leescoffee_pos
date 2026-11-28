@@ -103,6 +103,61 @@ Test case (Van chạy):
 - [TC4] dry-run lại sau apply (`run.py ... $FLAGS`) -> mọi bước created = 0, updated = 0
 - [TC5] Stock Balance -> 3 kho x 29 mã, giá trị khớp bảng trên; Item TP-003-M có ảnh trên Desk
 
+## Giai đoạn 2 — thu ngân thử, POS Profile, MYPOS Menu (`--stage 2`)
+
+Quyết định Van 2026-11-28: 3 user thu ngân thử; menu đủ 10 món; tên "POS - Chi nhánh LC ..." / "Menu - Chi nhánh LC ...";
+chưa cấu hình SePay (script không ghi secret).
+
+| Bước | Việc | Số |
+|---|---|---|
+| s17_cashier_user | `thungan.nguyenhue / thungan.leloi / thungan.thuduc @example.com`, role POS CASHIER, không mật khẩu, không email | 3 |
+| s18_pos_profile | "POS - Chi nhánh LC ...": kho con, Price List bán, Branch, khách vãng lai, Cost Center, TK Sales / COGS / Write Off / Cash (tiền thừa) của chi nhánh; Payments = Cash (Default) + QR Bank Transfer của chi nhánh; Applicable for Users = thu ngân thử của chi nhánh (Default) | 3 |
+| s19_mypos_menu | "Menu - Chi nhánh LC ...", Price List bán của chi nhánh, 10 món: TP-003..TP-010 (template, POS hiện S/M/L), TP-002, TP-001 | 3 |
+
+```bash
+REPO="/mnt/c/Users/ADMIN/OneDrive/Pictures/Năm 4 UIT/ERPNEXT/PROJECTPOS"
+PY="$HOME/frappe-bench/env/bin/python"
+cd ~/frappe-bench/sites && "$PY" "$REPO/tools/seed/run.py" --site local.com --mode dry-run --stage 2
+cd ~/frappe-bench/sites && "$PY" "$REPO/tools/seed/run.py" --site local.com --mode trial --stage 2
+cd ~/frappe-bench && bench --site local.com clear-cache
+# --- dừng, kiểm tra ---
+cd ~/frappe-bench && bench --site local.com backup
+cd ~/frappe-bench/sites && "$PY" "$REPO/tools/seed/run.py" --site local.com --mode apply --stage 2
+cd ~/frappe-bench/sites && "$PY" "$REPO/tools/seed/run.py" --site local.com --mode dry-run --stage 2   # toàn skipped
+```
+
+Kiểm tra sau apply: 3 POS Profile đang bật, mỗi Branch đúng 1 profile; Payments 2 dòng (Cash mặc định); 3 MYPOS Menu,
+mỗi menu 10 món; đăng nhập thu ngân thử mở `/pos` thấy tab Cà phê / Trà / Trà sữa / Đồ uống / Bánh ngọt, món có size S/M/L.
+
+### Thử bán: Mode of Payment ghi vào hóa đơn là gì?
+
+Mục đích: kiểm nghi vấn "mypos lấy Mode of Payment đầu tiên theo tên trên toàn công ty, không theo POS Profile"
+(`pos_api._get_payment_modes` / `_resolve_mode_of_payment`; giao diện /pos không có ô chọn mode khi tạo đơn).
+Mode được gán LÚC TẠO ĐƠN (Draft), trước khi chọn "Thu tiền mặt" / "Thanh toán QR".
+
+1. Desk (Administrator) -> User -> `thungan.thuduc@example.com` -> mục Settings / Change Password -> đặt mật khẩu.
+   Làm tương tự cho `thungan.nguyenhue@example.com`.
+2. Cửa sổ ẩn danh, đăng nhập `thungan.thuduc@example.com`, mở `http://localhost:8002/pos`.
+3. Đơn tiền mặt: chọn "Mang đi" -> Cà phê đen size M -> "Tạo đơn" -> màn Orders mở đúng đơn -> "Thu tiền mặt".
+   Ghi lại mã đơn (ACC-PSINV-...).
+4. Đơn QR: "Mang đi" -> Trà chanh size L -> "Tạo đơn" -> bấm "Thanh toán QR" -> kỳ vọng báo lỗi chưa cấu hình SePay
+   (Branch chưa bật SePay). Ghi lại mã đơn (Draft), xem Payments (bước 6), rồi "Hủy đơn" (lý do "Đặt nhầm") để đơn
+   Draft không chặn đóng ca.
+5. Lặp 2-4 với `thungan.nguyenhue@example.com` (cửa sổ ẩn danh mới).
+6. Xem Payments trên Desk: `http://localhost:8002/app/pos-invoice` -> lọc POS Profile -> mở đơn -> bảng "Payments"
+   (cột Mode of Payment, Account). Hoặc xem nhanh cả 4 đơn (chỉ đọc):
+
+```bash
+cd ~/frappe-bench && bench --site local.com mariadb -e "select i.name, i.pos_profile, i.status, p.mode_of_payment, p.account, p.amount from \`tabPOS Invoice\` i join \`tabSales Invoice Payment\` p on p.parent = i.name and p.parenttype = 'POS Invoice' order by i.creation"
+```
+
+| Kết quả | Mode of Payment | Account |
+|---|---|---|
+| Đúng (theo POS Profile) | `Cash - Chi nhánh LC Thủ Đức` / `... Nguyễn Huệ` | `Cash - Chi nhánh LC ... - LC` |
+| Sai (nghi vấn) | mode đầu tiên theo tên toàn công ty — [Inference] có thể là `Cash` (có sẵn của ERPNext) | `Cash - LC` |
+
+Nếu sai: gửi yêu cầu sửa mypos riêng (chưa sửa code ở bước seed).
+
 ## Rollback
 
 ```bash

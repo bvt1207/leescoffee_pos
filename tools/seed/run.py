@@ -11,6 +11,7 @@ Chạy ĐỘC LẬP bằng python của bench (không dùng `bench execute`: Fra
            hoặc Ctrl+C; mọi lệnh commit bị chặn. Stock Reconciliation chỉ insert (validate), không submit.
            Sau trial chạy `bench --site <site> clear-cache` (từ ~/frappe-bench).
   apply    ghi và commit sau MỖI bước thành công; lỗi -> rollback bước đó và dừng (các bước trước giữ nguyên).
+--stage 1 (mặc định: dữ liệu nền s01-s16) | 2 (Giai đoạn 2: s17 thu ngân thử, s18 POS Profile, s19 MYPOS Menu) | all.
 Tham số khác: --until <bước>, --only <bước,bước>, --company (khi site có > 1 Company), --sites-path
 (mặc định: thư mục hiện tại nếu có <site>/, không thì ~/frappe-bench/sites). Dừng ở lỗi đầu tiên; mã thoát 1 khi lỗi.
 """
@@ -38,17 +39,28 @@ STEPS = (
     "s14_opening_stock",
     "s15_demo_customer",  # chỉ khi --with-demo-customers
     "s16_supplier",  # chỉ khi --with-suppliers
+    # Giai đoạn 2 (--stage 2): thu ngân thử, POS Profile, MYPOS Menu
+    "s17_cashier_user",
+    "s18_pos_profile",
+    "s19_mypos_menu",
 )
 OPTIONAL = {"s15_demo_customer": "with_demo_customers", "s16_supplier": "with_suppliers"}
+STAGE2 = ("s17_cashier_user", "s18_pos_profile", "s19_mypos_menu")
 
 
 def _truthy(v):
     return str(v).strip().lower() in ("1", "true", "yes", "y", "on")
 
 
-def _select(only=None, until=None, flags=None):
+def _select(only=None, until=None, flags=None, stage="1"):
     flags = flags or {}
+    if str(stage) not in ("1", "2", "all"):
+        raise ValueError(f"--stage phải là 1, 2 hoặc all, nhận '{stage}'")
     steps = [s for s in STEPS if s not in OPTIONAL or _truthy(flags.get(OPTIONAL[s]))]
+    if str(stage) == "1":
+        steps = [s for s in steps if s not in STAGE2]
+    elif str(stage) == "2":
+        steps = [s for s in steps if s in STAGE2]
     if only:
         wanted = [s.strip() for s in (only.split(",") if isinstance(only, str) else only) if s.strip()]
         unknown = [s for s in wanted if s not in STEPS]
@@ -66,13 +78,13 @@ class _CommitBlocked(Exception):
     pass
 
 
-def main(mode="dry-run", only=None, until=None, company=None, with_demo_customers=0, with_suppliers=0):
+def main(mode="dry-run", only=None, until=None, company=None, with_demo_customers=0, with_suppliers=0, stage="1"):
     """Chạy các bước trong một phiên frappe ĐÃ kết nối (xem frappe_session)."""
     import frappe
 
     from seed.common import Ctx, Report, SeedError
 
-    steps = _select(only, until, {"with_demo_customers": with_demo_customers, "with_suppliers": with_suppliers})
+    steps = _select(only, until, {"with_demo_customers": with_demo_customers, "with_suppliers": with_suppliers}, stage)
     ctx = Ctx(mode, company)
     print(f"\n### seed {mode.upper()} | site {frappe.local.site} | user {frappe.session.user} | Company "
           f"'{ctx.company}' (abbr {ctx.abbr}, {ctx.currency}) | {len(steps)} bước: {', '.join(steps)}")
@@ -173,6 +185,8 @@ def _cli(argv=None):
     ap.add_argument("--company")
     ap.add_argument("--with-demo-customers", action="store_true")
     ap.add_argument("--with-suppliers", action="store_true")
+    ap.add_argument("--stage", default="1", choices=("1", "2", "all"),
+                    help="1 = dữ liệu nền s01-s16 (mặc định); 2 = thu ngân thử + POS Profile + MYPOS Menu (s17-s19)")
     ap.add_argument("--sites-path")
     a = ap.parse_args(argv)
 
@@ -181,7 +195,8 @@ def _cli(argv=None):
 
     try:
         with frappe_session(a.site, a.sites_path):
-            res = main(a.mode, a.only, a.until, a.company, int(a.with_demo_customers), int(a.with_suppliers))
+            res = main(a.mode, a.only, a.until, a.company, int(a.with_demo_customers), int(a.with_suppliers),
+                       a.stage)
     except (SeedError, ValueError) as e:
         print(f"### LỖI: {e}")
         return 1

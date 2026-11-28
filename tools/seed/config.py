@@ -71,3 +71,16 @@ DEMO_EMAIL_DOMAIN = "example.com"  # chỉ nạp khách có email đúng tên mi
 
 # --- Ghi chú định mức (chỉ cảnh báo) ------------------------------------------------
 ICE_ITEM = "NL-008"
+
+# --- Giai đoạn 2 (quyết định Van 2026-11-28): POS Profile + MYPOS Menu + thu ngân thử ----------
+POS_PROFILE_PREFIX = "POS - "  # "POS - Chi nhánh LC Thủ Đức"
+MENU_PREFIX = "Menu - "  # "Menu - Chi nhánh LC Thủ Đức" (1 menu / Price List bán của chi nhánh)
+# Thứ tự món = thứ tự tab nhóm trên /pos: Cà phê -> Trà -> Trà sữa -> Đồ uống (nước suối) -> Bánh ngọt.
+MENU_ITEMS = ("TP-003", "TP-004", "TP-005", "TP-006", "TP-007", "TP-008", "TP-009", "TP-010", "TP-002", "TP-001")
+# Thu ngân thử: 1 user / chi nhánh, mặc định ở POS Profile chi nhánh đó. Mật khẩu Van tự đặt trên Desk.
+TEST_CASHIERS = {
+    "A": "thungan.nguyenhue@example.com",
+    "B": "thungan.leloi@example.com",
+    "C": "thungan.thuduc@example.com",
+}
+CASHIER_ROLE = "POS CASHIER"
