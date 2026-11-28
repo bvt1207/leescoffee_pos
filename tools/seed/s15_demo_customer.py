@@ -1,4 +1,4 @@
-"""Bước 15 (chỉ chạy khi with_demo_customers=1): khách mẫu trong sheet Customer (email @example.com) + Contact.
+"""Bước 15 (chỉ chạy khi run.py --with-demo-customers): khách mẫu trong sheet Customer (email @example.com) + Contact.
 
 clean.py đã chặn khách có email khác tên miền mẫu. Territory giữ như file. Contact khóa theo email.
 """

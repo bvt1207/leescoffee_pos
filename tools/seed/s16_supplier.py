@@ -1,4 +1,4 @@
-"""Bước 16 (chỉ chạy khi with_suppliers=1): Supplier Group + Supplier theo file."""
+"""Bước 16 (chỉ chạy khi run.py --with-suppliers): Supplier Group + Supplier theo file."""
 import frappe
 
 from seed.common import SeedError, read_csv, require, to_int

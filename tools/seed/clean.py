@@ -578,7 +578,7 @@ def clean_demo_customers(wb, rep, cgroups):
     kinds = {}
     for c in out:
         kinds[c["customer_group"]] = kinds.get(c["customer_group"], 0) + 1
-    rep.info(f"Khách mẫu (bước s15, nạp khi with_demo_customers=1 — lệnh trong README bật cờ): {len(out)} khách {kinds}, "
+    rep.info(f"Khách mẫu (bước s15, nạp khi --with-demo-customers — lệnh trong README bật): {len(out)} khách {kinds}, "
              f"email @{config.DEMO_EMAIL_DOMAIN}")
     return out
 
@@ -597,7 +597,7 @@ def clean_suppliers(wb, rep):
             out.append({"supplier_name": name, "supplier_type": s(r.get("Supplier Type")), "supplier_group": grp,
                         "country": s(r.get("Country")), "default_currency": s(r.get("Billing Currency")),
                         "disabled": flag(r.get("Disabled"))})
-    rep.info(f"Nhà cung cấp (bước s16, nạp khi with_suppliers=1 — lệnh trong README bật cờ): "
+    rep.info(f"Nhà cung cấp (bước s16, nạp khi --with-suppliers — lệnh trong README bật): "
              f"{len(groups)} nhóm, {len(out)} NCC")
     return groups, out
 

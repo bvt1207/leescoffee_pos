@@ -1,21 +1,24 @@
 """Chạy các bước nạp dữ liệu theo thứ tự phụ thuộc. Mặc định dry-run (không ghi site).
 
-Cách 1 (bench execute, cần PYTHONPATH trỏ tới thư mục tools/):
-    PYTHONPATH="<repo>/tools" bench --site <site> execute seed.run.main --kwargs "{'mode': 'dry-run'}"
-Cách 2 (dự phòng, tự frappe.init):
-    cd ~/frappe-bench/sites && ../env/bin/python "<repo>/tools/seed/run.py" --site <site> --mode dry-run
+Chạy ĐỘC LẬP bằng python của bench (không dùng `bench execute`: Frappe coi phần đầu đường dẫn là tên app):
 
-mode:
-  dry-run  so sánh với site, in sẽ tạo / sửa / bỏ qua; không ghi gì.
-  trial    ghi thật để ERPNext chạy validate (bắt lỗi dữ liệu thật), rồi ROLLBACK toàn bộ; mọi lệnh commit bị chặn.
-           Stock Reconciliation chỉ insert (validate), không submit. Sau trial nên chạy `bench --site <site> clear-cache`.
-  apply    ghi và commit sau mỗi bước thành công.
-Tham số khác: only = "s01_uom,s02_item_group"; until = "s07_mode_of_payment"; company (khi site có > 1 Company);
-with_demo_customers = 1 (bước s15); with_suppliers = 1 (bước s16). Dừng ở lỗi đầu tiên.
+    cd ~/frappe-bench/sites
+    ../env/bin/python "<repo>/tools/seed/run.py" --site local.com --mode dry-run [--with-demo-customers] [--with-suppliers]
+
+--mode:
+  dry-run  so sánh với site, in sẽ tạo / sửa / bỏ qua; không ghi gì (rollback ở cuối cho chắc).
+  trial    ghi thật để ERPNext chạy validate (bắt lỗi dữ liệu thật), rồi ROLLBACK toàn bộ — kể cả khi lỗi giữa chừng
+           hoặc Ctrl+C; mọi lệnh commit bị chặn. Stock Reconciliation chỉ insert (validate), không submit.
+           Sau trial chạy `bench --site <site> clear-cache` (từ ~/frappe-bench).
+  apply    ghi và commit sau MỖI bước thành công; lỗi -> rollback bước đó và dừng (các bước trước giữ nguyên).
+Tham số khác: --until <bước>, --only <bước,bước>, --company (khi site có > 1 Company), --sites-path
+(mặc định: thư mục hiện tại nếu có <site>/, không thì ~/frappe-bench/sites). Dừng ở lỗi đầu tiên; mã thoát 1 khi lỗi.
 """
 import importlib
+import os
 import sys
 import traceback
+from contextlib import contextmanager
 from pathlib import Path
 
 STEPS = (
@@ -33,8 +36,8 @@ STEPS = (
     "s12_item_price",
     "s13_customer",
     "s14_opening_stock",
-    "s15_demo_customer",  # chỉ khi with_demo_customers
-    "s16_supplier",  # chỉ khi with_suppliers
+    "s15_demo_customer",  # chỉ khi --with-demo-customers
+    "s16_supplier",  # chỉ khi --with-suppliers
 )
 OPTIONAL = {"s15_demo_customer": "with_demo_customers", "s16_supplier": "with_suppliers"}
 
@@ -54,7 +57,7 @@ def _select(only=None, until=None, flags=None):
         steps = [s for s in steps if s in wanted]
     if until:
         if until not in STEPS:
-            raise ValueError(f"until='{until}' không tồn tại. Có: {list(STEPS)}")
+            raise ValueError(f"--until '{until}' không tồn tại. Có: {list(STEPS)}")
         steps = [s for s in steps if STEPS.index(s) <= STEPS.index(until)]
     return steps
 
@@ -64,14 +67,15 @@ class _CommitBlocked(Exception):
 
 
 def main(mode="dry-run", only=None, until=None, company=None, with_demo_customers=0, with_suppliers=0):
+    """Chạy các bước trong một phiên frappe ĐÃ kết nối (xem frappe_session)."""
     import frappe
 
     from seed.common import Ctx, Report, SeedError
 
     steps = _select(only, until, {"with_demo_customers": with_demo_customers, "with_suppliers": with_suppliers})
     ctx = Ctx(mode, company)
-    print(f"\n### seed {mode.upper()} | site {frappe.local.site} | Company '{ctx.company}' (abbr {ctx.abbr}, "
-          f"{ctx.currency}) | {len(steps)} bước: {', '.join(steps)}")
+    print(f"\n### seed {mode.upper()} | site {frappe.local.site} | user {frappe.session.user} | Company "
+          f"'{ctx.company}' (abbr {ctx.abbr}, {ctx.currency}) | {len(steps)} bước: {', '.join(steps)}")
     if mode == "dry-run":
         print("### DRY-RUN: không ghi gì. 'sẽ created/updated' = việc apply sẽ làm (chưa qua validate của ERPNext).")
     elif mode == "trial":
@@ -105,7 +109,7 @@ def main(mode="dry-run", only=None, until=None, company=None, with_demo_customer
                 break
     finally:
         if mode != "apply":
-            frappe.db.rollback()
+            frappe.db.rollback()  # trial / dry-run: bỏ mọi thứ chưa commit, kể cả khi KeyboardInterrupt
         frappe.db.commit = real_commit
 
     print(f"\n### TỔNG KẾT ({mode})")
@@ -119,32 +123,68 @@ def main(mode="dry-run", only=None, until=None, company=None, with_demo_customer
     return {"ok": not failed, "failed_step": failed, "mode": mode}
 
 
+# --- chạy độc lập ---------------------------------------------------------------------------------
+
+def fix_sys_path():
+    """Bỏ tools/seed khỏi sys.path (tránh common.py / config.py che module khác), thêm tools/ để import `seed`."""
+    here = Path(__file__).resolve().parent
+    sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != here]
+    if str(here.parent) not in sys.path:
+        sys.path.insert(0, str(here.parent))
+
+
+def resolve_sites_path(site, sites_path=None):
+    candidates = [Path(sites_path).expanduser()] if sites_path else [
+        Path.cwd(), Path.home() / "frappe-bench" / "sites"]
+    for c in candidates:
+        if (c / site / "site_config.json").is_file():
+            return str(c.resolve())
+    raise SystemExit(f"Không tìm thấy {site}/site_config.json trong {[str(c) for c in candidates]}. "
+                     "Chạy từ ~/frappe-bench/sites hoặc truyền --sites-path.")
+
+
+@contextmanager
+def frappe_session(site, sites_path=None):
+    """frappe.init + connect + Administrator; cuối: rollback phần chưa commit rồi destroy (luôn chạy)."""
+    import frappe
+
+    frappe.init(site=site, sites_path=resolve_sites_path(site, sites_path))
+    try:
+        frappe.connect()
+        frappe.set_user("Administrator")
+        frappe.flags.mute_emails = True  # không gửi email khi tạo Contact / Customer mẫu
+        yield frappe
+    finally:
+        try:
+            if getattr(frappe.local, "db", None):
+                frappe.db.rollback()
+        finally:
+            frappe.destroy()
+
+
 def _cli(argv=None):
     import argparse
 
-    ap = argparse.ArgumentParser(description="Nạp dữ liệu demo (dự phòng khi không dùng bench execute)")
+    ap = argparse.ArgumentParser(description="Nạp dữ liệu demo vào site (chạy bằng python của bench)")
     ap.add_argument("--site", required=True)
     ap.add_argument("--mode", default="dry-run", choices=("dry-run", "trial", "apply"))
-    ap.add_argument("--only")
-    ap.add_argument("--until")
+    ap.add_argument("--until", choices=STEPS)
+    ap.add_argument("--only", help="danh sách bước, phân cách dấu phẩy")
     ap.add_argument("--company")
     ap.add_argument("--with-demo-customers", action="store_true")
     ap.add_argument("--with-suppliers", action="store_true")
-    ap.add_argument("--sites-path", default=".")
+    ap.add_argument("--sites-path")
     a = ap.parse_args(argv)
 
-    here = Path(__file__).resolve().parent
-    # Chạy dạng script: bỏ tools/seed khỏi sys.path (tránh common.py / config.py che module khác), thêm tools/
-    sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != here]
-    sys.path.insert(0, str(here.parent))
-    import frappe
+    fix_sys_path()
+    from seed.common import SeedError
 
-    frappe.init(site=a.site, sites_path=a.sites_path)
-    frappe.connect()
     try:
-        res = main(a.mode, a.only, a.until, a.company, int(a.with_demo_customers), int(a.with_suppliers))
-    finally:
-        frappe.destroy()
+        with frappe_session(a.site, a.sites_path):
+            res = main(a.mode, a.only, a.until, a.company, int(a.with_demo_customers), int(a.with_suppliers))
+    except (SeedError, ValueError) as e:
+        print(f"### LỖI: {e}")
+        return 1
     return 0 if res["ok"] else 1
 
 
