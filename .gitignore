@@ -47,3 +47,7 @@ sites/logs/
 
 # Script WSL tạm (bước copy), không commit
 tools/_wsl/
+
+# Dữ liệu nguồn + dữ liệu đã làm sạch để nạp site (có thể chứa dữ liệu thật), không commit
+DATA/
+tools/seed/clean/
