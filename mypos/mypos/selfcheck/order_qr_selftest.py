@@ -6,7 +6,7 @@
 # Điều kiện trước khi truyền Branch có sẵn (script chỉ kiểm tra, không tự tạo):
 #   - POS Profile đang bật có branch + selling_price_list; có MYPOS Menu cùng Price List, món có giá.
 #   - Có POS Opening Entry đang Open của POS Profile đó (mở ca trên /pos hoặc Desk).
-#   - Branch: sepay_enabled, sepay_va_account, sepay_bank_code, sepay_api_key đã điền.
+#   - Branch: sepay_enabled, sepay_va_account, sepay_bank_code, sepay_webhook_secret đã điền.
 #   - Có Mode of Payment loại Bank, có tài khoản mặc định cho Company.
 # Script tự tạo mã QR, khách, đơn thử và tự dọn ở cuối (kể cả khi lỗi giữa chừng).
 # KHÔNG đóng ca thật: phần "đóng ca" kiểm tra owner/pos_profile/get_pos_invoices của ca đang mở.
@@ -34,8 +34,6 @@ def run_order_qr_selftest(branch=None):
 	import frappe
 	from frappe.utils import add_to_date, flt, now_datetime
 	from frappe.utils.password import get_decrypted_password
-	from werkzeug.test import EnvironBuilder
-	from werkzeug.wrappers import Request
 
 	from mypos.mypos.api import customer_order_api as C
 	from mypos.mypos.api import pos_api as P
@@ -86,14 +84,10 @@ def run_order_qr_selftest(branch=None):
 		frappe.local.message_log = []
 
 	def fake_request(payload, key=None):
-		headers = {"Authorization": f"Apikey {key}"} if key else {}
-		env = EnvironBuilder(
-			method="POST",
-			path="/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook",
-			json=payload,
-			headers=headers,
-		).get_environ()
-		frappe.local.request = Request(env)
+		# key = secret webhook HMAC của Branch (2026-11-28); None -> không gửi chữ ký
+		from mypos.selfcheck.sepay_sign import webhook_request
+
+		frappe.local.request = webhook_request(payload, key)
 		frappe.local.request_ip = "127.0.0.1"
 
 	def webhook_and_user():
@@ -130,7 +124,7 @@ def run_order_qr_selftest(branch=None):
 
 		class _SkipStaff(Exception):
 			pass
-		api_key = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)
+		api_key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
 		try:
 			C._require_sepay(branch)
 			C._transfer_mode(profile)
@@ -281,14 +275,14 @@ def run_order_qr_selftest(branch=None):
 		payload = {"content": pay["payment_code"], "transferAmount": amount, "id": "SELFTEST-" + frappe.generate_hash(length=8),
 			"transferType": "in", "gateway": "TEST"}
 		fake_request(payload)
-		expect_error("8c Webhook không có API key -> 403", S.sepay_webhook, exc=frappe.PermissionError)
+		expect_error("8c Webhook không có chữ ký HMAC -> 403", S.sepay_webhook, exc=frappe.PermissionError)
 		fake_request(payload, "sai-key")
-		expect_error("8d Webhook sai API key -> 403", S.sepay_webhook, exc=frappe.PermissionError)
+		expect_error("8d Webhook ký bằng secret sai -> 403", S.sepay_webhook, exc=frappe.PermissionError)
 		check("8e Đơn vẫn Draft sau webhook giả", frappe.db.get_value("POS Invoice", ta["invoice_name"], "docstatus") == 0)
 		fake_request(payload, api_key)
 		res, user_after = guest(webhook_and_user)
 		row = frappe.db.get_value("POS Invoice", ta["invoice_name"], ["docstatus", "status", "custom_kitchen_status"], as_dict=True)
-		check("8f Webhook đúng key (Guest) -> Paid + Chưa làm", res.get("success") and row.docstatus == 1 and row.status == "Paid"
+		check("8f Webhook đúng chữ ký (Guest) -> Paid + Chưa làm", res.get("success") and row.docstatus == 1 and row.status == "Paid"
 			and row.custom_kitchen_status == "Chưa làm", str(row))
 		check("8f1 [HỒI QUY] Webhook LẦN ĐẦU cho đơn Draft không trả already_processed",
 			"already_processed" not in res and res.get("docstatus") == 1, str(res)[:150])
@@ -312,7 +306,7 @@ def run_order_qr_selftest(branch=None):
 			and frappe.db.get_value("POS Invoice", ta["invoice_name"], "transaction_ref") == ref_before
 			and logs_after == logs_before + 1, str(r8g2))
 		fake_request(dict(payload, id="SELFTEST-X-" + frappe.generate_hash(length=6)), "sai-key")
-		expect_error("8g3 Đơn đã thanh toán + sai key -> vẫn 403 (xác thực trước nhánh idempotent)",
+		expect_error("8g3 Đơn đã thanh toán + sai chữ ký -> vẫn 403 (xác thực trước nhánh idempotent)",
 			S.sepay_webhook, exc=frappe.PermissionError)
 		frappe.local.request = old_request
 
@@ -337,7 +331,7 @@ def run_order_qr_selftest(branch=None):
 			s_payload = {"content": sq["payment_code"], "transferAmount": s_amount,
 				"id": payload["id"], "transferType": "in", "gateway": "TEST"}
 			fake_request(s_payload, "sai-key")
-			expect_error("8l Đơn quầy: webhook sai key -> 403", S.sepay_webhook, exc=frappe.PermissionError)
+			expect_error("8l Đơn quầy: webhook sai chữ ký -> 403", S.sepay_webhook, exc=frappe.PermissionError)
 			fake_request(s_payload, api_key)
 			s_res, s_user = guest(webhook_and_user)
 			srow = frappe.db.get_value("POS Invoice", staff["invoice_name"],

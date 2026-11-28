@@ -342,13 +342,13 @@ def _transfer_mode(profile):
 
 
 def _require_sepay(branch):
-	"""SePay phải bật + đủ VA/ngân hàng + có API key (thiếu key thì webhook bị từ chối -> đơn treo)."""
+	"""SePay phải bật + đủ VA/ngân hàng + có secret webhook HMAC (thiếu secret thì webhook bị từ chối -> đơn treo)."""
 	from frappe.utils.password import get_decrypted_password
 
 	b = frappe.db.get_value(
 		"Branch", branch, ["sepay_enabled", "sepay_va_account", "sepay_bank_code"], as_dict=True
 	)
-	key = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)
+	key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
 	if not b or not b.sepay_enabled or not b.sepay_va_account or not b.sepay_bank_code or not key:
 		frappe.throw(_("Quán chưa bật thanh toán chuyển khoản. Vui lòng gọi món tại quầy."))
 

@@ -196,7 +196,7 @@ def zz_test_shop(action="create", tag=None, open_shift=True, quiet=False):
 			branch = frappe.get_doc({"doctype": "Branch", "branch": t})
 			branch.update({"company": company, "brand_name": f"{t} Shop", "brand_phone": "0900000000",
 				"brand_address": "ZZTEST", "sepay_enabled": 1, "sepay_va_account": "ZZTEST0000", "sepay_bank_code": "MB",
-				"sepay_api_key": secrets.token_urlsafe(16)})
+				"sepay_webhook_secret": secrets.token_urlsafe(24)})
 			branch.insert(ignore_permissions=True)
 			for k in (1, 2):  # thẻ bàn (MYPOS Buzzer, tên = buzzer_number, duy nhất toàn site)
 				frappe.get_doc({"doctype": "MYPOS Buzzer", "buzzer_number": f"{t}-B{k}", "branch": t,

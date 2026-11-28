@@ -2,34 +2,57 @@
 
 > Paths: `mypos/mypos/doctype/sepay/sepay.py`,
 > helper ở `mypos/mypos/doctype/branch_config/branch_config.py`.
-> Đã đối chiếu với code ngày 2026-10-27.
+> Đã đối chiếu với code ngày 2026-10-27; §1 xác thực webhook đổi sang HMAC-SHA256 ngày 2026-11-28.
 
 ## 1. Quản lý cấu hình SePay
 
-- **Chỉ ở `Branch`** (Custom Field, fixtures): `sepay_enabled` (Check), `sepay_api_key` (Password),
-  `sepay_va_account` (Data), `sepay_bank_code` (Data).
-- **Mỗi chi nhánh/doanh nghiệp một bộ riêng**: một API key, một VA, một mã ngân hàng.
+- **Chỉ ở `Branch`** (Custom Field, fixtures): `sepay_enabled` (Check), `sepay_webhook_secret` (Password),
+  `sepay_va_account` (Data), `sepay_bank_code` (Data). `sepay_api_key` (Password) còn field nhưng **không còn dùng** (2026-11-28).
+- **Mỗi chi nhánh/doanh nghiệp một bộ riêng**: một secret webhook, một VA, một mã ngân hàng (nhiều chi nhánh dùng chung một webhook
+  SePay → điền cùng một secret ở mọi Branch đó).
   Chi nhánh lấy từ `POS Invoice.pos_profile` → `POS Profile.branch`.
 
-### Mục đích `sepay_api_key`
+### Xác thực webhook: HMAC-SHA256 (2026-11-28, thay "API Key")
 
-- `sepay_webhook` là `allow_guest=True` (SePay gọi vào không có phiên đăng nhập ERPNext), nên
-  ERPNext cần API key để **xác thực webhook thật sự đến từ SePay**.
-- SePay gửi header `Authorization: Apikey <key>`; ERPNext so với `sepay_api_key` của Branch
-  của invoice (đọc bằng `get_decrypted_password` vì field kiểu Password).
-- Key ở Branch **phải trùng** key cấu hình webhook bên SePay.
-- **Đã kiểm tra key (2026-11-14, đã test Pass)**: `_verify_sepay_key(invoice)` gọi ngay sau khi khớp
-  `payment_code`; nhận header `Authorization: Apikey <key>` hoặc `?key=<key>` trên URL webhook; sai/thiếu → 403
-  (`PermissionError` không bị bọc) + Error Log. Branch chưa có key → mọi webhook bị từ chối.
-  Chống xử lý lặp theo `transaction_ref`. Chi tiết + lưu ý 401 của Frappe: `order-qr.md` §3.
-  Error Log theo đúng lý do (2026-11-25, vẫn 403): "SePay webhook: đơn không có POS Profile" / "… POS Profile thiếu Branch" /
-  "… Branch chưa cấu hình API key" / "… sai hoặc thiếu API key" (key gửi kèm sai hoặc không có).
+- `sepay_webhook` là `allow_guest=True` (SePay gọi không có phiên ERPNext) → phải tự xác thực request đến từ SePay.
+- **Vì sao bỏ "API Key"**: SePay gửi `Authorization: Apikey <key>`; Frappe `auth.py::validate_auth` (16.61, dòng 645–657) chỉ nhận
+  Bearer (OAuth Frappe) / Basic / token (API key của User), header `Authorization` 2 phần mà user vẫn Guest → **401 trước khi vào hàm**.
+  Cách "cứu" bằng `auth_hooks` đặt user Administrator khi header khớp một chuỗi bí mật (từng thấy ở một app khác) nâng quyền cho MỌI
+  URL — không làm theo. mypos không dùng `auth_hooks` / `before_request`, không đổi user khi xác thực.
+- **Kiểu SePay "HMAC-SHA256"**: SePay gửi `X-SePay-Timestamp` (unix giây) + `X-SePay-Signature: sha256=<hex>`, chữ ký =
+  HMAC-SHA256(secret, `"{timestamp}." + raw_body`). Không có header `Authorization` → Frappe để request đi tiếp dưới Guest.
+- Code (`sepay.py`):
+  1. `_check_signature_headers()` — ĐẦU webhook, TRƯỚC khi đọc DB: thiếu header / timestamp không phải số / lệch giờ server >
+     `SIGNATURE_TOLERANCE_SECONDS = 300` / chữ ký đã xử lý thành công (chống phát lại) → 403.
+  2. Tìm đơn theo `payment_code` (như cũ) → `_verify_sepay_signature(invoice, signed)`: secret = `Branch.sepay_webhook_secret` của
+     Branch của POS Profile của đơn; tính lại trên **raw body** `frappe.request.get_data()` (werkzeug cache body, vẫn đúng bytes sau khi
+     Frappe `make_form_dict` đã đọc — selfcheck H6); so `hmac.compare_digest`. Hợp lệ → `_remember_signature`.
+  3. Chống phát lại: khóa Redis `mypos_sepay_sig:<sha256(chữ ký)>` TTL 600 giây, đặt **sau commit** (`frappe.db.after_commit`;
+     rollback xóa hàng đợi → request lỗi gửi lại được). Gửi lại đúng request đã thành công → 403 "phát lại". Lớp 2 vẫn là
+     chống trùng theo `transaction_ref` (request ký mới cùng giao dịch → `already_processed`).
+     [Unverified] SePay khi retry ký lại hay dùng lại chữ ký cũ: nếu dùng lại sau một lần đã thành công (mất phản hồi) → nhận 403;
+     đơn vẫn đúng (quyết định Van 2026-11-28).
+- 403 (`PermissionError` không bị bọc) + Error Log đúng lý do: "SePay webhook: thiếu chữ ký HMAC" / "… timestamp không hợp lệ" /
+  "… timestamp quá hạn" / "… chữ ký đã dùng (phát lại)" / "… đơn không có POS Profile" / "… POS Profile thiếu Branch" /
+  "… Branch chưa cấu hình secret webhook" / "… chữ ký sai". Thông báo trả bên gọi luôn chung "Webhook SePay không hợp lệ.".
+- Đồng hồ server phải đúng (NTP): lệch > 5 phút → mọi webhook bị từ chối. SePay phải gửi **JSON** (mypos chỉ đọc JSON).
+- Kiểm: `selfcheck/sepay_hmac_check.py` (H1–H8); request giả ký sẵn: `selfcheck/sepay_sign.py`; lệnh curl: `docs/checklist.md` §C.
+
+### Cấu hình bên SePay
+
+1. my.sepay.vn → Webhooks → thêm / sửa webhook: URL `https://<domain>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook`,
+   kiểu gửi JSON, tài khoản nhận tiền = VA của chi nhánh.
+2. Bước **Bảo mật** → chọn **HMAC-SHA256** → nhập hoặc bấm tạo Secret Key → **copy ngay** (mở lại chỉ thấy 4 ký tự cuối).
+3. ERPNext → Branch của chi nhánh → "Secret webhook SePay (HMAC)" → dán secret → Save. Nhiều chi nhánh dùng chung webhook → dán cùng
+   secret vào từng Branch.
+4. Thử bằng `curl` ký sẵn (`docs/checklist.md` §C) hoặc nút gửi thử của SePay; xem Error Log nếu 403.
 - **Chỉ đọc Branch** cho SePay config (branding cũng chỉ đọc Branch — xem `branch.md`).
 - **Không dùng** `merchant_code`, `secret_key`, `env`, `callback_url` (đã loại bỏ).
 
 Helper trong `branch_config.py`:
 
-- `get_sepay_config(branch_name=None)` → `{enabled, api_key, va_account, bank_code}`.
+- `get_sepay_config(branch_name=None)` → `{enabled, api_key, va_account, bank_code}` (`api_key` = field cũ, không dùng cho webhook;
+  hàm không trả secret webhook).
 - `get_va_bank_config(invoice_name)` → `{va_account, bank_code, branch}`; ném lỗi nếu Branch
   tắt SePay hoặc thiếu VA/bank code.
 - `get_sepay_qr_url(va_account, bank_code, amount, payment_code)` → URL ảnh VietQR.
@@ -59,7 +82,8 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
 3. Tìm đơn `docstatus` 0, 1 **hoặc 2** (`_find_invoice_by_code`, thêm 2 từ 2026-11-23): (a) `payment_code = content` khớp chính xác
    (cột có `search_index`, fixture 2026-11-14); (b) dự phòng: so mã chuẩn hóa bằng SQL (bỏ `- . / _` và
    khoảng trắng, viết hoa) chỉ trong đơn tạo 30 ngày gần nhất, `LIMIT 2`; khớp ≥ 2 đơn → log, coi như không thấy.
-4. Không khớp → `log_error` + ném lỗi. Khớp → **xác thực API key** (`_verify_sepay_key`) TRƯỚC mọi nhánh sau.
+0. (2026-11-28) Kiểm 2 header HMAC + hạn timestamp + chống phát lại (`_check_signature_headers`) TRƯỚC mọi bước dưới (§1).
+4. Không khớp → `log_error` + ném lỗi. Khớp → **xác thực chữ ký HMAC** (`_verify_sepay_signature`) TRƯỚC mọi nhánh sau.
 4b. Đơn đã submit (docstatus 1): **không bao giờ xác nhận lại.** `already_processed` CHỈ khi
    `payment_status = "Đã thanh toán"` VÀ `transaction_ref == id` (id khác rỗng) → `{success, already_processed, invoice_name}`.
    Còn lại (giao dịch thứ hai cùng mã, đơn đã thu tiền mặt) → Error Log "SePay: giao dịch cho đơn đã submit, cần đối soát",

@@ -33,8 +33,6 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 	import frappe
 	from frappe.utils import flt
 	from frappe.utils.password import get_decrypted_password
-	from werkzeug.test import EnvironBuilder
-	from werkzeug.wrappers import Request
 
 	from mypos.mypos.api import customer_order_api as C
 	from mypos.mypos.api import pos_api as P
@@ -194,9 +192,9 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 				f"preview {p['max_redeem_points']}, mong đợi {info['max_redeem_points']}")
 
 		print("== F. Webhook (đơn QR) ==")
-		api_key = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)
+		api_key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
 		if not api_key:
-			print("SKIP F: Branch chưa có sepay_api_key")
+			print("SKIP F: Branch chưa có sepay_webhook_secret")
 		else:
 			qr = frappe.get_doc({"doctype": "MYPOS Order QR", "branch": branch, "note": "ZZTEST surcharge"}).insert()
 			made_docs.append(("MYPOS Order QR", qr.name))
@@ -213,11 +211,11 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 			made_inv.append(order["invoice_name"])
 			qinv = frappe.get_doc("POS Invoice", order["invoice_name"])
 			ok("F1 preview QR = đơn QR", total(pv) == total(qinv) == 170400, f"({money(total(pv))} / {money(total(qinv))})")
-			env = EnvironBuilder(method="POST", path="/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook",
-				json={"content": pq["payment_code"], "transferAmount": flt(pq["amount"]), "id": "ZZTEST-" + frappe.generate_hash(length=8),
-					"transferType": "in", "gateway": "TEST"}, headers={"Authorization": f"Apikey {api_key}"}).get_environ()
+			from mypos.selfcheck.sepay_sign import webhook_request
+
 			old_req = getattr(frappe.local, "request", None)
-			frappe.local.request = Request(env)
+			frappe.local.request = webhook_request({"content": pq["payment_code"], "transferAmount": flt(pq["amount"]),
+				"id": "ZZTEST-" + frappe.generate_hash(length=8), "transferType": "in", "gateway": "TEST"}, api_key)
 			frappe.local.request_ip = "127.0.0.1"
 			frappe.set_user("Guest")
 			try:

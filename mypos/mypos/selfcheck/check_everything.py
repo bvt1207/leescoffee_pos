@@ -40,6 +40,7 @@ def check_everything(include_write=True, only=None):
 		("open_orders_check", "check_open_orders"),
 		("shift_owner_check", "check_shift_owner"),
 		("payment_status_check", "check_payment_status"),
+		("sepay_hmac_check", "check_sepay_hmac"),
 		("customer_display_check", "check_customer_display"),
 		("order_status_check", "check_order_status"),
 		("poll_load_check", "check_poll_load"),

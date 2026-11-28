@@ -1,7 +1,7 @@
 # Module Rules: Web đặt món QR cho khách (/order/<token>)
 
 > Paths: `mypos/mypos/api/customer_order_api.py` (API khách + job dọn đơn),
-> `doctype/mypos_order_qr/` (mã QR), `doctype/sepay/sepay.py` (`_verify_sepay_key`),
+> `doctype/mypos_order_qr/` (mã QR), `doctype/sepay/sepay.py` (`_verify_sepay_signature`),
 > `api/pos_api.py` (`_pricing_preview` dùng chung), `hooks.py` (`scheduler_events`),
 > `fixtures/custom_field.json` (`order_channel` thêm `QR`, `qr_source`, `guest_session`).
 > Giai đoạn 1 (backend) làm 2026-11-14, **đã test Pass** (self-test 65/65; `d64e1d7`, `948d1bc`, `99fdf30`, `17b5d85`, `fa4844e`). Giai đoạn 2 (frontend `/order`) làm 2026-11-14 (§8): "Đơn của tôi" theo khách + giỏ localStorage **đã test Pass** (`4e9629b`, `fbbc4ac`); phần còn lại chờ test.
@@ -75,12 +75,10 @@
   đọc 120/phút/phiên; `get_my_orders` thêm 60/phút/SĐT (`orders_mobile`, SĐT của Customer) + 300/phút/IP
   (`orders_ip`, rộng vì nhiều khách chung wifi quán). Tối đa `MAX_OPEN_DRAFTS = 2` đơn chờ thanh toán còn hạn mỗi phiên; ≤ 30 dòng, qty 1–20.
 - **Chống dò**: token QR 144 bit; lỗi QR sai/tắt dùng chung một thông báo.
-- **Webhook SePay** (`sepay._verify_sepay_key`): key nhận từ header `Authorization: Apikey <key>` **hoặc**
-  `?key=<key>` trên URL webhook, so `Branch.sepay_api_key` của đơn bằng `hmac.compare_digest`. Sai/thiếu →
-  403 + Error Log. Thêm chống xử lý lặp theo `transaction_ref`.
-  [Unverified] Frappe có thể trả 401 trước khi vào hàm khi header `Authorization` có 2 phần với scheme lạ
-  (`validate_auth`). Nếu SePay kiểu "API Key" bị 401 → cấu hình SePay "Không chứng thực" + URL
-  `.../sepay_webhook?key=<key>` (key nằm trong URL: không chia sẻ URL, đổi key nếu lộ).
+- **Webhook SePay** (2026-11-28): chỉ nhận chữ ký **HMAC-SHA256** (`X-SePay-Signature` + `X-SePay-Timestamp`) bằng
+  `Branch.sepay_webhook_secret` của chi nhánh của đơn; không còn `Authorization: Apikey` / `?key=`. Chi tiết `sepay.md` §1.
+  Lý do bỏ "API Key": Frappe `auth.py::validate_auth` (16.61, dòng 645–657) trả 401 cho mọi header `Authorization` 2 phần mà không
+  xác thực được user (chỉ nhận Bearer / Basic / token) — request không tới được code mypos. `_require_sepay` (/order) đòi có secret.
 
 ## 4. Hạn chế "không OTP" (ghi rõ trong báo cáo)
 

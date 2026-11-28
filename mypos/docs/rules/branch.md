@@ -8,7 +8,7 @@
 
 | Nhóm | Field |
 |------|-------|
-| SePay | `sepay_enabled`, `sepay_api_key` (Password), `sepay_va_account`, `sepay_bank_code` |
+| SePay | `sepay_enabled`, `sepay_webhook_secret` (Password, Secret HMAC webhook), `sepay_va_account`, `sepay_bank_code`; `sepay_api_key` (Password) giữ field, không còn dùng (2026-11-28) |
 | Thương hiệu | `brand_name`, `brand_logo`, `brand_phone`, `brand_address` (`brand_banner` đã bỏ 2026-11-25, §4) |
 | Công ty | `company` (Link → Company, label "Công ty", không bắt buộc, `in_standard_filter`) |
 
@@ -63,7 +63,7 @@
 **Branch**
 - [ ] `company` (Công ty) = `POS Profile.company`
 - [ ] `brand_name`, `brand_logo` (file **public**), `brand_phone`, `brand_address`
-- [ ] `sepay_enabled` = 1, `sepay_va_account`, `sepay_bank_code`, `sepay_api_key` (trùng key cấu hình bên SePay; thiếu key → webhook
+- [ ] `sepay_enabled` = 1, `sepay_va_account`, `sepay_bank_code`, `sepay_webhook_secret` (= Secret Key HMAC-SHA256 của webhook bên SePay, `sepay.md` §1; thiếu secret → webhook
       và đặt món QR không chạy)
 
 **POS Profile** (mỗi chi nhánh **một** profile đang bật — bắt buộc, §2 quy tắc 2; profile thử nghiệm: tắt hoặc gán Branch test riêng)

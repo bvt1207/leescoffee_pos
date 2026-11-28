@@ -14,7 +14,8 @@ def check_branch_profile(pos_profile=None):
 	  3  User chỉ thuộc profile đang bật thiếu Branch -> resolve_pos_profile_name báo lỗi có tên profile
 	  4  User thuộc A (Branch 1), B (Branch 2), không default -> A (tên A→Z); B default -> B
 	  5  get_buzzers với profile thiếu Branch -> báo lỗi (không trả thẻ mọi chi nhánh)
-	  6  _verify_sepay_key: thiếu Branch / Branch chưa có key / key sai -> 403 + Error Log đúng tiêu đề; key đúng -> qua
+	  6  _verify_sepay_signature: thiếu Branch / Branch chưa có secret / chữ ký sai -> 403 + Error Log đúng tiêu đề;
+	     chữ ký đúng (secret của Branch) -> qua (2026-11-28, thay _verify_sepay_key)
 	  7  _get_pos_profile(branch) có 2 profile đang bật (dữ liệu cũ, tạo bằng cờ self-test): không ca -> A; C mở ca -> C
 	  8  /order _shop: banner public đầu tiên; ảnh private bị bỏ; get_brand_info không còn khóa "banner"
 	"""
@@ -110,7 +111,8 @@ def check_branch_profile(pos_profile=None):
 			order_by="creation desc", limit=1)
 		return (row[0].method or "") if row else ""
 
-	orig_profile, orig_key = P._get_pos_profile, S._received_sepay_key
+	orig_profile = P._get_pos_profile
+	old_req = getattr(frappe.local, "request", None)
 	try:
 		purge()
 		frappe.set_user("Administrator")
@@ -171,26 +173,33 @@ def check_branch_profile(pos_profile=None):
 		ok("5 Báo lỗi, không trả thẻ mọi chi nhánh", e and "chưa được gán chi nhánh" in str(e), f"-> {str(e)[:90]}" if e else "-> KHÔNG lỗi")
 
 		print("== 6. Webhook SePay: Error Log đúng lý do ==")
+		from mypos.selfcheck.sepay_sign import webhook_request
+
+		secret = "zzsecret-" + tag
+
+		def verify_with(inv, sign_secret):
+			frappe.local.request = webhook_request({"content": "ZZTEST"}, sign_secret)
+			try:
+				return err_of(lambda: S._verify_sepay_signature(inv, S._check_signature_headers()))
+			finally:
+				frappe.local.request = old_req
+
 		cases = [
-			("6a Thiếu Branch", frappe._dict(name="ZZTEST-INV", pos_profile=nb.name), "zzkey", "POS Profile thiếu Branch"),
-			("6b Branch chưa có key", frappe._dict(name="ZZTEST-INV", pos_profile=a.name), "zzkey", "Branch chưa cấu hình API key"),
+			("6a Thiếu Branch", frappe._dict(name="ZZTEST-INV", pos_profile=nb.name), "POS Profile thiếu Branch"),
+			("6b Branch chưa có secret", frappe._dict(name="ZZTEST-INV", pos_profile=a.name), "Branch chưa cấu hình secret webhook"),
 		]
-		for case, inv, key, title in cases:
-			S._received_sepay_key = lambda key=key: key
-			e = err_of(S._verify_sepay_key, inv)
+		for case, inv, title in cases:
+			e = verify_with(inv, secret)
 			ok(case, isinstance(e, frappe.PermissionError) and title in last_error_title(), f"({type(e).__name__}, log: {last_error_title()})")
 		bdoc = frappe.get_doc("Branch", branch)
-		bdoc.sepay_api_key = "zzkey-" + tag
+		bdoc.sepay_webhook_secret = secret
 		bdoc.save(ignore_permissions=True)
 		inv = frappe._dict(name="ZZTEST-INV", pos_profile=a.name)
-		S._received_sepay_key = lambda: "wrong"
-		e = err_of(S._verify_sepay_key, inv)
-		ok("6c Key sai -> 403 + tiêu đề cũ", isinstance(e, frappe.PermissionError) and "sai hoặc thiếu API key" in last_error_title(),
+		e = verify_with(inv, "wrong-" + secret)
+		ok("6c Chữ ký sai -> 403 + tiêu đề 'chữ ký sai'", isinstance(e, frappe.PermissionError) and "chữ ký sai" in last_error_title(),
 			f"(log: {last_error_title()})")
-		S._received_sepay_key = lambda: "zzkey-" + tag
-		e = err_of(S._verify_sepay_key, inv)
-		ok("6d Key đúng -> qua", e is None, f"({e})" if e else "")
-		S._received_sepay_key = orig_key
+		e = verify_with(inv, secret)
+		ok("6d Chữ ký đúng -> qua", e is None, f"({e})" if e else "")
 
 		print("== 7. Chọn profile của chi nhánh ==")
 		c = make_profile("C", branch, shared=True)
@@ -221,7 +230,8 @@ def check_branch_profile(pos_profile=None):
 		ok("Lỗi ngoài dự kiến", False)
 		traceback.print_exc()
 	finally:
-		P._get_pos_profile, S._received_sepay_key = orig_profile, orig_key
+		P._get_pos_profile = orig_profile
+		frappe.local.request = old_req
 		try:
 			left = purge()
 			print(f"Đã dọn dữ liệu thử ({len(left)} profile tạm)")

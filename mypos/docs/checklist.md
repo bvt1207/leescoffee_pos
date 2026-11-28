@@ -31,22 +31,26 @@ Chi tiết: `deploy.md` §5. User test KHÔNG có role `Workspace Manager`.
 
 ## C. Thanh toán chuyển khoản + SePay giả lập
 
-Cần Branch: `sepay_enabled`, `sepay_va_account`, `sepay_bank_code`, `sepay_api_key`.
+Cần Branch: `sepay_enabled`, `sepay_va_account`, `sepay_bank_code`, `sepay_webhook_secret` (Secret HMAC, `rules/sepay.md` §1).
 
 | # | Thao tác | Mong đợi | PASS / FAIL |
 |---|---|---|---|
 | C1 | Tạo đơn Draft → "QR" ở Orders | Hiện VietQR; `payment_status` = Đang chờ; thẻ "Chờ QR"; Desk: đọc `payment_code`, `rounded_total` (hoặc `grand_total`) | |
 | C2 | Gửi webhook giả (lệnh dưới) | Trả `success: true`; đơn Paid, `payment_status` = Đã thanh toán, Chưa làm | |
-| C3 | Gửi lại đúng lệnh C2 | `already_processed: true`, đơn không đổi | |
-| C4 | Gửi với key sai | HTTP 403, Error Log "SePay webhook: sai hoặc thiếu API key" | |
+| C3 | Gửi lại đúng lệnh `curl` của C2 (cùng TS + SIG) | HTTP 403, Error Log "SePay webhook: chữ ký đã dùng (phát lại)"; chạy lại CẢ khối (TS mới) → `already_processed: true`, đơn không đổi | |
+| C4 | Ký bằng secret sai / bỏ 2 header / TS lệch > 300 giây | HTTP 403, Error Log "SePay webhook: chữ ký sai" / "thiếu chữ ký HMAC" / "timestamp quá hạn" | |
 
 ```bash
+# Ký như SePay (HMAC-SHA256 trên "{timestamp}.{raw_body}"). Chạy lại cả khối để có timestamp + chữ ký mới.
+SECRET='<sepay_webhook_secret của Branch>'
+BODY='{"content":"<payment_code>","transferAmount":<số tiền>,"id":"TEST-0001","transferType":"in","gateway":"TEST"}'
+TS=$(date +%s)
+SIG="sha256=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')"
 curl -s -X POST "<SITE_URL>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook" \
-  -H "Content-Type: application/json" -H "Authorization: Apikey <sepay_api_key của Branch>" \
-  -d '{"content": "<payment_code>", "transferAmount": <số tiền>, "id": "TEST-0001", "transferType": "in", "gateway": "TEST"}'
+  -H "Content-Type: application/json" -H "X-SePay-Timestamp: $TS" -H "X-SePay-Signature: $SIG" --data-binary "$BODY"
 ```
 
-Bị 401 trước khi vào hàm (Frappe chặn header lạ) → bỏ header, thêm `?key=<sepay_api_key>` vào URL (`rules/order-qr.md` §3).
+Gửi body bằng `--data-binary` đúng chuỗi đã ký (không định dạng lại JSON). Không còn header `Authorization: Apikey` / `?key=` (2026-11-28).
 
 ## D. Web đặt món QR `/order/<token>`
 

@@ -6,7 +6,7 @@
 #     run_order_history_selftest("Tên Branch")
 #
 # Điều kiện trước (chỉ khi truyền Branch có sẵn): giống order_qr_selftest.py (POS Profile có branch + Price List, ca POS đang mở,
-# Branch đủ cấu hình SePay + API key, Mode of Payment loại Bank).
+# Branch đủ cấu hình SePay + secret webhook HMAC, Mode of Payment loại Bank).
 # Script tự tạo mã QR, Branch tạm, khách, đơn thử và tự dọn ở cuối (kể cả khi lỗi giữa chừng).
 
 
@@ -31,8 +31,6 @@ def run_order_history_selftest(branch=None, run_old=True):
 	import frappe
 	from frappe.utils import add_to_date, flt, now_datetime
 	from frappe.utils.password import get_decrypted_password
-	from werkzeug.test import EnvironBuilder
-	from werkzeug.wrappers import Request
 
 	from mypos.mypos.api import customer_order_api as C
 	from mypos.mypos.doctype.sepay import sepay as S
@@ -81,14 +79,10 @@ def run_order_history_selftest(branch=None, run_old=True):
 		frappe.local.message_log = []
 
 	def fake_request(payload, key=None):
-		headers = {"Authorization": f"Apikey {key}"} if key else {}
-		env = EnvironBuilder(
-			method="POST",
-			path="/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook",
-			json=payload,
-			headers=headers,
-		).get_environ()
-		frappe.local.request = Request(env)
+		# key = secret webhook HMAC của Branch (2026-11-28); None -> không gửi chữ ký
+		from mypos.selfcheck.sepay_sign import webhook_request
+
+		frappe.local.request = webhook_request(payload, key)
 		frappe.local.request_ip = "127.0.0.1"
 
 	def rand_mobile():
@@ -180,7 +174,7 @@ def run_order_history_selftest(branch=None, run_old=True):
 		if not shift:
 			print(f"DỪNG: POS Profile {pname} chưa có ca POS đang mở. Mở ca rồi chạy lại.")
 			return
-		api_key = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False)
+		api_key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
 		try:
 			C._require_sepay(branch)
 			C._transfer_mode(profile)

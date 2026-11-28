@@ -6,7 +6,7 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 
 	KHÔNG đụng ca / đơn thật: chép POS Profile thành "ZZTEST Draft ...", user tạm A (POS CASHIER), M (POS MANAGER).
 	Job tự hủy được kiểm bằng hàm chọn đơn của job (`_stale_drafts`) rồi chỉ hủy đơn thử (`_cancel_batch`) — không hủy Draft thật.
-	Đơn QR được giả lập: Draft tạo ở /pos rồi đổi order_channel = "QR" + payment_code. Webhook cần Branch có sepay_api_key
+	Đơn QR được giả lập: Draft tạo ở /pos rồi đổi order_channel = "QR" + payment_code. Webhook cần Branch có sepay_webhook_secret
 	(không có -> SKIP mục webhook). Lùi `creation` bằng db.set_value.
 	Hủy đơn KHÔNG xóa: đơn chuyển docstatus 2 / "Cancelled", lý do ở custom_cancel_reason (tiền tố nguồn), Comment trên đơn.
 	Có commit (job hủy commit từng đơn) -> cuối hàm dọn mọi dữ liệu thử: commit trước mỗi lần xóa, thử lại 3 lần khi
@@ -34,8 +34,6 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 	import frappe
 	from frappe.utils import add_to_date, flt, now_datetime, nowdate
 	from frappe.utils.password import get_decrypted_password
-	from werkzeug.test import EnvironBuilder
-	from werkzeug.wrappers import Request
 
 	from mypos.mypos.api import pos_api as P
 	from mypos.mypos.doctype.pos_invoice_hooks import order_cancel as OC
@@ -179,11 +177,11 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 		return frappe.get_all("Comment", filters={"reference_doctype": "POS Invoice", "reference_name": name}, pluck="content")
 
 	def webhook(code, amount, tid):
-		env = EnvironBuilder(method="POST", path="/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook",
-			json={"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"},
-			headers={"Authorization": f"Apikey {ctx['api_key']}"}).get_environ()
+		from mypos.selfcheck.sepay_sign import webhook_request
+
 		old_req = getattr(frappe.local, "request", None)
-		frappe.local.request = Request(env)
+		frappe.local.request = webhook_request(
+			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["api_key"])
 		frappe.local.request_ip = "127.0.0.1"
 		frappe.set_user("Guest")
 		try:
@@ -252,7 +250,7 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 		if err:
 			raise err
 		branch = prof.get("branch")
-		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False) if branch else None
+		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
 		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có key' if ctx['api_key'] else 'SKIP (không có key)'}")
 
 		print("== 2. Chặn đóng ca khi còn Draft ==")
@@ -335,7 +333,7 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 
 		print("== 7. Webhook ==")
 		if not ctx["api_key"]:
-			print("SKIP 7: Branch chưa có sepay_api_key")
+			print("SKIP 7: Branch chưa có sepay_webhook_secret")
 		else:
 			g = draft()
 			code_g = as_qr(g, 18)

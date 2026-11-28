@@ -1,10 +1,24 @@
 import frappe
 from frappe import _
+import hashlib
+import hmac
 import secrets
+import time
 from datetime import datetime
 import json as _json
 from contextlib import contextmanager
 from frappe.utils import flt
+
+# Xác thực webhook SePay bằng HMAC-SHA256 (2026-11-28, docs/rules/sepay.md §1). SePay gửi:
+#   X-SePay-Timestamp: <unix giây lúc ký>
+#   X-SePay-Signature: sha256=<hex HMAC-SHA256(secret, "{timestamp}." + raw_body)>
+# Secret: Branch.sepay_webhook_secret (Password) của chi nhánh của đơn. Không còn nhận "Authorization: Apikey" / ?key=.
+SIGNATURE_HEADER = "X-SePay-Signature"
+TIMESTAMP_HEADER = "X-SePay-Timestamp"
+SIGNATURE_TOLERANCE_SECONDS = 300
+# Chống phát lại: chữ ký đã xử lý thành công được nhớ trong Redis (đặt sau commit; rollback -> không nhớ, SePay gửi lại được).
+REPLAY_CACHE_PREFIX = "mypos_sepay_sig:"
+REPLAY_TTL_SECONDS = 2 * SIGNATURE_TOLERANCE_SECONDS
 
 # Import helper functions from branch_config module
 from ..branch_config.branch_config import (
@@ -132,6 +146,9 @@ def sepay_webhook():
     """Receive SePay webhook and update POS Invoice payment."""
 
     try:
+        # 0. Có đủ header chữ ký + timestamp còn hạn + chưa xử lý (chống phát lại) — TRƯỚC khi đọc DB.
+        signed = _check_signature_headers()
+
         # 1. Đọc JSON theo format SePay
         payload = frappe.request.get_json(silent=True) or {}
 
@@ -195,9 +212,9 @@ def sepay_webhook():
             "POS Invoice", matched_invoice.name
         )
 
-        # 3b. Xác thực webhook đến từ SePay (API key của Branch của đơn).
+        # 3b. Xác thực webhook đến từ SePay (chữ ký HMAC bằng secret của Branch của đơn).
         #     Mọi nhánh bên dưới (kể cả phản hồi idempotent) chỉ chạy SAU bước này.
-        _verify_sepay_key(invoice)
+        _verify_sepay_signature(invoice, signed)
 
         # 3a. Đơn đã hủy (docstatus 2: hủy tay / job hết hạn) mà tiền vẫn về -> đánh dấu trên chính đơn,
         #     báo quản lý; không thanh toán lại đơn. Idempotent theo transaction_id (custom_late_payment_ref).
@@ -321,7 +338,7 @@ def sepay_webhook():
         # 8. Lưu và submit POS Invoice.
         # Webhook là allow_guest (user Guest). save/submit của ERPNext gọi
         # get_party_account -> account_perm_check, không bị ignore_permissions bỏ qua.
-        # Vì vậy CHỈ bước này (đã qua xác thực API key, khớp đơn, khớp số tiền) chạy dưới
+        # Vì vậy CHỈ bước này (đã qua xác thực chữ ký HMAC, khớp đơn, khớp số tiền) chạy dưới
         # user hệ thống; hook on_submit (kitchen status, buzzer, Loyalty Point Entry,
         # đổi điểm) chạy trong cùng phạm vi. Không cấp quyền Account cho Guest/role nào.
         with _as_system_user():
@@ -343,7 +360,7 @@ def sepay_webhook():
         }
 
     except frappe.PermissionError:
-        # Sai/thiếu API key: trả 403 nguyên trạng, không bọc thành lỗi chung.
+        # Sai / thiếu chữ ký, hết hạn, phát lại: trả 403 nguyên trạng, không bọc thành lỗi chung.
         raise
 
     except Exception as e:
@@ -357,7 +374,7 @@ def sepay_webhook():
 
 
 def _record_late_payment(invoice, payload, transaction_id, amount):
-    """Tiền về cho đơn ĐÃ HỦY (docstatus 2). Gọi SAU _verify_sepay_key.
+    """Tiền về cho đơn ĐÃ HỦY (docstatus 2). Gọi SAU _verify_sepay_signature.
 
     Ghi trên chính đơn: custom_late_payment = 1, nối transaction_id vào custom_late_payment_ref, nối giao dịch vào
     sepay_payment_log (giữ dữ liệu giao dịch); Comment + Error Log; Notification Log cho quản lý của POS Profile
@@ -496,7 +513,7 @@ def _find_invoice_by_code(content, normalized_content):
 def _as_system_user():
     """Tạm chạy dưới Administrator trong phạm vi hẹp, luôn trả lại user cũ (Guest với webhook).
 
-    Chỉ dùng SAU khi webhook đã được xác thực (_verify_sepay_key) và đã khớp đơn + số tiền.
+    Chỉ dùng SAU khi webhook đã được xác thực (_verify_sepay_signature) và đã khớp đơn + số tiền.
     """
     prev = frappe.session.user
     frappe.set_user("Administrator")
@@ -506,65 +523,91 @@ def _as_system_user():
         frappe.set_user(prev)
 
 
-def _received_sepay_key():
-    """API key SePay gửi kèm webhook.
-
-    Nhận 1 trong 2 cách (cấu hình bên SePay):
-    - Header `Authorization: Apikey <key>` (kiểu chứng thực "API Key" của SePay).
-    - Tham số `?key=<key>` trên URL webhook (dùng khi Frappe chặn header Authorization
-      có scheme lạ trước khi vào hàm — xem docs/rules/sepay.md).
-    """
-    header = str(frappe.get_request_header("Authorization") or "").strip()
-    parts = header.split(None, 1)
-    if len(parts) == 2 and parts[0].lower() == "apikey":
-        return parts[1].strip()
-
-    args = getattr(frappe.request, "args", None) or {}
-    return str(args.get("key") or "").strip()
+def sepay_signature(secret, timestamp, raw_body):
+    """Chữ ký SePay: "sha256=" + hex HMAC-SHA256(secret, "{timestamp}." + raw_body). Dùng chung cho webhook và selfcheck."""
+    if isinstance(raw_body, str):
+        raw_body = raw_body.encode("utf-8")
+    message = str(timestamp).encode("utf-8") + b"." + (raw_body or b"")
+    return "sha256=" + hmac.new(str(secret).encode("utf-8"), message, hashlib.sha256).hexdigest()
 
 
-def verify_sepay_key_for_branch(branch_name, received):
-    """True nếu `received` khớp Branch.sepay_api_key (so sánh thời gian hằng)."""
-    import hmac
-
-    from frappe.utils.password import get_decrypted_password
-
-    if not branch_name or not received:
-        return False
-    expected = get_decrypted_password(
-        "Branch", branch_name, "sepay_api_key", raise_exception=False
-    ) or ""
-    if not expected:
-        return False
-    return hmac.compare_digest(received.encode(), str(expected).encode())
+def _replay_key(signature):
+    return REPLAY_CACHE_PREFIX + hashlib.sha256(signature.encode("utf-8")).hexdigest()
 
 
-def _verify_sepay_key(invoice):
-    """Chặn webhook giả: key gửi kèm phải khớp sepay_api_key của Branch của đơn.
+def _reject_webhook(title, detail=""):
+    """403 + Error Log đúng lý do. Không lộ lý do cho bên gọi (thông báo chung)."""
+    frappe.log_error(
+        title=title,
+        message=f"{detail}\nip={getattr(frappe.local, 'request_ip', None)}".strip(),
+    )
+    raise frappe.PermissionError(_("Webhook SePay không hợp lệ."))
 
-    Luôn 403 khi không xác thực được; Error Log ghi ĐÚNG lý do (2026-11-25): đơn không có POS Profile,
-    POS Profile thiếu Branch, Branch chưa có API key, hoặc key sai / thiếu.
+
+def _check_signature_headers():
+    """Bước đầu của webhook, TRƯỚC khi đọc DB: đủ 2 header, timestamp là số nguyên lệch tối đa
+    SIGNATURE_TOLERANCE_SECONDS so với giờ server, chữ ký chưa từng xử lý thành công (chống phát lại).
+    Trả {signature, timestamp} (timestamp giữ nguyên chuỗi header để ký lại đúng từng ký tự)."""
+    signature = str(frappe.get_request_header(SIGNATURE_HEADER) or "").strip().lower()
+    timestamp = str(frappe.get_request_header(TIMESTAMP_HEADER) or "").strip()
+    if not signature or not timestamp:
+        _reject_webhook(
+            "SePay webhook: thiếu chữ ký HMAC",
+            f"has_signature={bool(signature)}\nhas_timestamp={bool(timestamp)}",
+        )
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        _reject_webhook("SePay webhook: timestamp không hợp lệ", f"timestamp={timestamp[:40]}")
+    skew = int(time.time()) - ts
+    if abs(skew) > SIGNATURE_TOLERANCE_SECONDS:
+        _reject_webhook("SePay webhook: timestamp quá hạn", f"timestamp={ts}\nskew_seconds={skew}")
+    if frappe.cache.get_value(_replay_key(signature)):
+        _reject_webhook("SePay webhook: chữ ký đã dùng (phát lại)", f"timestamp={ts}")
+    return frappe._dict(signature=signature, timestamp=timestamp)
+
+
+def _remember_signature(signature):
+    """Nhớ chữ ký SAU commit (rollback xóa hàng đợi after_commit -> SePay gửi lại được khi lần đầu lỗi)."""
+    key = _replay_key(signature)
+
+    def _set():
+        frappe.cache.set_value(key, 1, expires_in_sec=REPLAY_TTL_SECONDS)
+
+    hooks = getattr(frappe.db, "after_commit", None)
+    if hooks is not None and hasattr(hooks, "add"):
+        hooks.add(_set)
+    else:
+        _set()
+
+
+def _verify_sepay_signature(invoice, signed):
+    """Chặn webhook giả: chữ ký phải khớp HMAC bằng Branch.sepay_webhook_secret của chi nhánh của đơn,
+    tính trên RAW body (frappe.request.get_data(), cùng bytes SePay đã ký).
+
+    Luôn 403 khi không xác thực được; Error Log ghi ĐÚNG lý do: đơn không có POS Profile, POS Profile thiếu Branch,
+    Branch chưa cấu hình secret webhook, chữ ký sai. Không còn nhận "Authorization: Apikey" / ?key= (2026-11-28).
     """
     from frappe.utils.password import get_decrypted_password
 
     profile = invoice.get("pos_profile")
     branch_name = frappe.db.get_value("POS Profile", profile, "branch") if profile else None
-    if not profile:
-        title = "SePay webhook: đơn không có POS Profile"
-    elif not branch_name:
-        title = "SePay webhook: POS Profile thiếu Branch"
-    elif not get_decrypted_password("Branch", branch_name, "sepay_api_key", raise_exception=False):
-        title = "SePay webhook: Branch chưa cấu hình API key"
-    elif not verify_sepay_key_for_branch(branch_name, _received_sepay_key()):
-        title = "SePay webhook: sai hoặc thiếu API key"
-    else:
-        return
-    frappe.log_error(
-        title=title,
-        message=f"invoice={invoice.name}\npos_profile={profile}\nbranch={branch_name}"
-        f"\nip={getattr(frappe.local, 'request_ip', None)}",
+    secret = (
+        get_decrypted_password("Branch", branch_name, "sepay_webhook_secret", raise_exception=False)
+        if branch_name
+        else None
     )
-    raise frappe.PermissionError(_("Webhook SePay không hợp lệ."))
+    detail = f"invoice={invoice.name}\npos_profile={profile}\nbranch={branch_name}"
+    if not profile:
+        _reject_webhook("SePay webhook: đơn không có POS Profile", detail)
+    if not branch_name:
+        _reject_webhook("SePay webhook: POS Profile thiếu Branch", detail)
+    if not secret:
+        _reject_webhook("SePay webhook: Branch chưa cấu hình secret webhook", detail)
+    expected = sepay_signature(secret, signed.timestamp, frappe.request.get_data())
+    if not hmac.compare_digest(expected.encode("utf-8"), signed.signature.encode("utf-8")):
+        _reject_webhook("SePay webhook: chữ ký sai", detail)
+    _remember_signature(signed.signature)
 
 
 def update_sepay_payment_log(invoice_name, log_entry):

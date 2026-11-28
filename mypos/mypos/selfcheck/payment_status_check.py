@@ -7,7 +7,7 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 	Quy tắc: nháp "Chưa thanh toán"; sinh QR "Đang chờ"; submit (không phải trả hàng) "Đã thanh toán" (hook before_submit);
 	hủy (nháp hoặc đã submit) "Hủy"; đơn trả hàng hook không đụng.
 	KHÔNG đụng ca / đơn thật: chép POS Profile thành "ZZTEST Pay ...", user tạm A (POS CASHIER), Customer khách vãng lai tạm.
-	Webhook mô phỏng bằng request giả, cần Branch có sepay_api_key + VA + mã NH (thiếu -> SKIP các ca 3, 6).
+	Webhook mô phỏng bằng request giả, cần Branch có sepay_webhook_secret + VA + mã NH (thiếu -> SKIP các ca 3, 6).
 	Có commit -> cuối hàm dọn mọi dữ liệu thử (commit trước mỗi lần xóa, thử lại 3 lần khi QueryDeadlockError); lỗi dọn chỉ in WARN; dòng KẾT QUẢ luôn in.
 	Đơn QR khách tự đặt (/order): kiểm bằng run_order_qr_selftest() (8m, 8n, 8o) + run_order_history_selftest().
 	"""
@@ -31,8 +31,6 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 	import frappe
 	from frappe.utils import flt, now_datetime, nowdate
 	from frappe.utils.password import get_decrypted_password
-	from werkzeug.test import EnvironBuilder
-	from werkzeug.wrappers import Request
 
 	from mypos.mypos.api import pos_api as P
 	from mypos.mypos.doctype.pos_invoice_hooks import order_cancel as OC
@@ -148,11 +146,11 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 		return flt(r.rounded_total or r.grand_total)
 
 	def webhook(code, amount, tid):
-		env = EnvironBuilder(method="POST", path="/api/method/mypos.mypos.doctype.sepay.sepay.sepay_webhook",
-			json={"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"},
-			headers={"Authorization": f"Apikey {ctx['api_key']}"}).get_environ()
+		from mypos.selfcheck.sepay_sign import webhook_request
+
 		old_req = getattr(frappe.local, "request", None)
-		frappe.local.request = Request(env)
+		frappe.local.request = webhook_request(
+			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["api_key"])
 		frappe.local.request_ip = "127.0.0.1"
 		frappe.set_user("Guest")
 		try:
@@ -219,7 +217,7 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 		if err:
 			raise err
 		branch = prof.get("branch")
-		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_api_key", raise_exception=False) if branch else None
+		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
 		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có key' if ctx['api_key'] else 'SKIP'}")
 
 		print("== 2. Thu tiền mặt / submit tay ==")
@@ -296,7 +294,7 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 
 		print("== 6. Webhook SePay (bỏ dòng gán ở webhook, hook before_submit ghi) ==")
 		if not ctx["api_key"]:
-			skip("6a-6e", "Branch chưa có sepay_api_key")
+			skip("6a-6e", "Branch chưa có sepay_webhook_secret")
 		else:
 			dw = draft()
 			qw, err = as_user("A", P.generate_qr, dw)
