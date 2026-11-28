@@ -331,13 +331,14 @@ def _rows(items, menus):
 
 
 def _transfer_mode(profile):
-	"""Mode of Payment loại Bank có tài khoản: ưu tiên mode có trong POS Profile."""
-	modes = [m for m in P._get_payment_modes(profile.company) if m["has_account"] and m["type"] == "Bank"]
-	in_profile = {row.mode_of_payment for row in profile.get("payments") or []}
-	candidates = [m for m in modes if m["name"] in in_profile] + modes
-	if candidates:
-		return candidates[0]
-	frappe.throw(_("Quán chưa cấu hình thanh toán chuyển khoản. Vui lòng gọi món tại quầy."))
+	"""Mode of Payment chuyển khoản (Bank) CHỈ trong bảng Payments của POS Profile (thứ tự dòng, 2026-11-28).
+
+	Không lấy mode Bank ngoài profile. Profile thiếu / cấu hình sai -> thông báo chung cho khách (chi tiết vào Error Log)."""
+	try:
+		return P._resolve_mode_of_payment(profile, mode_type="Bank")
+	except frappe.ValidationError:
+		frappe.log_error(title="MYPOS /order: POS Profile thiếu mode chuyển khoản", message=frappe.get_traceback())
+		frappe.throw(_("Quán chưa cấu hình thanh toán chuyển khoản. Vui lòng gọi món tại quầy."))
 
 
 def _require_sepay(branch):

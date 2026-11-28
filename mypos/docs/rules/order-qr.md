@@ -116,6 +116,9 @@ Job `order_cancel.auto_cancel_stale_drafts` (cron `*/5 * * * *`, `doctype/pos_in
 - Thông báo thu ngân khi đơn "Đã làm" (`pos_api.get_serve_queue`, `roles.md` §7b) **loại đơn QR** — khách QR vẫn tự nhận banner "mời đến quầy nhận"
   trên điện thoại (luồng QR không đổi, 2026-11-23). Màn Pha chế bấm "Đã làm" đơn QR: toast "Đã báo khách … (đặt QR) tới quầy nhận món".
 
+- 2026-11-28: `_transfer_mode` CHỈ lấy mode Bank trong bảng Payments của POS Profile (thứ tự dòng), không còn fallback sang mode Bank bất kỳ
+  của công ty (`pos_profile.md` §1b).
+
 ## 7. Tồn đọng
 
 - OTP (SMS/Zalo) → mở đổi điểm cho kênh QR.

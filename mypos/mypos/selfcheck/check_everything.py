@@ -34,6 +34,7 @@ def check_everything(include_write=True, only=None):
 	WRITE_SHOP = [
 		("branch_profile_check", "check_branch_profile"),
 		("walk_in_customer_check", "check_walk_in_customer"),
+		("payment_mode_check", "check_payment_modes"),
 		("table_card_check", "check_table_card"),
 		("draft_cancel_check", "check_draft_cancel"),
 		("open_orders_check", "check_open_orders"),

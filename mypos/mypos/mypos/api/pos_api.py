@@ -183,63 +183,114 @@ def _company_warnings(profile):
 	return [msg]
 
 
-def _get_payment_modes(company):
-	"""Danh sách Mode of Payment đang bật, kèm tài khoản mặc định của company."""
-	modes = frappe.get_all(
-		"Mode of Payment",
-		filters={"enabled": 1},
-		fields=["name", "type"],
-		order_by="name asc",
-	)
+def _profile_payment_modes(profile):
+	"""Mode of Payment của POS Profile (bảng Payments) — NGUỒN DUY NHẤT cho /pos, sinh QR, webhook, /order (2026-11-28).
 
-	result = []
-	for mode in modes:
-		account = frappe.db.get_value(
-			"Mode of Payment Account",
-			{"parent": mode.name, "company": company},
-			"default_account",
+	Thứ tự: dòng Default trước, rồi theo thứ tự dòng trong bảng. Không lấy mode ngoài profile, không sắp theo tên.
+	Mode tắt hoặc chưa có tài khoản cho công ty của profile -> lỗi rõ (không âm thầm bỏ qua / thay mode khác).
+	Mỗi phần tử: {name, label, type, account, has_account, default}.
+	"""
+	rows = [r for r in (profile.get("payments") or []) if r.mode_of_payment]
+	if not rows:
+		frappe.throw(
+			_("POS Profile {0} chưa có phương thức thanh toán (bảng Payments). Vui lòng nhờ quản lý cấu hình.").format(
+				profile.name
+			)
 		)
+	rows = sorted(rows, key=lambda r: (0 if cint(r.get("default")) else 1, cint(r.idx)))
+	names = [r.mode_of_payment for r in rows]
+	info = {
+		m.name: m
+		for m in frappe.get_all(
+			"Mode of Payment", filters={"name": ["in", names]}, fields=["name", "type", "enabled"]
+		)
+	}
+	accounts = dict(
+		frappe.get_all(
+			"Mode of Payment Account",
+			filters={"parent": ["in", names], "parenttype": "Mode of Payment", "company": profile.company},
+			fields=["parent", "default_account"],
+			as_list=True,
+		)
+	)
+	result = []
+	for r in rows:
+		m = info.get(r.mode_of_payment)
+		if not m or not cint(m.enabled):
+			frappe.throw(
+				_("Phương thức thanh toán {0} trong POS Profile {1} không tồn tại hoặc đang tắt.").format(
+					r.mode_of_payment, profile.name
+				)
+			)
+		account = accounts.get(r.mode_of_payment)
+		if not account:
+			frappe.throw(
+				_(
+					"Phương thức thanh toán {0} (POS Profile {1}) chưa có tài khoản mặc định cho công ty {2}. "
+					"Vui lòng cấu hình trong Mode of Payment."
+				).format(r.mode_of_payment, profile.name, profile.company)
+			)
 		result.append(
 			{
-				"name": mode.name,
-				"label": mode.name,
-				"type": mode.type,
-				"account": account or "",
-				"has_account": bool(account),
+				"name": m.name,
+				"label": m.name,
+				"type": m.type,
+				"account": account,
+				"has_account": True,
+				"default": bool(cint(r.get("default"))),
 			}
 		)
-
 	return result
 
 
-def _resolve_mode_of_payment(company, mode_of_payment=None):
-	"""Chọn Mode of Payment hợp lệ (có tài khoản mặc định cho company)."""
-	modes = _get_payment_modes(company)
+MODE_TYPE_LABELS = {"Cash": "tiền mặt (Cash)", "Bank": "chuyển khoản (Bank)"}
 
+
+def _resolve_mode_of_payment(profile, mode_of_payment=None, mode_type=None):
+	"""Chọn Mode of Payment CHỈ trong bảng Payments của POS Profile.
+
+	- mode_of_payment: phải nằm trong profile, không thì lỗi.
+	- mode_type ("Cash" / "Bank"): mode đầu tiên cùng loại theo thứ tự _profile_payment_modes (Default trước, rồi thứ tự
+	  dòng) — không viết cứng tên mode (white-label). Profile không có mode loại đó -> lỗi.
+	- Không truyền gì: mode Default của profile (dòng đầu).
+	"""
+	modes = _profile_payment_modes(profile)
 	if mode_of_payment:
 		for mode in modes:
 			if mode["name"] == mode_of_payment:
-				if not mode["has_account"]:
+				if mode_type and mode["type"] != mode_type:
 					frappe.throw(
-						_(
-							"Phương thức thanh toán {0} chưa có tài khoản mặc định cho công ty. "
-							"Vui lòng cấu hình trong Mode of Payment."
-						).format(mode_of_payment)
+						_("Phương thức thanh toán {0} không phải loại {1}.").format(
+							mode_of_payment, MODE_TYPE_LABELS.get(mode_type, mode_type)
+						)
 					)
 				return mode
-
-		frappe.throw(_("Phương thức thanh toán {0} không tồn tại.").format(mode_of_payment))
-
-	usable = [mode for mode in modes if mode["has_account"]]
-	if not usable:
 		frappe.throw(
-			_(
-				"Chưa có Mode of Payment nào được cấu hình tài khoản mặc định cho công ty. "
-				"Vui lòng cấu hình trong Mode of Payment."
+			_("Phương thức thanh toán {0} không thuộc POS Profile {1}.").format(mode_of_payment, profile.name)
+		)
+	if mode_type:
+		for mode in modes:
+			if mode["type"] == mode_type:
+				return mode
+		frappe.throw(
+			_("POS Profile {0} chưa có phương thức thanh toán {1} trong bảng Payments. Vui lòng nhờ quản lý cấu hình.").format(
+				profile.name, MODE_TYPE_LABELS.get(mode_type, mode_type)
 			)
 		)
+	return modes[0]
 
-	return usable[0]
+
+def set_invoice_payment_mode(invoice, profile, mode_type):
+	"""Đặt dòng thanh toán của đơn Draft = mode loại `mode_type` của POS Profile (1 dòng, giữ amount).
+
+	Dùng cho "Thu tiền mặt" (Cash) và sinh QR / webhook SePay (Bank). Trả mode đã chọn."""
+	mode = _resolve_mode_of_payment(profile, mode_type=mode_type)
+	amount = flt(invoice.payments[0].amount) if invoice.get("payments") else 0
+	invoice.set("payments", [])
+	invoice.append(
+		"payments", {"mode_of_payment": mode["name"], "amount": amount, "account": mode["account"], "type": mode["type"]}
+	)
+	return mode
 
 def _level(value):
 	"""Đường/đá chỉ nhận 50/70/100, mặc định 100. Trả chuỗi cho field Select."""
@@ -624,7 +675,8 @@ def get_pos_config(branch_name=None):
 			"walk_in_configured": bool(walk_in),
 			"selling_price_list": profile.get("selling_price_list") or "",
 		},
-		"payment_modes": _get_payment_modes(profile.company),
+		# Chỉ mode trong bảng Payments của POS Profile, Default đứng đầu (frontend lấy phần tử đầu làm mặc định).
+		"payment_modes": _profile_payment_modes(profile),
 		"warnings": warnings,
 		# Phân quyền màn POS (rỗng hết nếu user không có role POS -> frontend chặn).
 		"roles": roles,
@@ -646,9 +698,25 @@ def _pos_draft_auto_cancel_minutes():
 
 @frappe.whitelist()
 def get_menu_items(price_list=None):
-	"""Danh sách menu (nhóm món) để hiển thị trên màn hình chọn món."""
+	"""Danh sách menu (nhóm món) để hiển thị trên màn hình chọn món.
+
+	Không truyền price_list (màn /pos): chỉ menu theo Price List bán của POS Profile đang dùng (2026-11-28). Trước đây
+	trả MỌI menu -> site nhiều chi nhánh hiện món trùng và frontend lấy Price List của "menu đầu tiên" (không cố định).
+	Profile chưa có Price List bán -> lỗi rõ.
+	"""
 	from ..doctype.mypos_menu.mypos_menu import MYPOSMenu
 
+	if not price_list:
+		roles = _pos_roles()
+		kitchen_only = roles["kitchen"] and not roles["cashier"] and not roles["manager"]
+		profile = _get_pos_profile(require_membership=kitchen_only)
+		price_list = profile.get("selling_price_list")
+		if not price_list:
+			frappe.throw(
+				_("POS Profile {0} chưa có Price List bán (Selling Price List). Vui lòng nhờ quản lý cấu hình.").format(
+					profile.name
+				)
+			)
 	return MYPOSMenu.get_menu_with_items(price_list=price_list)
 
 
@@ -786,7 +854,7 @@ def create_draft_order(
 		frappe.throw(_("Loại đơn không hợp lệ."))
 
 	profile = _get_pos_profile(branch_name)
-	mode = _resolve_mode_of_payment(profile.company, mode_of_payment)
+	mode = _resolve_mode_of_payment(profile, mode_of_payment)
 	effective_price_list = _require_price_list(price_list)
 	customer = _resolve_customer(profile, customer_name)
 
@@ -833,7 +901,7 @@ def preview_pricing(items, customer=None, price_list=None, redeem_points=0, disp
 		frappe.throw(_("Chưa chọn món nào để tạo đơn."))
 
 	profile = _get_pos_profile()
-	mode = _resolve_mode_of_payment(profile.company, None)
+	mode = _resolve_mode_of_payment(profile)
 	effective_price_list = _require_price_list(price_list)
 	cust = _resolve_customer(profile, customer)
 
@@ -1511,18 +1579,22 @@ def get_order_detail(invoice_name):
 
 @frappe.whitelist()
 def pay_cash(invoice_name):
-	"""Thu tiền tại quầy: đặt đúng số tiền của đơn rồi submit."""
+	"""Thu tiền tại quầy: đặt 1 dòng thanh toán = mode tiền mặt (Cash) của POS Profile của đơn, đúng số tiền, rồi submit.
+
+	Mode lấy theo POS Profile (2026-11-28), không giữ mode gán lúc tạo đơn (đơn cũ có thể mang mode ngoài profile).
+	Profile không có mode loại Cash -> lỗi rõ."""
 	_require_sale_role()
 	invoice = frappe.get_doc("POS Invoice", invoice_name)
 
 	if invoice.docstatus != 0:
 		frappe.throw(_("Đơn {0} không ở trạng thái Draft.").format(invoice_name))
 
-	if not invoice.payments:
-		frappe.throw(_("Đơn chưa có phương thức thanh toán."))
+	if not invoice.pos_profile:
+		frappe.throw(_("Đơn {0} không có POS Profile.").format(invoice_name))
 
 	amount = flt(invoice.rounded_total or invoice.grand_total)
 
+	set_invoice_payment_mode(invoice, frappe.get_doc("POS Profile", invoice.pos_profile), "Cash")
 	for payment in invoice.payments:
 		payment.amount = amount
 

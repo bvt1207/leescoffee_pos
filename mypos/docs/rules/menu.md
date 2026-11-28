@@ -37,6 +37,10 @@
   Item đã có (không thêm truy vấn). `None` nếu Item không có nhóm.
 - Web khách `/order` **không** nhận `item_group`: `customer_order_api._public_menu` chỉ chép khóa đã liệt kê.
 
+- `pos_api.get_menu_items()` KHÔNG truyền `price_list` (màn /pos, 2026-11-28): chỉ trả menu theo **Price List bán của POS Profile** đang dùng
+  (trước đây trả mọi menu -> site nhiều chi nhánh hiện món trùng, frontend lấy Price List của "menu đầu tiên" không cố định). Profile thiếu
+  Price List bán -> lỗi rõ. Truyền `price_list` -> như cũ. Kiểm tra: `payment_mode_check` (N1).
+
 ## 7. Hướng dẫn admin: Item Group và ảnh món (dữ liệu demo nhập qua Desk, không có trong code)
 
 - **Tab nhóm ở /pos** lấy từ **Item Group** của từng món (Item → trường Item Group). Món có size: đặt nhóm trên **template**.

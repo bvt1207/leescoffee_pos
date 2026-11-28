@@ -46,6 +46,9 @@ POS frontend gọi qua `api/pos_api.py::generate_qr`.
    và `sepay_payment_log`; chỉ `save()` — invoice **vẫn Draft**.
 6. Trả `{invoice_name, payment_code, qr_url, amount, payment_status, idempotent}`.
 
+- 2026-11-28: trước khi lưu, dòng thanh toán của đơn = mode **Bank** của POS Profile của đơn (`_set_bank_mode`, `pos_profile.md` §1b);
+  profile thiếu mode Bank -> lỗi rõ. Nhánh idempotent (đã có `payment_code`) không đổi.
+
 ## 3. Webhook `sepay_webhook()` (`allow_guest=True`)
 
 Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCode`,
@@ -71,8 +74,8 @@ Payload theo format SePay: `content`/`code`, `transferAmount`, `id`/`referenceCo
    thanh toán; nhánh "payment_status = Đã thanh toán → already_processed" cũng đã bỏ cho Draft.)
    `payment_status == "Hủy"` → ném lỗi.
 6. Kiểm tra số tiền: `|transferAmount − (rounded_total or grand_total)| ≤ 0.01`, lệch → log + ném lỗi.
-7. Lấy `mode_of_payment` từ `invoice.payments` (dòng khớp số tiền, không có thì dòng đầu
-   tiên có mode). Xóa hết `payments`, append 1 dòng `{mode_of_payment, amount}`.
+7. Mode of Payment = mode **Bank** của POS Profile của đơn (`_set_bank_mode`, 2026-11-28; trước đây lấy từ `invoice.payments`).
+   Đặt 1 dòng thanh toán với đúng số tiền. Profile thiếu mode Bank -> lỗi + Error Log (tiền đã về: đối soát tay).
 8. Set `transaction_ref = id/referenceCode` (`payment_status = "Đã thanh toán"` do hook `before_submit` ghi khi submit,
    2026-11-25 — `pos_invoice_hooks.md` §2.0),
    append log vào `sepay_payment_log` (JSON, giữ 50 entry cuối).

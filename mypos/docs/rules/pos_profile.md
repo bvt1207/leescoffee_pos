@@ -16,6 +16,18 @@
   POS Profile; chưa cấu hình → lỗi "POS Profile chưa cấu hình Khách vãng lai. Vui lòng nhờ quản lý cấu hình." (`WALK_IN_MISSING_MSG`).
   Chọn khách thật thì vẫn tạo đơn được.
 
+## 1b. Mode of Payment theo POS Profile (2026-11-28)
+
+- NGUỒN DUY NHẤT: bảng **Payments** của POS Profile (`pos_api._profile_payment_modes`). Thứ tự: dòng **Default** trước, rồi thứ tự dòng.
+  Không lấy mode ngoài profile (kể cả "Cash" có sẵn của ERPNext), không sắp theo tên. Mode tắt / thiếu tài khoản cho công ty -> lỗi rõ.
+- `get_pos_config.payment_modes` = mode của profile; `create_draft_order` / `preview_pricing` không truyền mode -> mode Default; truyền mode ngoài
+  profile -> lỗi "không thuộc POS Profile".
+- "Thu tiền mặt" (`pay_cash`): đặt dòng thanh toán = mode **Cash** đầu tiên của profile. Sinh QR / webhook SePay: mode **Bank** đầu tiên của
+  profile (`set_invoice_payment_mode`). /order: `_transfer_mode` = mode Bank của profile. Ưu tiên giữa nhiều mode cùng loại = thứ tự dòng
+  (white-label, không viết cứng tên mode). Profile thiếu mode loại cần -> lỗi rõ (/order: thông báo chung cho khách + Error Log).
+- Lý do: trước đây mode lấy theo tên trên toàn công ty -> đơn mọi chi nhánh ghi "Cash" / "Cash - <abbr>" (lỗi thử bán 2026-11-28).
+- Kiểm tra: `selfcheck/payment_mode_check.py` (`check_payment_modes`).
+
 ## 2. Validate khi lưu POS Profile (`doc_events["POS Profile"]["validate"]`)
 
 | Điều kiện | Mức |

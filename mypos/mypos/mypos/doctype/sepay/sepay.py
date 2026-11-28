@@ -67,6 +67,10 @@ def generate_qr_for_invoice(invoice_name):
         # Build VietQR URL
         qr_url = get_sepay_qr_url(va_account, bank_code, invoice.grand_total, payment_code)
 
+        # 2026-11-28: dòng thanh toán = mode chuyển khoản (Bank) của POS Profile của đơn (không giữ mode lúc tạo đơn,
+        # không lấy mode ngoài profile; profile thiếu mode Bank -> lỗi rõ).
+        _set_bank_mode(invoice)
+
         # Update invoice with payment info (status still Draft)
         invoice.payment_code = payment_code
         invoice.payment_status = PAYMENT_WAITING  # 2026-11-25: trước ghi "Chưa thanh toán" (lệch với Orders / Desk)
@@ -94,6 +98,15 @@ def generate_qr_for_invoice(invoice_name):
             message=f"{str(e)}\n{frappe.get_traceback()}",
         )
         frappe.throw(_("Lỗi khi tạo mã QR thanh toán: {0}").format(str(e)))
+
+
+def _set_bank_mode(invoice):
+    """Đặt dòng thanh toán của đơn = mode Bank đầu tiên trong bảng Payments của POS Profile (thứ tự dòng, white-label)."""
+    from ...api.pos_api import set_invoice_payment_mode
+
+    if not invoice.pos_profile:
+        frappe.throw(_("Đơn {0} không có POS Profile.").format(invoice.name))
+    return set_invoice_payment_mode(invoice, frappe.get_doc("POS Profile", invoice.pos_profile), "Bank")
 
 
 def _get_existing_qr_url(payment_code, invoice):
@@ -265,46 +278,10 @@ def sepay_webhook():
                 )
             )
 
-        # 6. Lấy Mode of Payment từ POS Invoice hiện tại
-        payments = invoice.get("payments") or []
-
-        if not payments:
-            frappe.throw(
-                _("POS Invoice chưa có phương thức thanh toán")
-            )
-
-        matched_payment = next(
-            (
-                payment for payment in payments
-                if payment.mode_of_payment
-                and abs(flt(payment.amount) - expected_amount) <= 0.01
-            ),
-            None,
-        )
-
-        # Nếu không có dòng khớp số tiền, lấy dòng đầu tiên có phương thức
-        if not matched_payment:
-            matched_payment = next(
-                (
-                    payment for payment in payments
-                    if payment.mode_of_payment
-                ),
-                None,
-            )
-
-        if not matched_payment:
-            frappe.throw(
-                _("Không xác định được Mode of Payment từ POS Invoice")
-            )
-
-        mode_of_payment = matched_payment.mode_of_payment
-
-        # Thay payment rows hiện tại bằng dòng thanh toán đã xác định
-        invoice.set("payments", [])
-        invoice.append("payments", {
-            "mode_of_payment": mode_of_payment,
-            "amount": expected_amount,
-        })
+        # 6. Mode of Payment = mode chuyển khoản (Bank) của POS Profile của đơn (2026-11-28; trước đây giữ mode gán lúc
+        #    tạo đơn — có thể là mode ngoài profile). Profile thiếu mode Bank -> lỗi rõ (ghi Error Log bên dưới).
+        mode_of_payment = _set_bank_mode(invoice)["name"]
+        invoice.payments[0].amount = expected_amount
 
         # 7. Cập nhật thông tin giao dịch SePay. payment_status = "Đã thanh toán" do hook before_submit ghi
         #    (pos_invoice_hooks.py, 2026-11-25) — một nơi cho mọi đường thanh toán.

@@ -24,6 +24,7 @@ Quy ước mỗi script:
 | | `kitchen_desk_check.check_kitchen_desk` (KITCHEN vào Desk, chặn API bán hàng) | Không |
 | **Ghi, quán thử** (tự dựng nếu không truyền tham số) | `branch_profile_check.check_branch_profile` | Quán thử |
 | | `walk_in_customer_check.check_walk_in_customer` | Quán thử |
+| | `payment_mode_check.check_payment_modes` | 2 quán thử: Mode of Payment theo POS Profile, menu không trùng, khách mặc định |
 | | `table_card_check.check_table_card` | Quán thử |
 | | `draft_cancel_check.check_draft_cancel` | Quán thử |
 | | `open_orders_check.check_open_orders` | Quán thử |
@@ -39,7 +40,7 @@ Quy ước mỗi script:
 | | `order_history_selftest.run_order_history_selftest` (gọi tiếp bộ QR, `run_old=True`) | Quán thử + ca mở |
 | Công cụ | `test_shop.zz_test_shop` (dựng / dọn / liệt kê quán thử), `check_everything.check_everything` (chạy gộp) | — |
 
-Tổng: 1 điều kiện nền + 4 chỉ đọc + 2 ghi user tạm + 15 ghi quán thử = 22 test.
+Tổng: 1 điều kiện nền + 4 chỉ đọc + 2 ghi user tạm + 16 ghi quán thử = 23 test (thêm `payment_mode_check` 2026-11-28).
 
 ## 2. Điều kiện nền và cách tạo
 
