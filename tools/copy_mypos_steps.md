@@ -233,7 +233,7 @@ bench --site local.com execute frappe.db.count --args "['Custom Field', {'module
 bench --site local.com execute mypos.setup.roles.setup_roles_and_permissions                          # lần 2+: mọi số 0, lỗi 0
 # điều kiện nền cho test ghi dữ liệu (in cách tạo từng mục THIẾU)
 bench --site local.com execute mypos.selfcheck.prereq_check.check_prereq
-# chạy gộp: prereq -> 4 test chỉ đọc -> 2 test user tạm -> 15 test quán thử (tự SKIP nếu prereq THIẾU), bảng PASS / FAIL / SKIP cuối
+# chạy gộp: prereq -> 4 test chỉ đọc -> 2 test user tạm -> 16 test quán thử (tự SKIP nếu prereq THIẾU), bảng PASS / FAIL / SKIP cuối
 bench --site local.com execute mypos.selfcheck.check_everything.check_everything 2>&1 | tee ~/mypos_selfcheck_$(date +%Y%m%d-%H%M).log
 # dữ liệu thử còn sót (chỉ đọc) / dọn
 bench --site local.com execute mypos.selfcheck.test_shop.zz_test_shop --kwargs "{'action': 'list'}"

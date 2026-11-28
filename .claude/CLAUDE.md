@@ -245,6 +245,13 @@ Quy ưữc: chỉ tick `[x]` sau khi Van duyệt task (mục 9).
 - [x] Port sang app mới `mypos` (module `MYPOS`, Frappe / ERPNext 16.61, bench mới `~/frappe-bench`, site `local.com`): không còn chuỗi
       tên app cũ, Sidebar / màn Apps theo 16.61, bộ selfcheck chạy được khi site chưa có dữ liệu. **Đã test Pass 22/22** (2026-11-27,
       `check_everything`; `3747288`, `984aa69`). Chi tiết mục 13.
+- [x] Dữ liệu demo cho site dev (`tools/seed/`, ngoài app mypos): dữ liệu nền (3 chi nhánh LC Nguyễn Huệ / Lê Lợi / Thủ Đức, kho,
+      tài khoản, 6 Mode of Payment, 37 Item + 24 biến thể S/M/L, giá, tồn đầu kỳ, khách mẫu, NCC) + Giai đoạn 2 (3 thu ngân thử,
+      POS Profile, MYPOS Menu). Chạy `run.py` độc lập (dry-run / trial / apply), không qua `bench execute`. **Đã test Pass** (2026-11-28,
+      `82ddc6c` .. `351af7e`). Product Bundle (định mức) chưa nạp. Chi tiết: `tools/seed/README.md`
+- [x] Sửa mypos: Mode of Payment chỉ theo bảng Payments của POS Profile (tiền mặt = Cash, QR / webhook / `/order` = Bank của profile),
+      menu /pos chỉ theo Price List của profile. **Đã test Pass** (selfcheck 23/23 + bán thử 2026-11-28, `ae33380`).
+      Rule: `mypos/docs/rules/pos_profile.md` §1b
 
 ## 7b. Lộ trình — Giai đoạn mở rộng (app riêng, làm SAU, xem mục 3b)
 

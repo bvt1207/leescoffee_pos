@@ -106,7 +106,7 @@ bench --site <site> execute mypos.selfcheck.check_everything.check_everything --
 | `bench get-app` | Clone không hỏi mật khẩu (repo public) |
 | `prereq_check` | Liệt kê mục THIẾU kèm cách tạo; thường cần POS Settings → Invoice Type = POS Invoice |
 | `check_everything` (include_write False) | prereq + 4 chỉ đọc + 2 user tạm: PASS (apps_screen_check có thể SKIP role chưa có user) |
-| Sau khi đủ điều kiện nền, `check_everything` đầy đủ | 22/22 PASS |
+| Sau khi đủ điều kiện nền, `check_everything` đầy đủ | 23/23 PASS |
 
 **Nếu sai:** `get-app` lỗi "not a valid app" → repo thiếu `pyproject.toml` ở gốc (push nhầm nhánh). Thiếu file / lỗi import → so số file với bước 2.
 

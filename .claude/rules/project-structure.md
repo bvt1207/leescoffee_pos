@@ -1,7 +1,7 @@
 # Project Structure — Leescoffee POS
 
 > **Từ 2026-11-27 app hiện hành là `mypos/`** (cây thư mục: `mypos/docs/README.md`; CLAUDE.md mục 13). Cây dưới đây là app cũ
-> `leescoffee_pos/` (chỉ đọc, tham khảo) + `.claude/`; thêm ở gốc repo: `mypos/` (app mới), `tools/` (hướng dẫn copy sang bench, `_wsl/` bỏ qua trong git).
+> `leescoffee_pos/` (chỉ đọc, tham khảo) + `.claude/`; thêm ở gốc repo: `mypos/` (app mới), `tools/` (hướng dẫn copy sang bench, `_wsl/` bỏ qua trong git; `tools/seed/` script nạp dữ liệu demo cho site dev — `clean.py`, `run.py`, `run_tests.py`, bước `s01`..`s19`, `tests/`, đầu ra `clean/` bỏ qua trong git), `DATA/` (dữ liệu nguồn, bỏ qua trong git).
 
 > Chuyển nguyên văn từ CLAUDE.md §10 ngày 2026-11-14 (CLAUDE.md chỉ còn tham chiếu). Cập nhật file này
 > sau khi Van duyệt task (CLAUDE.md mục 9). Bản cây rút gọn cũ của file này trùng nội dung nên được thay bằng cây đầy đủ dưới đây.

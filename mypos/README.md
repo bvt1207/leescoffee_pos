@@ -64,7 +64,7 @@ mypos/mypos/     module "MYPOS": api/, doctype/ (MYPOS Menu, Option Group, Buzze
 
 ## Status
 
-Phiên bản 0.1.0. Đã chạy trên Frappe / ERPNext 16.61.0: bộ selfcheck **22/22 PASS** trên site mới. Tồn đọng đã biết: [CLAUDE.md](CLAUDE.md)
+Phiên bản 0.1.0. Đã chạy trên Frappe / ERPNext 16.61.0: bộ selfcheck **23/23 PASS** trên site mới. Tồn đọng đã biết: [CLAUDE.md](CLAUDE.md)
 (mục "Trạng thái").
 
 ## License

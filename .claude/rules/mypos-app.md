@@ -13,8 +13,8 @@
   - Desk dùng màn **Apps**: hook `add_to_apps_screen` + `mypos/permissions.py::has_app_permission`, không khai `route` (vào workspace theo
     role). Desktop Icon chỉ nạp ở chế độ lưới icon (Frappe đang loại bỏ) — giữ file, không dựa vào.
   - Sửa cho ERPNext 16.61: tự mở ca điền `balance_details`; hook `validate` POS Invoice giữ CTKM theo tổng qty khi lưu đơn.
-- Kiểm: `bench --site local.com execute mypos.selfcheck.check_everything.check_everything` (22 test: điều kiện nền, 4 chỉ đọc, 2 user tạm,
-  15 quán thử `ZZTEST-*`). Điều kiện nền site mới: Setup Wizard (Vietnam / VND) + POS Settings Invoice Type = POS Invoice
+- Kiểm: `bench --site local.com execute mypos.selfcheck.check_everything.check_everything` (23 test: điều kiện nền, 4 chỉ đọc, 2 user tạm,
+  16 quán thử `ZZTEST-*`). Điều kiện nền site mới: Setup Wizard (Vietnam / VND) + POS Settings Invoice Type = POS Invoice
   (`mypos/docs/testing.md`, `tools/test_without_data.md`). Kiểm tay: `mypos/docs/checklist.md`.
 - Copy sang bench: `tools/copy_mypos_steps.md` (không rsync; cổng dừng ở diff trước khi copy; sao lưu `~/mypos_backups`).
   **Van cho phép (2026-11-27) Claude Code tự chạy các bước copy trong WSL** qua `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -- bash <file .sh trong

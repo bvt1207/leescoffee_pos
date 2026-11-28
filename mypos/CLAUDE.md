@@ -24,10 +24,13 @@ Nguyên tắc không được vi phạm:
 
 ## Trạng thái (2026-11-27)
 
-- Chạy trên frappe / erpnext **16.61.0** (yêu cầu `>=16.50, <17`, không cần HRMS). Bộ selfcheck **22/22 PASS** trên site mới
-  (`mypos.selfcheck.check_everything.check_everything`), gồm 15 test ghi dữ liệu chạy trên "quán thử" `ZZTEST-*` tự dựng / tự dọn.
+- Chạy trên frappe / erpnext **16.61.0** (yêu cầu `>=16.50, <17`, không cần HRMS). Bộ selfcheck **23/23 PASS** (2026-11-28, thêm `payment_mode_check`; trước 22/22) trên site mới
+  (`mypos.selfcheck.check_everything.check_everything`), gồm 16 test ghi dữ liệu chạy trên "quán thử" `ZZTEST-*` tự dựng / tự dọn.
 - Sửa cho ERPNext 16.61: tự mở ca điền `balance_details` (`docs/rules/roles.md` §2b); giữ CTKM theo tổng qty mỗi mã khi lưu đơn bằng hook
   `validate` của POS Invoice (`docs/rules/options.md` §7).
+- 2026-11-28: Mode of Payment CHỈ lấy từ bảng Payments của POS Profile (Default trước, rồi thứ tự dòng; tiền mặt = mode Cash,
+  QR / webhook / `/order` = mode Bank của profile; thiếu -> lỗi rõ); `get_menu_items` mặc định theo Price List bán của profile
+  (`docs/rules/pos_profile.md` §1b, `docs/rules/menu.md` §6).
 - Tồn đọng đã biết: MYPOS Menu tra giá cố định VND (`docs/rules/menu.md` §2); role POS DISPLAY cho TV `/pos/status` (`docs/rules/order_status.md` §6);
   sửa dòng rồi Submit thẳng trên Desk (không Save) có thể bị ERPNext tính CTKM theo dòng (`docs/rules/options.md` §7).
 
