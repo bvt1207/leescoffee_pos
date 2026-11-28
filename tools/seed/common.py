@@ -6,7 +6,7 @@ import frappe
 
 SEED_DIR = Path(__file__).resolve().parent
 CLEAN_DIR = SEED_DIR / "clean"
-MODES = ("dry-run", "apply")
+MODES = ("dry-run", "trial", "apply")
 
 
 class SeedError(Exception):
@@ -22,7 +22,8 @@ class Report:
 
     def add(self, action, key, detail=""):
         self.counts[action] += 1
-        label = action if self.mode == "apply" or action in ("skipped", "error") else f"sẽ {action}"
+        prefix = {"apply": "", "trial": "thử ", "dry-run": "sẽ "}[self.mode]
+        label = action if action in ("skipped", "error") else f"{prefix}{action}".strip()
         print(f"  [{label}] {key}" + (f" — {detail}" if detail else ""))
 
     def warn(self, msg):
@@ -35,13 +36,15 @@ class Report:
 
 
 class Ctx:
-    """mode: 'dry-run' (mặc định, không ghi) hoặc 'apply'."""
+    """mode: 'dry-run' (mặc định, không ghi, chỉ so sánh), 'trial' (ghi thật để ERPNext validate rồi rollback
+    toàn bộ, không commit; Stock Reconciliation chỉ insert, không submit) hoặc 'apply'."""
 
     def __init__(self, mode="dry-run", company=None):
         if mode not in MODES:
             raise SeedError(f"mode phải là {MODES}, nhận '{mode}'")
         self.mode = mode
-        self.apply = mode == "apply"
+        self.apply = mode in ("apply", "trial")  # có ghi vào DB (trial: rollback ở cuối)
+        self.trial = mode == "trial"
         self.company = resolve_company(company)
         self.abbr, self.currency, self.cost_center = frappe.db.get_value(
             "Company", self.company, ["abbr", "default_currency", "cost_center"])

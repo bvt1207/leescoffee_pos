@@ -92,6 +92,7 @@ def load(ctx, rep, rows=None):
                 "expense_account": account, "cost_center": cc, "set_warehouse": wh, "items": items,
             })
             doc.insert()
-            doc.submit()
+            if not ctx.trial:  # trial: chỉ validate (insert), không submit / không ghi sổ kho
+                doc.submit()
             detail = f"{doc.name}: {detail}"
         rep.add("created", wh, detail)

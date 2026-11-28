@@ -226,6 +226,18 @@ def clean_mode_of_payment(wb, rep, accounts):
         if unique(rep, seen, name, where):
             out.append({"key": key, "mode_of_payment": name, "type": mtype,
                         "enabled": flag(r.get("Enabled")), "account": account})
+    # Quyết định 6: thêm "QR Bank Transfer - Chi nhánh LC ..." loại Bank, cùng tài khoản Bank của chi nhánh.
+    for k in config.BRANCH_KEYS:
+        banks = [m for m in out if m["key"] == k and m["type"] == "Bank"]
+        if len(banks) != 1:
+            rep.error(f"Chi nhánh {k}: cần đúng 1 Mode of Payment loại Bank trong file để lấy tài khoản, có {len(banks)}")
+            continue
+        name = f"{config.EXTRA_BANK_MODE_LABEL} - Chi nhánh {config.BRANCH_LABEL[k]}"
+        if unique(rep, seen, name, "Mode of Payment thêm (quyết định 6)"):
+            out.append({"key": k, "mode_of_payment": name, "type": "Bank", "enabled": 1,
+                        "account": banks[0]["account"]})
+    rep.info(f"Mode of Payment: {len(out)} (file {len(out) - len(config.BRANCH_KEYS)} + "
+             f"{len(config.BRANCH_KEYS)} '{config.EXTRA_BANK_MODE_LABEL}')")
     return out
 
 
@@ -280,7 +292,7 @@ def clean_tree(wb, rep, sheets, name_col, parent_col, root):
 
 
 def clean_items(wb, rep, uoms, groups):
-    out, n_img = {}, 0
+    out = {}
     for r in sheet_rows(wb, config.SHEET_ITEM, rep):
         code = s(r.get("Item Code"))
         where = f"Item dòng {r['_row']} ({code or '?'})"
@@ -297,9 +309,8 @@ def clean_items(wb, rep, uoms, groups):
             "is_purchase_item": flag(r.get("Allow Purchase")), "disabled": flag(r.get("Disabled")),
             "description": s(r.get("Description")), "has_variants": flag(r.get("Has Variants")),
             "attribute": s(r.get("Attribute (Variant Attributes)")),
+            "image": s(r.get("Image")),
         }
-        if s(r.get("Image")):
-            n_img += 1
         if not it["item_name"]:
             rep.error(f"{where}: thiếu Item Name")
         g = groups.get(it["item_group"])
@@ -318,19 +329,18 @@ def clean_items(wb, rep, uoms, groups):
             rep.warn(f"{where}: có thuộc tính nhưng Has Variants = 0 (bỏ thuộc tính)")
             it["attribute"] = ""
         out[code] = it
-    rep.info(f"Ảnh món: {n_img} Item có link ảnh ngoài -> KHÔNG nạp (Q6), admin tự tải ảnh public sau")
+    n_img = sum(1 for i in out.values() if i["image"])
+    rep.info(f"Ảnh Item: {n_img} có link, {len(out) - n_img} thiếu -> nạp nguyên URL vào field image (quyết định 7)")
     return out
 
 
 def clean_variants(wb, rep, items):
-    out, pairs, n_img = {}, set(), 0
+    out, pairs = {}, set()
     for r in sheet_rows(wb, config.SHEET_VARIANT, rep):
         code = s(r.get("Item Code"))
         where = f"Biến thể dòng {r['_row']} ({code or '?'})"
         tpl, attr, val = s(r.get("Variant Of")), s(r.get("Attribute (Variant Attributes)")), \
             s(r.get("Attribute Value (Variant Attributes)"))
-        if s(r.get("Image")):
-            n_img += 1
         if not code or code in out or code in items:
             rep.error(f"{where}: thiếu hoặc trùng mã")
             continue
@@ -356,15 +366,17 @@ def clean_variants(wb, rep, items):
         out[code] = {"item_code": code, "item_name": s(r.get("Item Name")), "variant_of": tpl,
                      "attribute": attr, "attribute_value": val,
                      "is_sales_item": flag(r.get("Allow Sales")), "is_purchase_item": flag(r.get("Allow Purchase")),
-                     "disabled": flag(r.get("Disabled")), "description": s(r.get("Description"))}
+                     "disabled": flag(r.get("Disabled")), "description": s(r.get("Description")),
+                     "image": s(r.get("Image"))}
     for code, t in items.items():
         if t["has_variants"]:
             have = {v["attribute_value"] for v in out.values() if v["variant_of"] == code}
             missing = [v for v in config.SIZE_ABBR if v not in have]
             if missing:
                 rep.warn(f"Template '{code}' thiếu biến thể {missing}")
-    if n_img:
-        rep.info(f"Ảnh biến thể: {n_img} link ngoài -> KHÔNG nạp (Q6)")
+    no_img = [c for c, v in out.items() if not v["image"]]
+    rep.info(f"Ảnh biến thể: {len(out) - len(no_img)} có link riêng, {len(no_img)} thiếu"
+             + (f" {no_img} (không tự lấy ảnh template; xem ERPNext có kế thừa không)" if no_img else ""))
     return out
 
 
@@ -450,7 +462,7 @@ def clean_customer(wb, rep, cgroups):
     out = [{"customer_name": s(c.get("Customer Name")), "customer_type": "Individual",
             "customer_group": config.WALK_IN_CUSTOMER_GROUP, "territory": config.WALK_IN_TERRITORY}]
     rep.info(f"Customer: chỉ nạp '{out[0]['customer_name']}' (Territory {config.WALK_IN_TERRITORY}, Q8; "
-             f"file ghi '{s(c.get('Territory'))}'); bỏ {len(rows) - 1} dòng khác (có dữ liệu liên hệ, không in ra)")
+             f"file ghi '{s(c.get('Territory'))}'); {len(rows) - 1} dòng khác là khách mẫu (cờ with_demo_customers)")
     return out
 
 
@@ -529,6 +541,99 @@ def clean_product_bundle(wb, rep, items, variants):
     return out
 
 
+def clean_demo_customers(wb, rep, cgroups):
+    """Khách mẫu (cờ with_demo_customers): mọi dòng trừ khách vãng lai; email bắt buộc @example.com."""
+    rows = sheet_rows(wb, config.SHEET_CUSTOMER, rep)
+    out = []
+    for r in rows:
+        if s(r.get("Customer Group")) == config.WALK_IN_CUSTOMER_GROUP:
+            continue
+        where = f"Customer dòng {r['_row']}"
+        email = s(r.get("Email Address (Contact)")).lower()
+        if not email.endswith("@" + config.DEMO_EMAIL_DOMAIN):
+            rep.error(f"{where}: khách mẫu phải có email @{config.DEMO_EMAIL_DOMAIN} (không nạp dữ liệu thật)")
+            continue
+        if s(r.get("Customer Group")) not in cgroups:
+            rep.error(f"{where}: Customer Group '{s(r.get('Customer Group'))}' không có trong sheet Customer group")
+        out.append({
+            "customer_name": s(r.get("Customer Name")), "customer_type": s(r.get("Customer Type")),
+            "customer_group": s(r.get("Customer Group")), "territory": s(r.get("Territory")),
+            "first_name": s(r.get("First Name (Contact)")), "last_name": s(r.get("Last Name (Contact)")),
+            "email": email, "designation": s(r.get("Designation (Contact)")),
+            "phone": s(r.get("Phone (Contact)")), "mobile_no": s(r.get("Mobile No (Contact)")),
+            "is_primary_contact": flag(r.get("Is Primary Contact (Contact)")),
+        })
+    kinds = {}
+    for c in out:
+        kinds[c["customer_group"]] = kinds.get(c["customer_group"], 0) + 1
+    rep.info(f"Khách mẫu (cờ with_demo_customers, mặc định KHÔNG nạp): {len(out)} khách {kinds}, "
+             f"email @{config.DEMO_EMAIL_DOMAIN}")
+    return out
+
+
+def clean_suppliers(wb, rep):
+    """Nhóm NCC + NCC (cờ with_suppliers)."""
+    groups = clean_tree(wb, rep, (config.SHEET_SUPPLIER_GROUP,), "Supplier Group Name", "Parent Supplier Group",
+                        config.ROOT_SUPPLIER_GROUP)
+    out, seen = [], set()
+    for r in sheet_rows(wb, config.SHEET_SUPPLIER, rep):
+        name, grp = s(r.get("Supplier Name")), s(r.get("Supplier Group"))
+        where = f"Supplier dòng {r['_row']} ({name})"
+        if grp not in groups:
+            rep.error(f"{where}: Supplier Group '{grp}' không có trong sheet Supplier group")
+        if unique(rep, seen, name, where):
+            out.append({"supplier_name": name, "supplier_type": s(r.get("Supplier Type")), "supplier_group": grp,
+                        "country": s(r.get("Country")), "default_currency": s(r.get("Billing Currency")),
+                        "disabled": flag(r.get("Disabled"))})
+    rep.info(f"Nhà cung cấp (cờ with_suppliers, mặc định KHÔNG nạp): {len(groups)} nhóm, {len(out)} NCC")
+    return groups, out
+
+
+def ice_note(rep, opening, bundles, warehouses):
+    """Chỉ cảnh báo: số ly tối đa theo tồn đá viên mỗi kho (định mức nhỏ nhất / lớn nhất trong Product Bundle)."""
+    per_cup = [float(b["qty"]) for b in bundles if b["item_code"] == config.ICE_ITEM]
+    if not per_cup:
+        return
+    leaf = {w["key"]: w["warehouse_name"] for w in warehouses if not w["is_group"]}
+    parts = []
+    for o in opening:
+        if o["item_code"] == config.ICE_ITEM:
+            q = float(o["qty"])
+            parts.append(f"{leaf.get(o['warehouse_key'])}: {fmt(q)} {o['uom']} ~ {int(q // max(per_cup))}-"
+                         f"{int(q // min(per_cup))} ly")
+    rep.warn(f"Đá viên {config.ICE_ITEM} ({fmt(min(per_cup))}-{fmt(max(per_cup))} / ly theo Product Bundle): "
+             + "; ".join(parts) + ". Khi bật Product Bundle, POS chặn bán khi hết đá (không sửa dữ liệu).")
+
+
+def check_urls(rep, items, variants, timeout=8):
+    """Thử truy cập link ảnh (HEAD, lỗi thì GET). Chỉ cảnh báo."""
+    import urllib.request
+
+    urls = {}
+    for code, it in {**items, **variants}.items():
+        if it.get("image"):
+            urls.setdefault(it["image"], []).append(code)
+    bad = []
+    for url, codes in urls.items():
+        why = ""
+        for method in ("HEAD", "GET"):
+            try:
+                req = urllib.request.Request(url, method=method, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    ctype = resp.headers.get("Content-Type", "")
+                    if resp.status < 400 and (not ctype or ctype.startswith("image/")):
+                        why = ""
+                        break
+                    why = f"HTTP {resp.status}, Content-Type {ctype or '?'}"
+            except Exception as e:  # noqa: BLE001
+                why = type(e).__name__ + ": " + str(e)[:80]
+        if why:
+            bad.append((codes, why))
+    for codes, why in bad:
+        rep.warn(f"Link ảnh không truy cập được ({why}): {', '.join(codes)}")
+    rep.info(f"Kiểm tra link ảnh: {len(urls)} URL khác nhau, {len(urls) - len(bad)} OK, {len(bad)} lỗi")
+
+
 def write_csv(path, rows, fields):
     with open(path, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
@@ -540,13 +645,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data-dir", default=str(REPO_DIR / "DATA"))
     ap.add_argument("--out", default=str(SEED_DIR / "clean"))
+    ap.add_argument("--check-urls", action="store_true", help="thử truy cập link ảnh (cần mạng)")
     a = ap.parse_args(argv)
     data_dir, out_dir = Path(a.data_dir), Path(a.out)
-    xlsx = data_dir / config.XLSX_FILE
-    if not xlsx.exists():
-        sys.exit(f"Không thấy {xlsx}")
+    found = [data_dir / n for n in config.XLSX_FILES if (data_dir / n).exists()]
+    if len(found) != 1:
+        sys.exit(f"Cần đúng 1 file trong {list(config.XLSX_FILES)} ở {data_dir}, tìm thấy {[f.name for f in found]}")
+    xlsx = found[0]
 
     rep = Reporter()
+    rep.info(f"File nguồn: {xlsx.name}")
     wb = openpyxl.load_workbook(xlsx, read_only=True, data_only=True)
     company = file_company(wb, rep)
     branches = clean_branch(wb, rep)
@@ -566,11 +674,17 @@ def main(argv=None):
     customers = clean_customer(wb, rep, cgroups)
     opening = clean_opening_stock(data_dir / config.OPENING_CSV_FILE, rep, items, warehouses)
     bundles = clean_product_bundle(wb, rep, items, variants)
+    demo_customers = clean_demo_customers(wb, rep, cgroups)
+    sgroups, suppliers = clean_suppliers(wb, rep)
+    ice_note(rep, opening, bundles, warehouses)
+    if a.check_urls:
+        check_urls(rep, items, variants)
 
     used = {config.SHEET_COMPANY, config.SHEET_BRANCH, config.SHEET_COST_CENTER, config.SHEET_ACCOUNT,
             config.SHEET_MODE_OF_PAYMENT, *config.SHEET_WAREHOUSES, config.SHEET_UOM, *config.SHEET_ITEM_GROUPS,
             config.SHEET_ITEM, config.SHEET_VARIANT, config.SHEET_PRICE_LIST, config.SHEET_SELLING,
-            config.SHEET_BUYING, config.SHEET_CUSTOMER_GROUP, config.SHEET_CUSTOMER, config.SHEET_PRODUCT_BUNDLE}
+            config.SHEET_BUYING, config.SHEET_CUSTOMER_GROUP, config.SHEET_CUSTOMER, config.SHEET_PRODUCT_BUNDLE,
+            config.SHEET_SUPPLIER_GROUP, config.SHEET_SUPPLIER}
     rep.info("Sheet bỏ qua (không nạp): " + "; ".join(n for n in wb.sheetnames if n not in used))
     unused = [u for u, d in uoms.items() if d["source"] == "new" and
               not any(i["stock_uom"] == u for i in items.values())]
@@ -603,9 +717,9 @@ def main(argv=None):
     W("mode_of_payment.csv", mops, ["key", "mode_of_payment", "type", "enabled", "account"])
     W("item.csv", items.values(), ["item_code", "item_name", "item_group", "stock_uom", "is_stock_item",
                                    "is_sales_item", "is_purchase_item", "disabled", "description", "has_variants",
-                                   "attribute"])
+                                   "attribute", "image"])
     W("variant.csv", variants.values(), ["item_code", "item_name", "variant_of", "attribute", "attribute_value",
-                                         "is_sales_item", "is_purchase_item", "disabled", "description"])
+                                         "is_sales_item", "is_purchase_item", "disabled", "description", "image"])
     W("price_list.csv", price_lists.values(), ["key", "price_list", "currency", "buying", "selling", "enabled"])
     W("price.csv", prices, ["item_code", "price_list", "rate", "currency", "uom", "kind"])
     W("customer_group.csv", [{"customer_group": g["name"], "parent_customer_group": g["parent"],
@@ -614,6 +728,14 @@ def main(argv=None):
     W("customer.csv", customers, ["customer_name", "customer_type", "customer_group", "territory"])
     W("opening_stock.csv", opening, ["warehouse_key", "item_code", "qty", "uom", "valuation_rate"])
     W("product_bundle.csv", bundles, ["parent_item", "item_code", "qty", "uom"])
+    W("demo_customer.csv", demo_customers, ["customer_name", "customer_type", "customer_group", "territory",
+                                            "first_name", "last_name", "email", "designation", "phone",
+                                            "mobile_no", "is_primary_contact"])
+    W("supplier_group.csv", [{"supplier_group": g["name"], "parent_supplier_group": g["parent"],
+                              "is_group": g["is_group"]} for g in sgroups.values()],
+      ["supplier_group", "parent_supplier_group", "is_group"])
+    W("supplier.csv", suppliers, ["supplier_name", "supplier_type", "supplier_group", "country",
+                                  "default_currency", "disabled"])
     (out_dir / "report.txt").write_text(text, encoding="utf-8")
     print(f"Đã ghi {out_dir}")
     return 0

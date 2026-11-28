@@ -1,4 +1,7 @@
-"""Bước 10: biến thể Size (mã <template>-S / -M / -L, tên / mô tả / cờ bán-mua theo sheet)."""
+"""Bước 10: biến thể Size (mã <template>-S / -M / -L, tên / mô tả / ảnh / cờ bán-mua theo sheet).
+
+Ảnh: URL riêng ở cột Image của dòng biến thể. Dòng trống -> không ghi (create_variant chỉ chép ảnh template khi
+use_template_image; script không bật), báo trong log."""
 import frappe
 
 from seed.common import SeedError, read_csv, require, to_int
@@ -17,8 +20,9 @@ def _variant_with_value(template, attribute, value):
 
 def _want(r):
     want = {"item_name": r["item_name"]}
-    if r.get("description"):
-        want["description"] = r["description"]
+    for k in ("description", "image"):
+        if r.get(k):
+            want[k] = r[k]
     want.update({k: to_int(r[k]) for k in INT_FIELDS if k in r})
     return want
 
@@ -30,7 +34,9 @@ def load(ctx, rep, rows=None):
         want = _want(r)
         require(ctx, "Item", tpl, f"Biến thể '{code}'")
 
-        cur = frappe.db.get_value("Item", code, ["variant_of", "item_name", "description", *INT_FIELDS],
+        if not r.get("image"):
+            rep.warn(f"Biến thể '{code}' không có ảnh trong file (không tự lấy ảnh template)")
+        cur = frappe.db.get_value("Item", code, ["variant_of", "item_name", "description", "image", *INT_FIELDS],
                                   as_dict=True)
         if cur:
             if cur.variant_of != tpl:

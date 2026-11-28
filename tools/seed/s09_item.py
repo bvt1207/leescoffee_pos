@@ -1,18 +1,21 @@
-"""Bước 9: Item (nguyên liệu, bao bì, món thường, template có biến thể Size). Không nạp ảnh (Q6)."""
+"""Bước 9: Item (nguyên liệu, bao bì, món thường, template có biến thể Size).
+
+Ảnh: ghi nguyên URL ngoài trong file vào field image (quyết định 7), không tải về / không tạo File."""
 import frappe
 
 from seed.common import SeedError, read_csv, require, to_int
 
 TITLE = "Item (món thường + template)"
 INT_FIELDS = ("is_stock_item", "is_sales_item", "is_purchase_item", "disabled", "has_variants")
-STR_FIELDS = ("item_name", "item_group", "stock_uom", "description")
+STR_FIELDS = ("item_name", "item_group", "stock_uom", "description", "image")
 
 
 def _want(r):
     want = {k: r.get(k) or "" for k in STR_FIELDS}
     want.update({k: to_int(r.get(k, 0)) for k in INT_FIELDS if k in r})
-    if not want["description"]:
-        want.pop("description")  # để ERPNext tự lấy theo tên khi tạo, không so khi cập nhật
+    for k in ("description", "image"):
+        if not want[k]:
+            want.pop(k)  # file trống: không ghi, không so (ERPNext tự lấy mô tả theo tên)
     return want
 
 
