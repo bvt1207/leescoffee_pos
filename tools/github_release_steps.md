@@ -106,7 +106,7 @@ bench --site <site> execute mypos.selfcheck.check_everything.check_everything --
 | `bench get-app` | Clone không hỏi mật khẩu (repo public) |
 | `prereq_check` | Liệt kê mục THIẾU kèm cách tạo; thường cần POS Settings → Invoice Type = POS Invoice |
 | `check_everything` (include_write False) | prereq + 4 chỉ đọc + 2 user tạm: PASS (apps_screen_check có thể SKIP role chưa có user) |
-| Sau khi đủ điều kiện nền, `check_everything` đầy đủ | 23/23 PASS |
+| Sau khi đủ điều kiện nền, `check_everything` đầy đủ | 25/25 PASS (0.2.0) |
 
 **Nếu sai:** `get-app` lỗi "not a valid app" → repo thiếu `pyproject.toml` ở gốc (push nhầm nhánh). Thiếu file / lỗi import → so số file với bước 2.
 
@@ -114,11 +114,14 @@ bench --site <site> execute mypos.selfcheck.check_everything.check_everything --
 
 1. Sửa và commit trong repo phát triển (`PROJECTPOS/mypos/...`) như bình thường; KHÔNG sửa trực tiếp trên GitHub (nhánh split sẽ lệch).
 2. ```powershell
-   git subtree split --prefix=mypos -b mypos-release
-   git push mypos mypos-release:main
+   git subtree split --prefix=mypos -b mypos-release    # rồi kiểm như bước 2 (clone tạm)
+   git push mypos mypos-release:main                    # không --force; bị từ chối (non-fast-forward) -> DỪNG, kiểm lại
+   # chỉ sau khi bench cài từ main đã test PASS:
    git push mypos mypos-release:version-16
+   git tag -a vX.Y.Z mypos-release -m "MYPOS X.Y.Z"     # khớp __version__ + CHANGELOG.md
+   git push mypos vX.Y.Z
    ```
-   (Tăng `__version__` trong `mypos/mypos/__init__.py` và tag mới nếu phát hành bản mới.)
+   (Tăng `__version__` trong `mypos/mypos/__init__.py` + mục mới trong `mypos/CHANGELOG.md` khi phát hành bản mới.)
 3. Bench cài từ GitHub: `bench update --app mypos` (hoặc `cd apps/mypos && git pull`), rồi `npm run build` trong `apps/mypos/pos`,
    `bench build --app mypos`, `bench --site <site> migrate`, khởi động lại bench.
 4. Bench DEV hiện tại (`~/frappe-bench/apps/mypos` có `.git` riêng của `bench new-app`): tiếp tục quy trình copy `tools/copy_mypos_steps.md`;
