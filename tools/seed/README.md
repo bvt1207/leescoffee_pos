@@ -25,8 +25,11 @@ Company / abbr / gốc cây Cost Center, Warehouse / tài khoản Temporary đ�
 | s12_item_price | | 78 bán + 87 mua |
 | s13_customer | 3 Customer Group + "Khách vãng lai" (Territory Vietnam) | 3 + 1 |
 | s14_opening_stock | Stock Reconciliation Opening Stock / kho chi nhánh, từ CSV | 3 chứng từ |
-| s15_demo_customer | CHỈ khi `with_demo_customers=1`: khách mẫu @example.com + Contact | 14 |
-| s16_supplier | CHỈ khi `with_suppliers=1`: Supplier Group + Supplier | 3 + 7 |
+| s15_demo_customer | Khi `with_demo_customers=1` (lệnh bên dưới BẬT): khách mẫu @example.com + Contact | 14 (12 thành viên + 2 doanh nghiệp) |
+| s16_supplier | Khi `with_suppliers=1` (lệnh bên dưới BẬT): Supplier Group + Supplier | 3 + 7 |
+
+`run.py` mặc định TẮT 2 cờ (script dùng chung); môi trường local này nạp luôn dữ liệu mẫu (quyết định Van 2026-11-28),
+nên mọi lệnh dry-run / trial / apply bên dưới truyền cùng biến `$FLAGS`.
 
 File nguồn đã mang tên mới ("Chi nhánh LC ...", "QR Bank Transfer - ..."); `clean.py` vẫn nhận file cũ (A/B/C,
 "Transfer - ...") và đổi tên idempotent (`tests/t_rename.py`).
@@ -46,23 +49,26 @@ Giai đoạn 2 (sau khi Van duyệt): POS Profile x 3 — Payment Methods mỗi 
 
 ```bash
 REPO="/mnt/c/Users/ADMIN/OneDrive/Pictures/Năm 4 UIT/ERPNEXT/PROJECTPOS"
+FLAGS="'with_demo_customers': 1, 'with_suppliers': 1"
 cd ~/frappe-bench
-env/bin/python "$REPO/tools/seed/clean.py" --check-urls             # làm sạch, đọc clean/report.txt
-PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run'}"
-PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'trial'}"
-bench --site local.com clear-cache
-bench --site local.com backup                                        # trước lần apply đầu tiên
-PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'apply'}"
-PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run'}"  # phải toàn skipped
+
+env/bin/python "$REPO/tools/seed/clean.py" --check-urls             # 1) làm sạch, đọc clean/report.txt
+PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run', $FLAGS}"  # 2)
+PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'trial', $FLAGS}"    # 3)
+bench --site local.com clear-cache                                  # 4)
+# --- dừng, kiểm tra kết quả ---
+bench --site local.com backup                                       # 5) trước lần apply đầu tiên
+PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'apply', $FLAGS}"    # 6)
+PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run', $FLAGS}"  # 7) toàn skipped
 ```
 
-Thêm vào `--kwargs`: `'until': 's07_mode_of_payment'`, `'only': 's01_uom,s02_item_group'`,
-`'with_demo_customers': 1`, `'with_suppliers': 1`.
+Thêm vào `--kwargs` khi cần: `'until': 's07_mode_of_payment'`, `'only': 's01_uom,s02_item_group'`.
 
 Dự phòng nếu `bench execute` không thấy module `seed`:
 
 ```bash
-cd ~/frappe-bench/sites && ../env/bin/python "$REPO/tools/seed/run.py" --site local.com --mode dry-run
+cd ~/frappe-bench/sites && ../env/bin/python "$REPO/tools/seed/run.py" --site local.com --mode dry-run \
+  --with-demo-customers --with-suppliers
 ```
 
 Test (mỗi file một hàm loader, dữ liệu `ZZTEST-`, tự dọn trong finally):
@@ -85,14 +91,16 @@ python -c "import sys; sys.path.insert(0, '$REPO/tools'); from seed.tests.t_rena
 | s11–s12 | Mỗi Price List bán 26 giá, mỗi Price List mua 29 giá; TP-006-L = 40.000 |
 | s13 | "Khách vãng lai": nhóm Khách lẻ, Territory Vietnam, không Loyalty Program |
 | s14 | Stock Balance mỗi kho 29 mã; giá trị 3.722.500 / 2.963.500 / 2.366.500 |
+| s15 | Customer: 15 (1 "Khách vãng lai" + 14 khách mẫu: 12 nhóm Khách thành viên, 2 nhóm Khách doanh nghiệp); đủ 3 Customer Group; mỗi khách mẫu 1 Contact email @example.com |
+| s16 | Supplier Group: 3 nhóm file (dưới All Supplier Groups); Supplier: 7, mỗi NCC đúng nhóm |
 
 Test case (Van chạy):
 
-- [TC1] dry-run rồi trial -> 14 bước không error; sau trial site không có Item mới
+- [TC1] dry-run rồi trial (có `$FLAGS`) -> 16 bước không error; sau trial site không có Item / Customer / Supplier mới
 - [TC2] apply -> Mode of Payment "QR Bank Transfer - Chi nhánh LC Thủ Đức": Type Bank, tài khoản "Bank - Chi nhánh LC Thủ Đức - LC"
-- [TC3] apply -> Item TP-003-M có field image là URL, ảnh hiện trên Desk
-- [TC4] dry-run lại sau apply -> mọi bước created = 0, updated = 0
-- [TC5] Stock Balance -> 3 kho x 29 mã, giá trị khớp bảng trên
+- [TC3] apply -> Customer list: 15 khách (lọc Customer Group: Khách lẻ 1, Khách thành viên 12, Khách doanh nghiệp 2); Supplier list: 7
+- [TC4] dry-run lại sau apply (có `$FLAGS`) -> mọi bước created = 0, updated = 0
+- [TC5] Stock Balance -> 3 kho x 29 mã, giá trị khớp bảng trên; Item TP-003-M có ảnh trên Desk
 
 ## Rollback
 

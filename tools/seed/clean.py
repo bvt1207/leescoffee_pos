@@ -474,7 +474,7 @@ def clean_customer(wb, rep, cgroups):
     out = [{"customer_name": s(c.get("Customer Name")), "customer_type": "Individual",
             "customer_group": config.WALK_IN_CUSTOMER_GROUP, "territory": config.WALK_IN_TERRITORY}]
     rep.info(f"Customer: chỉ nạp '{out[0]['customer_name']}' (Territory {config.WALK_IN_TERRITORY}, Q8; "
-             f"file ghi '{s(c.get('Territory'))}'); {len(rows) - 1} dòng khác là khách mẫu (cờ with_demo_customers)")
+             f"file ghi '{s(c.get('Territory'))}'); {len(rows) - 1} dòng khác là khách mẫu (bước s15)")
     return out
 
 
@@ -578,7 +578,7 @@ def clean_demo_customers(wb, rep, cgroups):
     kinds = {}
     for c in out:
         kinds[c["customer_group"]] = kinds.get(c["customer_group"], 0) + 1
-    rep.info(f"Khách mẫu (cờ with_demo_customers, mặc định KHÔNG nạp): {len(out)} khách {kinds}, "
+    rep.info(f"Khách mẫu (bước s15, nạp khi with_demo_customers=1 — lệnh trong README bật cờ): {len(out)} khách {kinds}, "
              f"email @{config.DEMO_EMAIL_DOMAIN}")
     return out
 
@@ -597,7 +597,8 @@ def clean_suppliers(wb, rep):
             out.append({"supplier_name": name, "supplier_type": s(r.get("Supplier Type")), "supplier_group": grp,
                         "country": s(r.get("Country")), "default_currency": s(r.get("Billing Currency")),
                         "disabled": flag(r.get("Disabled"))})
-    rep.info(f"Nhà cung cấp (cờ with_suppliers, mặc định KHÔNG nạp): {len(groups)} nhóm, {len(out)} NCC")
+    rep.info(f"Nhà cung cấp (bước s16, nạp khi with_suppliers=1 — lệnh trong README bật cờ): "
+             f"{len(groups)} nhóm, {len(out)} NCC")
     return groups, out
 
 
@@ -707,7 +708,9 @@ def main(argv=None):
              f"(template {sum(i['has_variants'] for i in items.values())}), biến thể {len(variants)}, "
              f"Price List {len(price_lists)}, giá bán {sum(p['kind'] == 'selling' for p in prices)}, "
              f"giá mua {sum(p['kind'] == 'buying' for p in prices)}, Customer Group {len(cgroups)}, "
-             f"Customer {len(customers)}, dòng tồn đầu kỳ {len(opening)}, dòng Product Bundle {len(bundles)}")
+             f"Customer {len(customers)} vãng lai + {len(demo_customers)} khách mẫu, "
+             f"Supplier Group {len(sgroups)}, Supplier {len(suppliers)}, "
+             f"dòng tồn đầu kỳ {len(opening)}, dòng Product Bundle {len(bundles)}")
 
     text = rep.text()
     print(text)
