@@ -52,7 +52,7 @@ Không có dữ liệu mẫu trong code. Mọi mục dưới đây nhập trên 
 1. [ ] **Company, Warehouse, Price List, Item / Item Price, Mode of Payment** (chuẩn ERPNext): 1 mode tiền mặt + 1 mode chuyển khoản (`type = Bank`, có tài khoản).
 2. [ ] **Branch** (`docs/rules/branch.md` §5): `company`, `brand_name`, `brand_logo` (file **public**), `brand_phone`, `brand_address`;
    SePay: `sepay_enabled`, `sepay_va_account`, `sepay_bank_code`, `sepay_webhook_secret` (Secret Key HMAC-SHA256 của webhook bên SePay,
-   `docs/rules/sepay.md` §1; `sepay_api_key` không còn dùng).
+   `docs/rules/sepay.md` §1).
 3. [ ] **Customer khách vãng lai**: Customer Group Individual, không SĐT, không Loyalty Program (`docs/rules/pos_profile.md` §5).
 4. [ ] **POS Profile** (mỗi Branch đúng 1 profile đang bật): `company`, `warehouse`, `selling_price_list`, `currency`, **`branch`**,
    `custom_walk_in_customer`, Payments (2 mode ở bước 1), `income_account` (phụ thu topping).

@@ -8,7 +8,7 @@
 
 | Nhóm | Field |
 |------|-------|
-| SePay | `sepay_enabled`, `sepay_webhook_secret` (Password, Secret HMAC webhook), `sepay_va_account`, `sepay_bank_code`; `sepay_api_key` (Password) giữ field, không còn dùng (2026-11-28) |
+| SePay | `sepay_enabled`, `sepay_webhook_secret` (Password, Secret HMAC webhook), `sepay_va_account`, `sepay_bank_code` |
 | Thương hiệu | `brand_name`, `brand_logo`, `brand_phone`, `brand_address` (`brand_banner` đã bỏ 2026-11-25, §4) |
 | Công ty | `company` (Link → Company, label "Công ty", không bắt buộc, `in_standard_filter`) |
 

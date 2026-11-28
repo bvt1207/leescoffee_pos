@@ -115,7 +115,6 @@ def get_branch_config(branch_name=None):
 
     # SePay configuration
     config["sepay_enabled"] = branch.sepay_enabled if branch.sepay_enabled is not None else 0
-    config["sepay_api_key"] = branch.sepay_api_key or ""
 
     # Branch-specific SePay VA and bank for VietQR
     config["sepay_va_account"] = branch.sepay_va_account or ""
@@ -149,7 +148,6 @@ def get_sepay_config(branch_name=None):
 
     return {
         "enabled": branch.sepay_enabled if branch.sepay_enabled is not None else 0,
-        "api_key": branch.sepay_api_key or "",
         "va_account": branch.sepay_va_account or "",
         "bank_code": branch.sepay_bank_code or "",
     }

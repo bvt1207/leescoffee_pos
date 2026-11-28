@@ -192,8 +192,8 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 				f"preview {p['max_redeem_points']}, mong đợi {info['max_redeem_points']}")
 
 		print("== F. Webhook (đơn QR) ==")
-		api_key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
-		if not api_key:
+		secret = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
+		if not secret:
 			print("SKIP F: Branch chưa có sepay_webhook_secret")
 		else:
 			qr = frappe.get_doc({"doctype": "MYPOS Order QR", "branch": branch, "note": "ZZTEST surcharge"}).insert()
@@ -215,7 +215,7 @@ def check_option_surcharge(mode_of_payment=None, price_list=None, esp1=None,
 
 			old_req = getattr(frappe.local, "request", None)
 			frappe.local.request = webhook_request({"content": pq["payment_code"], "transferAmount": flt(pq["amount"]),
-				"id": "ZZTEST-" + frappe.generate_hash(length=8), "transferType": "in", "gateway": "TEST"}, api_key)
+				"id": "ZZTEST-" + frappe.generate_hash(length=8), "transferType": "in", "gateway": "TEST"}, secret)
 			frappe.local.request_ip = "127.0.0.1"
 			frappe.set_user("Guest")
 			try:

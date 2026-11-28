@@ -50,7 +50,7 @@ curl -s -X POST "<SITE_URL>/api/method/mypos.mypos.doctype.sepay.sepay.sepay_web
   -H "Content-Type: application/json" -H "X-SePay-Timestamp: $TS" -H "X-SePay-Signature: $SIG" --data-binary "$BODY"
 ```
 
-Gửi body bằng `--data-binary` đúng chuỗi đã ký (không định dạng lại JSON). Không còn header `Authorization: Apikey` / `?key=` (2026-11-28).
+Gửi body bằng `--data-binary` đúng chuỗi đã ký (không định dạng lại JSON).
 
 ## D. Web đặt món QR `/order/<token>`
 

@@ -229,7 +229,7 @@ def check_customer_display(pos_profile=None, item_code=None, mode_of_payment=Non
 		mine_b = [b["title"] for b in (cfg_b or {}).get("banners", []) if b["title"].startswith(BANNER_PREFIX)]
 		ok("2b Cashier B (profile 2): 'Profile 2' rồi 'Mọi profile', không thấy banner profile 1",
 			err is None and mine_b == [BANNER_PREFIX + "Profile 2", BANNER_PREFIX + "Mọi profile"], f"({err or mine_b})")
-		ok("2c Cấu hình không lộ SePay / tài khoản", cfg and not any(k in str(cfg).lower() for k in ("api_key", "va_account", "income_account")))
+		ok("2c Cấu hình không lộ SePay / tài khoản", cfg and not any(k in str(cfg).lower() for k in ("api_key", "secret", "va_account", "income_account")))
 		try:
 			banner("Sai ngày", img, valid_from=today, valid_upto=add_days(today, -1))
 			ok("2d Hiệu lực từ > Hiệu lực đến -> chặn lưu", False, "-> KHÔNG bị chặn")

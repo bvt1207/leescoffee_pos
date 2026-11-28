@@ -76,9 +76,7 @@
   (`orders_ip`, rộng vì nhiều khách chung wifi quán). Tối đa `MAX_OPEN_DRAFTS = 2` đơn chờ thanh toán còn hạn mỗi phiên; ≤ 30 dòng, qty 1–20.
 - **Chống dò**: token QR 144 bit; lỗi QR sai/tắt dùng chung một thông báo.
 - **Webhook SePay** (2026-11-28): chỉ nhận chữ ký **HMAC-SHA256** (`X-SePay-Signature` + `X-SePay-Timestamp`) bằng
-  `Branch.sepay_webhook_secret` của chi nhánh của đơn; không còn `Authorization: Apikey` / `?key=`. Chi tiết `sepay.md` §1.
-  Lý do bỏ "API Key": Frappe `auth.py::validate_auth` (16.61, dòng 645–657) trả 401 cho mọi header `Authorization` 2 phần mà không
-  xác thực được user (chỉ nhận Bearer / Basic / token) — request không tới được code mypos. `_require_sepay` (/order) đòi có secret.
+  `Branch.sepay_webhook_secret` của chi nhánh của đơn; chi tiết `sepay.md` §1. `_require_sepay` (/order) đòi Branch có secret.
 
 ## 4. Hạn chế "không OTP" (ghi rõ trong báo cáo)
 

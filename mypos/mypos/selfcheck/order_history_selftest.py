@@ -174,7 +174,7 @@ def run_order_history_selftest(branch=None, run_old=True):
 		if not shift:
 			print(f"DỪNG: POS Profile {pname} chưa có ca POS đang mở. Mở ca rồi chạy lại.")
 			return
-		api_key = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
+		secret = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False)
 		try:
 			C._require_sepay(branch)
 			C._transfer_mode(profile)
@@ -221,13 +221,13 @@ def run_order_history_selftest(branch=None, run_old=True):
 			frappe.db.get_value("POS Invoice", o1, "grand_total"))
 		payload = {"content": pay["payment_code"], "transferAmount": amount,
 			"id": "SELFTEST-H-" + frappe.generate_hash(length=8), "transferType": "in", "gateway": "TEST"}
-		fake_request(payload, api_key)
+		fake_request(payload, secret)
 		r1 = guest(S.sepay_webhook)
 		row = frappe.db.get_value("POS Invoice", o1, ["docstatus", "status", "payment_status"], as_dict=True)
 		check("H1a [HỒI QUY SePay] Draft thanh toán lần đầu -> Paid, không already_processed",
 			r1.get("success") and "already_processed" not in r1 and row.docstatus == 1 and row.status == "Paid"
 			and row.payment_status == "Đã thanh toán", str(r1)[:150])
-		fake_request(payload, api_key)
+		fake_request(payload, secret)
 		r2 = guest(S.sepay_webhook)
 		check("H1b [HỒI QUY SePay] Gửi lại cùng giao dịch -> already_processed + invoice_name",
 			r2.get("already_processed") is True and r2.get("invoice_name") == o1, str(r2)[:150])

@@ -30,6 +30,7 @@ def check_everything(include_write=True, only=None):
 	WRITE_NO_SHOP = [
 		("apps_screen_roles_check", "check_apps_screen_roles"),
 		("kitchen_desk_check", "check_kitchen_desk"),
+		("remove_api_key_patch_check", "check_remove_api_key_patch"),
 	]
 	WRITE_SHOP = [
 		("branch_profile_check", "check_branch_profile"),

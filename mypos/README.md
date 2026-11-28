@@ -54,7 +54,7 @@ Chi tiết: [docs/testing.md](docs/testing.md); kiểm tay theo màn: [docs/chec
 ## Project structure
 
 ```text
-pyproject.toml, README.md, license.txt, CLAUDE.md (quy ước cho trợ lý code)
+pyproject.toml, README.md, CHANGELOG.md, license.txt, CLAUDE.md (quy ước cho trợ lý code)
 docs/            cài đặt, triển khai, kiểm tra, quy tắc nghiệp vụ (docs/rules/)
 pos/             frontend React + TypeScript (Vite) -> build ra mypos/public/{pos,order}
 mypos/           package Python: hooks.py, setup/ (role + quyền), fixtures/, www/, public/, selfcheck/
@@ -64,8 +64,8 @@ mypos/mypos/     module "MYPOS": api/, doctype/ (MYPOS Menu, Option Group, Buzze
 
 ## Status
 
-Phiên bản 0.1.0. Đã chạy trên Frappe / ERPNext 16.61.0: bộ selfcheck **23/23 PASS** trên site mới. Tồn đọng đã biết: [CLAUDE.md](CLAUDE.md)
-(mục "Trạng thái").
+Phiên bản 0.2.0 (thay đổi bảo mật webhook SePay: nâng cấp từ 0.1.x xem [CHANGELOG.md](CHANGELOG.md) mục "Nâng cấp"). Chạy trên
+Frappe / ERPNext 16.61.0; bộ selfcheck 25 test (`docs/testing.md`). Tồn đọng đã biết: [CLAUDE.md](CLAUDE.md) (mục "Trạng thái").
 
 ## License
 

@@ -12,7 +12,7 @@ from frappe.utils import flt
 # Xác thực webhook SePay bằng HMAC-SHA256 (2026-11-28, docs/rules/sepay.md §1). SePay gửi:
 #   X-SePay-Timestamp: <unix giây lúc ký>
 #   X-SePay-Signature: sha256=<hex HMAC-SHA256(secret, "{timestamp}." + raw_body)>
-# Secret: Branch.sepay_webhook_secret (Password) của chi nhánh của đơn. Không còn nhận "Authorization: Apikey" / ?key=.
+# Secret: Branch.sepay_webhook_secret (Password) của chi nhánh của đơn.
 SIGNATURE_HEADER = "X-SePay-Signature"
 TIMESTAMP_HEADER = "X-SePay-Timestamp"
 SIGNATURE_TOLERANCE_SECONDS = 300
@@ -586,7 +586,7 @@ def _verify_sepay_signature(invoice, signed):
     tính trên RAW body (frappe.request.get_data(), cùng bytes SePay đã ký).
 
     Luôn 403 khi không xác thực được; Error Log ghi ĐÚNG lý do: đơn không có POS Profile, POS Profile thiếu Branch,
-    Branch chưa cấu hình secret webhook, chữ ký sai. Không còn nhận "Authorization: Apikey" / ?key= (2026-11-28).
+    Branch chưa cấu hình secret webhook, chữ ký sai.
     """
     from frappe.utils.password import get_decrypted_password
 

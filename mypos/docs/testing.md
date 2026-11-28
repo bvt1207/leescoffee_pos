@@ -22,6 +22,7 @@ Quy ước mỗi script:
 | | `workspace_shortcut_check.check_workspace_shortcuts` | Không |
 | **Ghi, chỉ user tạm** | `apps_screen_roles_check.check_apps_screen_roles` (ô MYPOS + điểm đến theo từng role) | Không |
 | | `kitchen_desk_check.check_kitchen_desk` (KITCHEN vào Desk, chặn API bán hàng) | Không |
+| | `remove_api_key_patch_check.check_remove_api_key_patch` (patch xóa field SePay cũ: sạch sau migrate, chạy lại không lỗi, giả lập site cũ) | Không (tạo / xóa cột tạm trên Branch) |
 | **Ghi, quán thử** (tự dựng nếu không truyền tham số) | `branch_profile_check.check_branch_profile` | Quán thử |
 | | `walk_in_customer_check.check_walk_in_customer` | Quán thử |
 | | `payment_mode_check.check_payment_modes` | 2 quán thử: Mode of Payment theo POS Profile, menu không trùng, khách mặc định |
@@ -30,7 +31,7 @@ Quy ước mỗi script:
 | | `open_orders_check.check_open_orders` | Quán thử |
 | | `shift_owner_check.check_shift_owner` | Quán thử |
 | | `payment_status_check.check_payment_status` | Quán thử |
-| | `sepay_hmac_check.check_sepay_hmac` | Quán thử: webhook chỉ nhận chữ ký HMAC hợp lệ (thiếu / sai / lệch giờ / sửa body / phát lại / cách cũ → 403; raw body sau make_form_dict) |
+| | `sepay_hmac_check.check_sepay_hmac` | Quán thử: webhook chỉ nhận chữ ký HMAC hợp lệ (thiếu / sai / lệch giờ / sửa body / phát lại / header `Authorization` → 403; raw body sau make_form_dict) |
 | | `customer_display_check.check_customer_display` | Quán thử |
 | | `order_status_check.check_order_status` | Quán thử |
 | | `poll_load_check.check_poll_load` | Quán thử |
@@ -41,7 +42,8 @@ Quy ước mỗi script:
 | | `order_history_selftest.run_order_history_selftest` (gọi tiếp bộ QR, `run_old=True`) | Quán thử + ca mở |
 | Công cụ | `test_shop.zz_test_shop` (dựng / dọn / liệt kê quán thử), `check_everything.check_everything` (chạy gộp) | — |
 
-Tổng: 1 điều kiện nền + 4 chỉ đọc + 2 ghi user tạm + 17 ghi quán thử = 24 test (thêm `payment_mode_check`, `sepay_hmac_check` 2026-11-28).
+Tổng: 1 điều kiện nền + 4 chỉ đọc + 3 ghi không cần quán + 17 ghi quán thử = 25 test (0.2.0: thêm `payment_mode_check`, `sepay_hmac_check`,
+`remove_api_key_patch_check`).
 
 ## 2. Điều kiện nền và cách tạo
 

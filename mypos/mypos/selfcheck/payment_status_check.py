@@ -150,7 +150,7 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 
 		old_req = getattr(frappe.local, "request", None)
 		frappe.local.request = webhook_request(
-			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["api_key"])
+			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["secret"])
 		frappe.local.request_ip = "127.0.0.1"
 		frappe.set_user("Guest")
 		try:
@@ -217,8 +217,8 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 		if err:
 			raise err
 		branch = prof.get("branch")
-		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
-		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có key' if ctx['api_key'] else 'SKIP'}")
+		ctx["secret"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
+		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có secret' if ctx['secret'] else 'SKIP'}")
 
 		print("== 2. Thu tiền mặt / submit tay ==")
 		d = draft()
@@ -293,7 +293,7 @@ def check_payment_status(pos_profile=None, item_code=None, mode_of_payment=None,
 			skip("5a", f"không tạo được đơn trả hàng: {str(e)[:120]}")
 
 		print("== 6. Webhook SePay (bỏ dòng gán ở webhook, hook before_submit ghi) ==")
-		if not ctx["api_key"]:
+		if not ctx["secret"]:
 			skip("6a-6e", "Branch chưa có sepay_webhook_secret")
 		else:
 			dw = draft()

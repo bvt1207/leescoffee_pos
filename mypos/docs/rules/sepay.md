@@ -7,18 +7,17 @@
 ## 1. Quản lý cấu hình SePay
 
 - **Chỉ ở `Branch`** (Custom Field, fixtures): `sepay_enabled` (Check), `sepay_webhook_secret` (Password),
-  `sepay_va_account` (Data), `sepay_bank_code` (Data). `sepay_api_key` (Password) còn field nhưng **không còn dùng** (2026-11-28).
+  `sepay_va_account` (Data), `sepay_bank_code` (Data).
 - **Mỗi chi nhánh/doanh nghiệp một bộ riêng**: một secret webhook, một VA, một mã ngân hàng (nhiều chi nhánh dùng chung một webhook
   SePay → điền cùng một secret ở mọi Branch đó).
   Chi nhánh lấy từ `POS Invoice.pos_profile` → `POS Profile.branch`.
 
-### Xác thực webhook: HMAC-SHA256 (2026-11-28, thay "API Key")
+### Xác thực webhook: HMAC-SHA256 (từ 0.2.0, 2026-11-28)
 
 - `sepay_webhook` là `allow_guest=True` (SePay gọi không có phiên ERPNext) → phải tự xác thực request đến từ SePay.
-- **Vì sao bỏ "API Key"**: SePay gửi `Authorization: Apikey <key>`; Frappe `auth.py::validate_auth` (16.61, dòng 645–657) chỉ nhận
-  Bearer (OAuth Frappe) / Basic / token (API key của User), header `Authorization` 2 phần mà user vẫn Guest → **401 trước khi vào hàm**.
-  Cách "cứu" bằng `auth_hooks` đặt user Administrator khi header khớp một chuỗi bí mật (từng thấy ở một app khác) nâng quyền cho MỌI
-  URL — không làm theo. mypos không dùng `auth_hooks` / `before_request`, không đổi user khi xác thực.
+- **Chỉ dùng kiểu "HMAC-SHA256" trên SePay.** Các kiểu gửi header `Authorization` (API Key, OAuth 2.0) bị Frappe trả 401 trước khi vào
+  hàm (`auth.py::validate_auth` 16.61, dòng 645–657: chỉ nhận Bearer của OAuth Frappe / Basic / token của User). mypos không dùng
+  `auth_hooks` / `before_request`, không đổi user khi xác thực.
 - **Kiểu SePay "HMAC-SHA256"**: SePay gửi `X-SePay-Timestamp` (unix giây) + `X-SePay-Signature: sha256=<hex>`, chữ ký =
   HMAC-SHA256(secret, `"{timestamp}." + raw_body`). Không có header `Authorization` → Frappe để request đi tiếp dưới Guest.
 - Code (`sepay.py`):
@@ -51,8 +50,7 @@
 
 Helper trong `branch_config.py`:
 
-- `get_sepay_config(branch_name=None)` → `{enabled, api_key, va_account, bank_code}` (`api_key` = field cũ, không dùng cho webhook;
-  hàm không trả secret webhook).
+- `get_sepay_config(branch_name=None)` → `{enabled, va_account, bank_code}` (không trả secret webhook).
 - `get_va_bank_config(invoice_name)` → `{va_account, bank_code, branch}`; ném lỗi nếu Branch
   tắt SePay hoặc thiếu VA/bank code.
 - `get_sepay_qr_url(va_account, bank_code, amount, payment_code)` → URL ảnh VietQR.

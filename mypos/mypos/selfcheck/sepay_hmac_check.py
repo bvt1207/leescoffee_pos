@@ -9,7 +9,7 @@ def check_sepay_hmac():
 	  H2 ký bằng secret sai -> 403 "chữ ký sai", đơn vẫn Draft
 	  H3 timestamp lệch +301 / -301 giây (ký đúng) -> 403 "timestamp quá hạn"
 	  H4 payload bị sửa sau khi ký (đổi số tiền) -> 403 "chữ ký sai"
-	  H5 chỉ có "Authorization: Apikey <secret>" hoặc ?key=<secret> (cách cũ) -> 403
+	  H5 không có chữ ký HMAC, chỉ có header Authorization hoặc tham số URL chứa secret -> 403 (không chấp nhận cách khác HMAC)
 	  H6 raw body: make_form_dict (như Frappe làm với request thật) đọc body TRƯỚC, frappe.request.get_data() vẫn trả đúng bytes
 	     đã ký -> chữ ký đúng được chấp nhận, đơn Paid
 	  H7 phát lại đúng request đã xử lý thành công (sau commit) -> 403 "phát lại", đơn không đổi; request ký mới cùng giao dịch
@@ -138,10 +138,10 @@ def check_sepay_hmac():
 		denied("H4 Đổi số tiền sau khi ký -> 403", e, "chữ ký sai")
 
 		print("== H5. Cách xác thực cũ ==")
-		_r, e, _q = call(webhook_environ(body=body, headers={"Authorization": f"Apikey {secret}"}))
-		denied("H5a Authorization: Apikey <secret> -> 403", e, "thiếu chữ ký HMAC")
+		_r, e, _q = call(webhook_environ(body=body, headers={"Authorization": f"Bearer {secret}"}))
+		denied("H5a Header Authorization chứa secret -> 403", e, "thiếu chữ ký HMAC")
 		_r, e, _q = call(webhook_environ(body=body, query_string={"key": secret}))
-		denied("H5b ?key=<secret> -> 403", e, "thiếu chữ ký HMAC")
+		denied("H5b Tham số URL chứa secret -> 403", e, "thiếu chữ ký HMAC")
 		ok("H5c Đơn vẫn Draft sau mọi request bị từ chối", status(inv).docstatus == 0, f"({status(inv)})")
 
 		print("== H6. Raw body sau make_form_dict + chữ ký đúng ==")

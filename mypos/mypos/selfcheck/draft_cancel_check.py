@@ -181,7 +181,7 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 
 		old_req = getattr(frappe.local, "request", None)
 		frappe.local.request = webhook_request(
-			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["api_key"])
+			{"content": code, "transferAmount": flt(amount), "id": tid, "transferType": "in", "gateway": "TEST"}, ctx["secret"])
 		frappe.local.request_ip = "127.0.0.1"
 		frappe.set_user("Guest")
 		try:
@@ -250,8 +250,8 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 		if err:
 			raise err
 		branch = prof.get("branch")
-		ctx["api_key"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
-		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có key' if ctx['api_key'] else 'SKIP (không có key)'}")
+		ctx["secret"] = get_decrypted_password("Branch", branch, "sepay_webhook_secret", raise_exception=False) if branch else None
+		print(f"INFO profile {prof.name}, ca {ctx['shift']}, branch {branch}, webhook {'có secret' if ctx['secret'] else 'SKIP (không có secret)'}")
 
 		print("== 2. Chặn đóng ca khi còn Draft ==")
 		d1 = draft()
@@ -332,7 +332,7 @@ def check_draft_cancel(pos_profile=None, item_code=None, mode_of_payment=None, p
 		cancel_paid(p2)
 
 		print("== 7. Webhook ==")
-		if not ctx["api_key"]:
+		if not ctx["secret"]:
 			print("SKIP 7: Branch chưa có sepay_webhook_secret")
 		else:
 			g = draft()

@@ -31,9 +31,9 @@ Nguyên tắc không được vi phạm:
 - 2026-11-28: Mode of Payment CHỈ lấy từ bảng Payments của POS Profile (Default trước, rồi thứ tự dòng; tiền mặt = mode Cash,
   QR / webhook / `/order` = mode Bank của profile; thiếu -> lỗi rõ); `get_menu_items` mặc định theo Price List bán của profile
   (`docs/rules/pos_profile.md` §1b, `docs/rules/menu.md` §6).
-- 2026-11-28: webhook SePay chỉ nhận chữ ký **HMAC-SHA256** (`X-SePay-Signature` / `X-SePay-Timestamp`, secret ở
-  `Branch.sepay_webhook_secret`; bỏ `Authorization: Apikey` / `?key=` vì Frappe 16.61 trả 401 cho header đó), chống phát lại; thêm
-  `sepay_hmac_check` → 24 test (`docs/rules/sepay.md` §1). Cần migrate (Custom Field mới).
+- 2026-11-28 (0.2.0): webhook SePay chỉ nhận chữ ký **HMAC-SHA256** (`X-SePay-Signature` / `X-SePay-Timestamp`, secret ở
+  `Branch.sepay_webhook_secret`), chống phát lại; field SePay cũ đã xóa (patch `v1_remove_sepay_api_key`); thêm `sepay_hmac_check`,
+  `remove_api_key_patch_check` → 25 test (`docs/rules/sepay.md` §1, `CHANGELOG.md`). Nâng cấp: migrate + điền secret + đổi webhook SePay.
 - Tồn đọng đã biết: MYPOS Menu tra giá cố định VND (`docs/rules/menu.md` §2); role POS DISPLAY cho TV `/pos/status` (`docs/rules/order_status.md` §6);
   sửa dòng rồi Submit thẳng trên Desk (không Save) có thể bị ERPNext tính CTKM theo dòng (`docs/rules/options.md` §7).
 

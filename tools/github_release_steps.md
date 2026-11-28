@@ -48,7 +48,7 @@ git ls-files | wc -l                          # 209 (+ file mới thêm sau này
 grep -n '^name\|^license' pyproject.toml      # name = "mypos", license = { text = "MIT" }
 grep -n '^app_name\|^required_apps' mypos/hooks.py
 grep -rliE 'lee[s]coffee' . || echo "sạch: tên cũ"
-grep -rnIE 'C:\\Users|/home/[a-z]|OneDrive|\.claude/|sepay_api_key\s*=\s*.[A-Za-z0-9]' --exclude-dir=.git . || echo "sạch: đường dẫn / khóa"
+grep -rnIE 'C:\\Users|/home/[a-z]|OneDrive|\.claude/|sepay_webhook_secret\s*=\s*.[A-Za-z0-9]' --exclude-dir=.git . || echo "sạch: đường dẫn / khóa"
 git log --format='%an <%ae>' | sort -u        # email sẽ hiện công khai trên mọi commit
 git ls-files | grep -iE 'node_modules|__pycache__|\.env|public/pos/|public/order/' || echo "sạch: build / secret"
 ```
