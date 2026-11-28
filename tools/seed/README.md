@@ -1,40 +1,46 @@
 # tools/seed — nạp dữ liệu demo vào site dev
 
-Không nằm trong app `mypos`. Dữ liệu nguồn `DATA/` và dữ liệu sạch `tools/seed/clean/` không commit (.gitignore).
-Quyết định nghiệp vụ: Q1-Q12 (2026-11-28), mapping ở `config.py`.
+Không nằm trong app `mypos`. Dữ liệu nguồn `DATA/` ("Data Test.xlsx" + `LC_TON_DAU_KY_ERPNext_V16.csv`) và dữ liệu sạch
+`tools/seed/clean/` không commit (.gitignore). Quyết định: vòng 2 Q1-Q8 (2026-11-28), quy tắc ở `config.py`.
+
+Đổi tên chi nhánh ở mọi nơi (Q5): "Chi nhánh A / B / C" -> "Chi nhánh LC Nguyễn Huệ / LC Lê Lợi / LC Thủ Đức".
+Company / abbr / gốc cây Cost Center, Warehouse / tài khoản Temporary đọc từ site.
 
 ## Thứ tự
 
-| Bước | Việc | Ghi chú |
+| Bước | Việc | Số bản ghi |
 |---|---|---|
-| `clean.py` | `DATA/` -> `clean/*.csv`, `report.txt`, `stock_mapping.csv` | Python thuần, không cần site |
-| s01_uom | UOM mới (Ly, Lon, Phần, Cái, Thùng, Chai); Litre / Millilitre / Gram / Kg chỉ kiểm tra | Q3 |
-| s02_item_group | 15 Item Group | |
-| s03_branch | 3 Branch, `company` = Company của site | Q2 |
-| s04_warehouse | `Hệ thống Cửa hàng - <abbr>` + 3 kho | |
-| s05_attribute | Chỉ kiểm tra Size Medium = M, Large = L | Q5 |
-| s06_item | 43 Item (9 template) | |
-| s07_variant | 18 biến thể `<mã>-M` / `-L` | Q4 |
-| s08_price | 26 giá bán + 26 giá mua | chỉ sheet "Selling price" / "Buying price" |
-| s09_customer | "Khách lẻ (Walk-in Customer)" | |
-| s10_payment | Account `Ngân hàng - <abbr>` + gắn Wire Transfer; kiểm tra Cash, Cost Center | Q10 |
-| s11_opening_stock | 3 Stock Reconciliation Opening Stock (sheet "Stock entry (lần 1 - test POS)") | Q6, Q8, Q9 |
+| `clean.py` | `DATA/` -> `clean/*.csv` + `report.txt` (Python thuần) | — |
+| s01_uom | UOM mới Cái, Gói, Ly, Chai, Lon (+ Symbol); Litre / Millilitre / Gram chỉ kiểm tra | 5 tạo + 3 kiểm |
+| s02_item_group | Cây 3 cấp | 20 |
+| s03_branch | Branch, `company` = Company của site | 3 |
+| s04_cost_center | Dưới Cost Center gốc của Company | 3 |
+| s05_account | Cash / Stock / Bank / Sales / COGS / Write Off mỗi chi nhánh | 18 |
+| s06_warehouse | 3 kho nhóm + 3 kho con gắn tài khoản Stock | 6 |
+| s07_mode_of_payment | Cash / Transfer mỗi chi nhánh, gắn tài khoản bước 5 | 6 |
+| s08_attribute | Chỉ kiểm tra Size Small = S, Medium = M, Large = L | 3 kiểm |
+| s09_item | Không nạp ảnh (Q6); TP-002 giữ nhóm cha "Đồ uống" (Q7) | 37 (8 template) |
+| s10_variant | `TP-xxx-S/M/L` | 24 |
+| s11_price_list | Giá bán / giá mua mỗi chi nhánh | 6 |
+| s12_item_price | | 78 bán + 87 mua |
+| s13_customer | 3 Customer Group + "Khách vãng lai" (Territory Vietnam, Q8) | 3 + 1 |
+| s14_opening_stock | Stock Reconciliation Opening Stock / kho chi nhánh, từ CSV | 3 chứng từ |
 
-POS Profile + MYPOS Menu (Q11): làm sau khi Van duyệt kết quả s11.
+Làm SAU khi Van kiểm tra trên Desk: POS Profile x 3, MYPOS Menu, Product Bundle (`clean/product_bundle.csv`, Q4).
 
 ## Lệnh (Ubuntu / WSL)
 
 ```bash
 REPO="/mnt/c/Users/ADMIN/OneDrive/Pictures/Năm 4 UIT/ERPNEXT/PROJECTPOS"
 cd ~/frappe-bench
-env/bin/python "$REPO/tools/seed/clean.py"                       # làm sạch, đọc report
+env/bin/python "$REPO/tools/seed/clean.py"                       # làm sạch, đọc clean/report.txt
 PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run'}"
 bench --site local.com backup                                      # trước lần apply đầu tiên
 PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'apply'}"
 PYTHONPATH="$REPO/tools" bench --site local.com execute seed.run.main --kwargs "{'mode': 'dry-run'}"  # phải toàn skipped
 ```
 
-Một phần: `--kwargs "{'mode': 'dry-run', 'only': 's01_uom,s02_item_group'}"` hoặc `'until': 's05_attribute'`.
+Một phần: thêm `'only': 's01_uom,s02_item_group'` hoặc `'until': 's07_mode_of_payment'` vào `--kwargs`.
 
 Dự phòng nếu `bench execute` không thấy module `seed`:
 
@@ -42,7 +48,7 @@ Dự phòng nếu `bench execute` không thấy module `seed`:
 cd ~/frappe-bench/sites && ../env/bin/python "$REPO/tools/seed/run.py" --site local.com --mode dry-run
 ```
 
-Test (mỗi file một hàm, dữ liệu `ZZTEST-`, tự dọn):
+Test (mỗi file một hàm loader, dữ liệu `ZZTEST-`, tự dọn trong finally):
 
 ```bash
 for t in t_uom t_item_group t_item_variant t_price; do

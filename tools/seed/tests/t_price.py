@@ -1,7 +1,7 @@
-"""Test s08_price.load: tạo giá bán, chạy lại bỏ qua, đổi giá -> cập nhật (không tạo dòng thứ 2)."""
+"""Test s12_item_price.load: tạo giá bán, chạy lại bỏ qua, đổi giá -> cập nhật (không tạo dòng thứ 2)."""
 import frappe
 
-from seed import s08_price
+from seed import s12_item_price
 from seed.tests._util import check, cleanup, run_load
 
 GROUP, ITEM = "ZZTEST-IG-PRICE", "ZZTEST-PRICE-ITEM"
@@ -29,13 +29,13 @@ def run():
         frappe.db.commit()
         pl = _price_list()
         cur = frappe.db.get_value("Price List", pl, "currency")
-        rows = [{"item_code": ITEM, "price_list": pl, "rate": "12345", "currency": cur, "kind": "selling"}]
-        c = run_load(s08_price, rows)
+        rows = [{"item_code": ITEM, "price_list": pl, "rate": "12345", "currency": cur, "uom": "Nos", "kind": "selling"}]
+        c = run_load(s12_item_price, rows)
         check(c["created"] == 1, f"lần 1: {c}")
-        c = run_load(s08_price, rows)
+        c = run_load(s12_item_price, rows)
         check(c["skipped"] == 1 and c["created"] == 0, f"lần 2: {c}")
         rows[0]["rate"] = "23456"
-        c = run_load(s08_price, rows)
+        c = run_load(s12_item_price, rows)
         check(c["updated"] == 1, f"đổi giá: {c}")
         got = frappe.get_all("Item Price", filters={"item_code": ITEM, "price_list": pl}, pluck="price_list_rate")
         check(got == [23456], f"phải còn đúng 1 dòng giá 23456: {got}")

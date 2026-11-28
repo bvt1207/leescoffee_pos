@@ -1,84 +1,56 @@
-"""Cấu hình nạp dữ liệu demo (quyết định Van 2026-11-28, Q1-Q12).
+"""Cấu hình nạp dữ liệu demo từ "Data Test.xlsx" (quyết định Van 2026-11-28, Q1-Q8 vòng 2).
 
-Không chứa tên Company / abbr: các loader đọc từ site (common.Ctx).
-File này không import frappe (clean.py dùng chung).
+Không chứa tên Company / abbr: loader đọc từ site (common.Ctx). Không import frappe (clean.py dùng chung).
 """
 
-# --- Chi nhánh / kho (Q2) ---------------------------------------------------
+# --- Đổi tên chi nhánh (Q5): một quy tắc cho mọi nơi ---------------------------
+# "Chi nhánh A" -> "Chi nhánh LC Nguyễn Huệ" (giữ nguyên hoa / thường của "Chi"),
+# áp cho Branch, Cost Center, Account, Mode of Payment, Price List, Warehouse, CSV tồn đầu kỳ.
 BRANCH_KEYS = ("A", "B", "C")
-BRANCHES = {
-    "A": "Chi nhánh LC Nguyễn Huệ",
-    "B": "Chi nhánh LC Lê Lợi",
-    "C": "Chi nhánh LC Thủ Đức",
+BRANCH_LABEL = {
+    "A": "LC Nguyễn Huệ",
+    "B": "LC Lê Lợi",
+    "C": "LC Thủ Đức",
 }
-# Tên kho KHÔNG kèm hậu tố; ERPNext tự thêm " - <abbr>" của Company trên site.
-WAREHOUSES = {
-    "A": "Kho LC Nguyễn Huệ",
-    "B": "Kho LC Lê Lợi",
-    "C": "Kho LC Thủ Đức",
-}
-WAREHOUSE_GROUP = "Hệ thống Cửa hàng"
+BRANCH_TOKEN_RE = r"(?i)\b(chi nhánh)\s+([ABC])(?=$|[\s\-])"
 
-# Hậu tố công ty trong file nguồn (vd " - LCV", " - LC") bị bỏ trước khi đối chiếu.
+# Hậu tố công ty trong file nguồn (vd " - LC") bị bỏ; loader thêm " - <abbr của site>".
 SOURCE_SUFFIX_RE = r"\s+-\s+[A-Za-z]{1,8}$"
-# Tên kho trong file nguồn (đã bỏ hậu tố) -> khóa chi nhánh.
-SOURCE_WAREHOUSE_KEY = {
-    "Kho Cửa hàng Nguyễn Huệ": "A",
-    "Kho Cửa hàng Lê Lợi": "B",
-    "Kho Cửa hàng Quận 7": "C",  # Quận 7 đổi thành Thủ Đức
-    "Kho Chi nhánh A": "A",
-    "Kho Chi nhánh B": "B",
-    "Kho Chi nhánh C": "C",
-}
 
-# --- UOM (Q3): ưu tiên dạng đã có trên site ----------------------------------
-# khóa viết thường -> tên UOM dùng trên site
-UOM_MAP = {
-    "lít": "Litre",
-    "ml": "Millilitre",
-    "gram": "Gram",
-    "kg": "Kg",
-}
-# UOM phải có sẵn trên site (không tạo, không sửa).
-SITE_UOMS = ("Litre", "Millilitre", "Gram", "Kg")
-# UOM Item đang dùng nhưng sheet UOM thiếu -> tạo mới: {tên: must_be_whole_number}
-EXTRA_UOMS = {"Chai": 1}
-# Quy đổi đơn vị nhỏ -> đơn vị lớn (chỉ dùng cho stock_mapping.csv)
-UOM_FACTOR = {"Gram": ("Kg", 1000), "Millilitre": ("Litre", 1000)}
+# --- File / sheet nguồn ---------------------------------------------------------
+XLSX_FILE = "Data Test.xlsx"
+OPENING_CSV_FILE = "LC_TON_DAU_KY_ERPNext_V16.csv"  # nguồn tồn đầu kỳ (khớp sheet Item)
 
-# --- Size (Q4 = Item Variant, Q5 = dùng lại Medium / Large có sẵn) ------------
-SIZE_ATTRIBUTE = "Size"
-SIZE_VALUE_MAP = {
-    "size m": "Medium",
-    "m": "Medium",
-    "medium": "Medium",
-    "size l": "Large",
-    "l": "Large",
-    "large": "Large",
-}
-SIZE_ABBR = {"Medium": "M", "Large": "L"}  # mã biến thể = <mã template>-<abbr>
-
-# --- Sheet nguồn ------------------------------------------------------------
-XLSX_FILE = "Data.xlsx"
-OPENING_CSV_FILE = "LC_TON_DAU_KY_ERPNext_V16.csv"  # chỉ xuất stock_mapping.csv, KHÔNG nạp (Q6)
-
+SHEET_COMPANY = "Company (Ko cần import)"  # chỉ đọc tên Company trong file để nhận diện cột cha
+SHEET_BRANCH = "Branch"
+SHEET_COST_CENTER = "Cost center"
+SHEET_ACCOUNT = "Account"
+SHEET_MODE_OF_PAYMENT = "Mode of payment"
+SHEET_WAREHOUSES = ("Warehouse (lần 1)", "Warehouse (lần 2)")
 SHEET_UOM = "UOM"
-SHEET_ITEM_GROUP = "Item group"
-SHEET_WAREHOUSE = "Warehouse"
-SHEET_ITEM = "Item (Sản phẩm)"
-SHEET_VARIANT = "Variant"
-SHEET_SELLING = "Selling price"
-SHEET_BUYING = "Buying price"
+SHEET_ITEM_GROUPS = ("Item group (lần 1)", "Item group (lần 2)", "Item group (lần 3)")
+SHEET_ITEM = "Item"
+SHEET_VARIANT = "Item - Các biến thể"
+SHEET_PRICE_LIST = "Price list"
+SHEET_SELLING = "Item price - giá bán"
+SHEET_BUYING = "Item price - giá mua NVL"
+SHEET_CUSTOMER_GROUP = "Customer group"
 SHEET_CUSTOMER = "Customer"
-OPENING_STOCK_SHEET = "Stock entry (lần 1 - test POS)"  # Q6 = (ii), nhân cho 3 kho
+SHEET_PRODUCT_BUNDLE = "Product Bundle"  # Q4: bước riêng, làm sau; clean chỉ xuất CSV
 
-# Chỉ dùng để cảnh báo giá mâu thuẫn, không nạp.
-PRICE_CONFLICT_SHEETS = (
-    "Bản sao của Selling price",
-    "Selling price kh có size",
-    "Bản sao của Buying price",
-)
+# Gốc cây trên site (cột cha trong file trỏ tới các gốc này -> loader tự tìm gốc của Company).
+ROOT_WAREHOUSE_BASE = "All Warehouses"
+ROOT_ITEM_GROUP = "All Item Groups"
+ROOT_CUSTOMER_GROUP = "All Customer Groups"
 
-# --- Thanh toán (Q10) -------------------------------------------------------
-BANK_ACCOUNT_NAME = "Ngân hàng"  # tài khoản dev tạm, Van đổi sau
-BANK_MODE_OF_PAYMENT = "Wire Transfer"
+# --- UOM: ưu tiên dạng có sẵn trên site -----------------------------------------
+UOM_MAP = {"lít": "Litre", "ml": "Millilitre", "gram": "Gram", "kg": "Kg"}  # khóa viết thường
+SITE_UOMS = ("Litre", "Millilitre", "Gram", "Kg")  # phải có sẵn, không sửa
+
+# --- Size (Q1): dùng lại Small / Medium / Large có sẵn ---------------------------
+SIZE_ATTRIBUTE = "Size"
+SIZE_ABBR = {"Small": "S", "Medium": "M", "Large": "L"}  # mã biến thể = <template>-<abbr>
+
+# --- Khách vãng lai (Q8) -------------------------------------------------------
+WALK_IN_CUSTOMER_GROUP = "Khách lẻ"
+WALK_IN_TERRITORY = "Vietnam"

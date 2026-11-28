@@ -1,27 +1,37 @@
-"""Bước 7: Item Variant theo Size (mã <template>-M / -L, tên lấy theo sheet)."""
+"""Bước 10: biến thể Size (mã <template>-S / -M / -L, tên / mô tả / cờ bán-mua theo sheet)."""
 import frappe
 
-from seed.common import SeedError, read_csv, require
+from seed.common import SeedError, read_csv, require, to_int
 
 TITLE = "Item Variant"
+INT_FIELDS = ("is_sales_item", "is_purchase_item", "disabled")
 
 
 def _variant_with_value(template, attribute, value):
-    rows = frappe.db.sql(
+    return frappe.db.sql(
         """select v.name from `tabItem` v
            join `tabItem Variant Attribute` a on a.parent = v.name and a.parenttype = 'Item'
            where v.variant_of = %s and a.attribute = %s and a.attribute_value = %s""",
         (template, attribute, value), pluck=True)
-    return rows
+
+
+def _want(r):
+    want = {"item_name": r["item_name"]}
+    if r.get("description"):
+        want["description"] = r["description"]
+    want.update({k: to_int(r[k]) for k in INT_FIELDS if k in r})
+    return want
 
 
 def load(ctx, rep, rows=None):
     rows = read_csv("variant.csv") if rows is None else rows
     for r in rows:
         code, tpl, attr, val = r["item_code"], r["variant_of"], r["attribute"], r["attribute_value"]
+        want = _want(r)
         require(ctx, "Item", tpl, f"Biến thể '{code}'")
 
-        cur = frappe.db.get_value("Item", code, ["variant_of", "item_name"], as_dict=True)
+        cur = frappe.db.get_value("Item", code, ["variant_of", "item_name", "description", *INT_FIELDS],
+                                  as_dict=True)
         if cur:
             if cur.variant_of != tpl:
                 raise SeedError(f"Item '{code}' đã có nhưng variant_of = '{cur.variant_of}', cần '{tpl}'")
@@ -29,14 +39,16 @@ def load(ctx, rep, rows=None):
                                                                   "attribute": attr}, "attribute_value")
             if have != val:
                 raise SeedError(f"Biến thể '{code}' có {attr} = '{have}', cần '{val}' (không tự sửa)")
-            if cur.item_name != r["item_name"]:
-                if ctx.apply:
-                    doc = frappe.get_doc("Item", code)
-                    doc.item_name = r["item_name"]
-                    doc.save()
-                rep.add("updated", code, f"item_name -> {r['item_name']}")
-            else:
+            diff = {k: v for k, v in want.items()
+                    if (int(cur.get(k) or 0) if isinstance(v, int) else (cur.get(k) or "")) != v}
+            if not diff:
                 rep.add("skipped", code)
+                continue
+            if ctx.apply:
+                doc = frappe.get_doc("Item", code)
+                doc.update(diff)
+                doc.save()
+            rep.add("updated", code, ", ".join(diff))
             continue
 
         if ctx.in_db("Item", tpl):
@@ -51,7 +63,7 @@ def load(ctx, rep, rows=None):
 
             doc = create_variant(tpl, {attr: val})
             doc.item_code = code
-            doc.item_name = r["item_name"]
+            doc.update(want)
             doc.insert()
             if doc.name != code:
                 raise SeedError(f"ERPNext đặt mã biến thể '{doc.name}', khác '{code}'")

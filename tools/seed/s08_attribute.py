@@ -1,4 +1,4 @@
-"""Bước 5: Item Attribute "Size". Chỉ kiểm tra (Q5: dùng lại Medium / Large có sẵn, không sửa thuộc tính)."""
+"""Bước 8: Item Attribute "Size". Chỉ kiểm tra: Small = S, Medium = M, Large = L có sẵn (Q1), không sửa thuộc tính."""
 import frappe
 
 from seed import config
@@ -21,7 +21,7 @@ def load(ctx, rep, rows=None):
         expected = config.SIZE_ABBR.get(val)
         if expected and abbr != expected:
             raise SeedError(f"'{attr}={val}' có abbr '{abbr}', cần '{expected}' (mã biến thể <mã>-{expected})")
-        rep.add("skipped", f"{attr}={val}", f"abbr {abbr}, không sửa (Q5)")
+        rep.add("skipped", f"{attr}={val}", f"abbr {abbr}, không sửa")
     for r in rows:
         abbr = config.SIZE_ABBR.get(r["attribute_value"])
         if abbr and r["item_code"] != f"{r['variant_of']}-{abbr}":

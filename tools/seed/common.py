@@ -57,8 +57,17 @@ class Ctx:
     def in_db(self, doctype, name):
         return bool(frappe.db.exists(doctype, name))
 
-    def wh(self, warehouse_name):
-        return f"{warehouse_name} - {self.abbr}"
+    def full(self, base_name):
+        """Tên đầy đủ của Account / Cost Center / Warehouse: '<tên> - <abbr của site>'."""
+        return f"{base_name} - {self.abbr}"
+
+    def root(self, doctype, parent_field):
+        """Nút gốc (nhóm, không có cha) của Company cho Warehouse / Cost Center."""
+        roots = frappe.get_all(doctype, filters=[["company", "=", self.company], ["is_group", "=", 1],
+                                                 [parent_field, "is", "not set"]], pluck="name")
+        if len(roots) != 1:
+            raise SeedError(f"Cần đúng 1 {doctype} gốc của '{self.company}', tìm thấy {len(roots)}: {roots}")
+        return roots[0]
 
 
 def resolve_company(company=None):

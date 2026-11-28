@@ -11,7 +11,7 @@ NAME = "ZZTEST-UOM"
 def run():
     try:
         cleanup(("UOM", NAME))
-        rows = [{"uom": NAME, "must_be_whole_number": "1", "source": "new"}]
+        rows = [{"uom": NAME, "symbol": "zz", "must_be_whole_number": "1", "source": "new"}]
         c = run_load(s01_uom, rows, "dry-run")
         check(c["created"] == 1 and not frappe.db.exists("UOM", NAME), f"dry-run không được ghi: {c}")
         c = run_load(s01_uom, rows)

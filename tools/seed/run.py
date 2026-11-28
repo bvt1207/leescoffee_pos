@@ -5,7 +5,7 @@ Cách 1 (bench execute, cần PYTHONPATH trỏ tới thư mục tools/):
 Cách 2 (dự phòng, tự frappe.init):
     cd ~/frappe-bench/sites && ../env/bin/python "<repo>/tools/seed/run.py" --site <site> --mode dry-run
 
-Tham số: mode = dry-run | apply; only = "s01_uom,s02_item_group"; until = "s10_payment"; company = tên Company
+Tham số: mode = dry-run | apply; only = "s01_uom,s02_item_group"; until = "s07_mode_of_payment"; company = tên Company
 (chỉ cần khi site có hơn 1 Company). Dừng ở lỗi đầu tiên; apply commit sau mỗi bước thành công.
 """
 import importlib
@@ -17,14 +17,17 @@ STEPS = (
     "s01_uom",
     "s02_item_group",
     "s03_branch",
-    "s04_warehouse",
-    "s05_attribute",
-    "s06_item",
-    "s07_variant",
-    "s08_price",
-    "s09_customer",
-    "s10_payment",
-    "s11_opening_stock",
+    "s04_cost_center",
+    "s05_account",
+    "s06_warehouse",
+    "s07_mode_of_payment",
+    "s08_attribute",
+    "s09_item",
+    "s10_variant",
+    "s11_price_list",
+    "s12_item_price",
+    "s13_customer",
+    "s14_opening_stock",
 )
 
 
